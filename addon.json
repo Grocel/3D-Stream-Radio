@@ -1,0 +1,6 @@
+{
+	"title" : "3D Stream Radio",
+	"type" : "tool",
+	"tags" : ["fun","roleplay"],
+	"ignore" : ["*.git*","*.svn*","*.txt","*.bat","*.html","*.gma","*.zip","bin/*","noupload/*","*.md","LICENSE"]
+}

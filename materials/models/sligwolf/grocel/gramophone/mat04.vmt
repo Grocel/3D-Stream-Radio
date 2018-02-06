@@ -1,0 +1,10 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\sligwolf\grocel\gramophone\mat04"
+	"$envmap" "env_cubemap"	
+	"$envmapmask" "models\sligwolf\grocel\gramophone\mat04_mask"
+	"$envmapcontrast" 1
+	"$model" 1
+}
+
+

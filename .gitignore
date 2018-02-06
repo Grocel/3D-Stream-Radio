@@ -1,0 +1,5 @@
+.svn
+*.tmp
+*.zip
+*.gma
+noupload/

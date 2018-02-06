@@ -1,0 +1,16 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\sligwolf\grocel\gramophone\mat01"
+	//"$envmap" "env_cubemap"	
+	//"$envmapmask" "models\sligwolf\grocel\gramophone\mat01_5_mask"
+	//"$envmapcontrast" "1"
+	"$bumpmap" "models\sligwolf\grocel\gramophone\mat05_bump"
+	"$nodecal" "1"
+	"$phong" "1"
+	"$phongboost" "6"
+	"$phongexponent"  "10"
+	"$phongfresnelranges" "[.3 .5 1]"
+	"$model" "1"
+}
+
+

@@ -1,0 +1,7 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\sligwolf\grocel\radio\tex005"
+	"$surfaceprop" "glass"
+	"$envmap" "env_cubemap"
+	"$translucent" "1"
+}

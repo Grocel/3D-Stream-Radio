@@ -1,0 +1,8 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\sligwolf\grocel\jukebox\tex004"
+	"$envmap" "env_cubemap"	
+	"$envmapmask" "models\sligwolf\grocel\jukebox\tex004"
+	"$envmapcontrast" 1
+	"$translucent" "1"
+}

@@ -1,0 +1,18 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\sligwolf\grocel\jukebox\tex006"
+	"$bumpmap" "models\sligwolf\grocel\jukebox\tex006_bump"
+	"$blendtintbybasealpha" 1
+	"$blendtintcoloroverbase" "0.05"
+	"$model" "1"
+	"$phong"     "1"
+	"$halflambert"	1
+ 	"$phongexponent"   "60"
+ 	"$phongboost"   "2"
+ 	"$phongfresnelranges"   "[.5 .8 1]"
+	
+	"$detail" "models\sligwolf\grocel\jukebox\tex006"
+   	"$detailscale" "1"
+   	"$detailblendfactor" "1.25"
+   	"$detailblendmode" "5"
+}

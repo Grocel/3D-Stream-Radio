@@ -1,0 +1,8 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\sligwolf\grocel\jukebox\tex005"
+	"$bumpmap" "models\sligwolf\grocel\jukebox\tex005_bump"
+	"$blendtintbybasealpha" 1
+	"$blendtintcoloroverbase" "0.05"
+	"$translucent" "1"
+}
