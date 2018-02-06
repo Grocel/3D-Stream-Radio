@@ -14,7 +14,7 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 ## Recommended addons
 1. [Wiremod][] for Wiremod functionalities.
 2. [GM_BASS3][] for loader sound and Wiremod spectrum output (Advanced Outputs).
-2. [\[NM\] Prop Pack][NM Prop Pack] for loader sound and Wiremod spectrum output (Advanced Outputs).
+2. [\[NM\] Prop Pack][NM Prop Pack] for additional speaker Models.
 
 # Features
 - Serverside playlists
