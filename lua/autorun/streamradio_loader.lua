@@ -19,12 +19,19 @@ local http = http
 local net = net
 local hook = hook
 
-
-local Version = 373
 local Gmodversion = VERSION
-local BassVersion = "(n/a)"
-local BassModuleVersion = 0
-local Addon = ( "3D Stream Radio (rev. " .. Version .. ")" )
+
+local versiondata = file.Read("materials/3dstreamradio/_data/version.vmt", "GAME") or ""
+versiondata = string.Explode("[\r\n|\r|\n]", versiondata, true) or {}
+
+local Version = string.Trim(tostring(versiondata[1] or ""))
+local VersionTime = tonumber(string.Trim(versiondata[2] or "")) or -1
+
+if Version == "" then
+	Version = "UNKNOWN"
+end
+
+local Addon = ( "3D Stream Radio (ver. " .. Version .. ")" )
 local Addonname = ( Addon .. ":\n" )
 
 local thisfile = "autorun/streamradio_loader.lua"
@@ -37,6 +44,10 @@ StreamRadioLib.ErrorString = nil
 
 function StreamRadioLib.GetVersion()
 	return Version
+end
+
+function StreamRadioLib.GetVersionTime()
+	return VersionTime
 end
 
 local loader_ok = true

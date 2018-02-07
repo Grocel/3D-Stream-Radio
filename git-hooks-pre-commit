@@ -1,0 +1,9 @@
+#!/bin/sh
+filename="materials/3dstreamradio/_data/version.vmt"
+version=$(head -n 1 $filename)
+nextversion=$(($version + 1))
+timestap=$(date -u +%s)
+
+echo $nextversion > $filename
+echo $timestap >> $filename
+git add $filename
