@@ -385,7 +385,7 @@ local function InternalDownload(url, saveas_url)
 		end
 
 		if not LIB.CanDownload( len ) then
-			forbidden[queueurl] = true
+			LIB.forbidden[queueurl] = true
 			CallCallbacks(queueurl, len, headers, -1, false)
 		end
 
