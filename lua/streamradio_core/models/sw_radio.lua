@@ -152,7 +152,7 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 
 	local vol = ent:GetVolume()
 
-	speakerlevel = speakerlevel * vol * 3 * soundlevel
+	speakerlevel = speakerlevel * vol * 1.5 * soundlevel
 	speakerlevel = math.Clamp(speakerlevel, -1, 1)
 
 	ent:SetPoseParameter("speakers", speakerlevel)

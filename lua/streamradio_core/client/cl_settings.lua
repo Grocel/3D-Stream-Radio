@@ -144,10 +144,10 @@ LIB.AddConVar("vehiclekey", "cl_streamradio_vehiclekey", MOUSE_LEFT, {
 
 LIB.AddConVar("volume", "cl_streamradio_volume", "1", {
 	label = "Global volume",
-	help = "Set the global volume factor for all radios. Default: 1, Min: 0, Max: 1 or 10 (with GM_BASS3 installed)",
+	help = "Set the global volume factor for all radios. Default: 1, Min: 0, Max: 1 or 10",
 	type = "float",
 	min = 0,
-	max = StreamRadioLib.HasBass and 10 or 1,
+	max = 10,
 })
 
 LIB.AddConVar("coveredvolume", "cl_streamradio_coveredvolume", "0.33", {
@@ -165,7 +165,7 @@ LIB.AddConVar("hidecursor", "cl_streamradio_hidecursor", "0", {
 })
 
 LIB.AddConVar("no3dsound", "cl_streamradio_no3dsound", "0", {
-	label = "Disable 3D Sound (makes radios louder)",
+	label = "Disable 3D Sound",
 	help = "Disables 3D sound for all radios when set to 1. Default: 0",
 	type = "bool",
 })

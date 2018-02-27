@@ -21,41 +21,6 @@ local StreamRadioLib = StreamRadioLib
 // Placeholder for Blocked URLs with non-Keyboard chars
 StreamRadioLib.BlockedURLCode = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5)
 
-StreamRadioLib.TYPE_FOLDER = 0
-StreamRadioLib.TYPE_GENERIC_FILE = 1
-StreamRadioLib.TYPE_PLS = 2
-StreamRadioLib.TYPE_M3U = 3
-StreamRadioLib.TYPE_JSON = 4
-StreamRadioLib.TYPE_VDF = 5
-StreamRadioLib.TYPE_MXRADIO = 100
-StreamRadioLib.TYPE_WEBRADIO = 101
-StreamRadioLib.TYPE_PPLAY = 102
-StreamRadioLib.TYPE_SCARSRADIO = 103
-
-StreamRadioLib.TYPE_TABLE_KEY = {
-	[StreamRadioLib.TYPE_FOLDER] = "Folder",
-	[StreamRadioLib.TYPE_PLS] = "pls",
-	[StreamRadioLib.TYPE_M3U] = "m3u",
-	[StreamRadioLib.TYPE_JSON] = "json",
-	[StreamRadioLib.TYPE_VDF] = "vdf",
-	[StreamRadioLib.TYPE_MXRADIO] = "MX-Radio",
-	[StreamRadioLib.TYPE_WEBRADIO] = "Web-Radio",
-	[StreamRadioLib.TYPE_PPLAY] = "PPlay-List",
-	[StreamRadioLib.TYPE_SCARSRADIO] = "SCar-Radio",
-}
-
-StreamRadioLib.TYPE_TABLE_VALUE = {
-	["Folder"] = StreamRadioLib.TYPE_FOLDER,
-	["pls"] = StreamRadioLib.TYPE_PLS,
-	["m3u"] = StreamRadioLib.TYPE_M3U,
-	["json"] = StreamRadioLib.TYPE_JSON,
-	["vdf"] = StreamRadioLib.TYPE_VDF,
-	["MX-Radio"] = StreamRadioLib.TYPE_MXRADIO,
-	["Web-Radio"] = StreamRadioLib.TYPE_WEBRADIO,
-	["PPlay-List"] = StreamRadioLib.TYPE_PPLAY,
-	["SCar-Radio"] = StreamRadioLib.TYPE_SCARSRADIO,
-}
-
 StreamRadioLib.EDITOR_ERROR_OK = 0
 StreamRadioLib.EDITOR_ERROR_WRITE_OK = 1
 StreamRadioLib.EDITOR_ERROR_READ_OK = 2
@@ -85,6 +50,7 @@ StreamRadioLib.EDITOR_ERROR_RENAME_EXIST = 41
 StreamRadioLib.EDITOR_ERROR_RENAME_WRITE = 42
 StreamRadioLib.EDITOR_ERROR_RENAME_READ = 43
 StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED = 50
+StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED = 51
 StreamRadioLib.EDITOR_ERROR_NOADMIN = 252
 StreamRadioLib.EDITOR_ERROR_RESET = 253
 StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED = 254
@@ -121,6 +87,7 @@ local EditorErrors = {
 	[StreamRadioLib.EDITOR_ERROR_RENAME_WRITE] = "Couldn't rename/move the file!",
 	[StreamRadioLib.EDITOR_ERROR_RENAME_READ] = "Couldn't read the source file!",
 	[StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED] = "You can not edit files inside the community folder!",
+	[StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED] = "You can not add or remove files inside the virtual folders!",
 	[StreamRadioLib.EDITOR_ERROR_NOADMIN] = "You need admin rights!",
 	[StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED] = "This is not implemented!",
 	[StreamRadioLib.EDITOR_ERROR_UNKNOWN] = "Unknown Error"

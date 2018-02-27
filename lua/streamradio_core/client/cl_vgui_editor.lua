@@ -19,6 +19,7 @@ AccessorFunc( PANEL, "m_strPath", "Path" ) -- List file
 
 local invalid_filename_chars = {
 	["*"] = "",
+	[":"] = "",
 	["?"] = "",
 	[">"] = "",
 	["<"] = "",
@@ -27,7 +28,7 @@ local invalid_filename_chars = {
 	["/"] = "",
 	["'"] = "",
 	['"'] = "",
-	[" "] = "_"
+	[" "] = "_",
 }
 
 local OK_CODES = {
@@ -38,7 +39,7 @@ local OK_CODES = {
 	[StreamRadioLib.EDITOR_ERROR_DIR_OK] = true,
 	[StreamRadioLib.EDITOR_ERROR_DEL_OK] = true,
 	[StreamRadioLib.EDITOR_ERROR_COPY_OK] = true,
-	[StreamRadioLib.EDITOR_ERROR_RENAME_OK] = true
+	[StreamRadioLib.EDITOR_ERROR_RENAME_OK] = true,
 }
 
 local WRITE_ERRORS = {
@@ -46,144 +47,156 @@ local WRITE_ERRORS = {
 	[StreamRadioLib.EDITOR_ERROR_WDATA] = true,
 	[StreamRadioLib.EDITOR_ERROR_WFORMAT] = true,
 	[StreamRadioLib.EDITOR_ERROR_WRITE] = true,
-	[StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED] = true
+	[StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED] = true,
+	[StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED] = true,
 }
 
 local READ_ERRORS = {
 	[StreamRadioLib.EDITOR_ERROR_RPATH] = true,
 	[StreamRadioLib.EDITOR_ERROR_RDATA] = true,
 	[StreamRadioLib.EDITOR_ERROR_RFORMAT] = true,
-	[StreamRadioLib.EDITOR_ERROR_READ] = true
+	[StreamRadioLib.EDITOR_ERROR_READ] = true,
 }
 
 local DIR_ERRORS = {
 	[StreamRadioLib.EDITOR_ERROR_DIR_WRITE] = true,
-	[StreamRadioLib.EDITOR_ERROR_DIR_EXIST] = true
+	[StreamRadioLib.EDITOR_ERROR_DIR_EXIST] = true,
 }
 
 local COPY_ERRORS = {
 	[StreamRadioLib.EDITOR_ERROR_COPY_DIR] = true,
 	[StreamRadioLib.EDITOR_ERROR_COPY_EXIST] = true,
 	[StreamRadioLib.EDITOR_ERROR_COPY_WRITE] = true,
-	[StreamRadioLib.EDITOR_ERROR_COPY_READ] = true
+	[StreamRadioLib.EDITOR_ERROR_COPY_READ] = true,
 }
 
 local RENAME_ERRORS = {
 	[StreamRadioLib.EDITOR_ERROR_RENAME_DIR] = true,
 	[StreamRadioLib.EDITOR_ERROR_RENAME_EXIST] = true,
 	[StreamRadioLib.EDITOR_ERROR_RENAME_WRITE] = true,
-	[StreamRadioLib.EDITOR_ERROR_RENAME_READ] = true
-}
-
-local ForbiddenFormats = {
-	[StreamRadioLib.TYPE_MXRADIO] = true,
-	[StreamRadioLib.TYPE_WEBRADIO] = true,
-	[StreamRadioLib.TYPE_PPLAY] = true,
-	[StreamRadioLib.TYPE_SCARSRADIO] = true,
+	[StreamRadioLib.EDITOR_ERROR_RENAME_READ] = true,
 }
 
 local Disabled_Gray = Color( 140, 140, 140, 255 )
 
 local function ShowError( errorheader, errortext, self, func, ... )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
 	local args = {...}
 
 	Derma_Query( errortext, errorheader, "OK", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		if ( not func ) then return end
-		func( self, unpack( args ) )
-	end )
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
+		if not func then return end
+
+		func(self, unpack(args))
+	end)
 
 	return true
 end
 
 --Ask for save: Opens a confirmation box.
 local function AsForSave( self, func, ... )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
-	if ( not func ) then return false end
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+	if not func then return false end
 
-	if ( not self.m_bUnsaved ) then
+	if not self.m_bUnsaved then
 		func( self, ... )
-
 		return true
 	end
 
 	local args = {...}
 
-	Derma_Query( "Are you sure to discard the changes?", "Unsaved playlist!", "Yes", function( )
+	Derma_Query("Are you sure to discard the changes?", "Unsaved playlist!", "Yes", function()
 		-- Discard the changes.
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		self:RemoveNewFile( )
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
+
+		self:RemoveNewFile()
 		func( self, unpack( args ) )
-	end, "No" )
+	end, "No")
 
 	-- Don't discard the changes.
 	return true
 end
 
 local function CreateDir( self, defaultstring, func, ... )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+
 	local args = {...}
 	local path = self.m_strPath or ""
 
-	Derma_StringRequest( "New folder", "", defaultstring or "new_folder", function( strTextOut )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		strTextOut = string.gsub( strTextOut, ".", invalid_filename_chars ) or ""
+	Derma_StringRequest("New folder", "", defaultstring or "new_folder", function( strTextOut )
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
 
-		if ( strTextOut == "" ) then
-			CreateDir( self, nil, func, unpack( args ) )
+		strTextOut = string.gsub(strTextOut, ".", invalid_filename_chars) or ""
+
+		if strTextOut == "" then
+			CreateDir(self, nil, func, unpack(args))
+			return
+		end
+
+		strTextOut = string.lower(strTextOut)
+
+		local fullpath = path .. "/" .. strTextOut
+		fullpath = string.Trim(fullpath, "/")
+		fullpath = string.lower(fullpath)
+
+		if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+			local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED )
+			ShowError( "Create error!", ErrorText, self, CreateFile, strTextOut, func, unpack( args ) )
 
 			return
 		end
 
-		strTextOut = string.lower( strTextOut )
-
-		if ( self.FileItems[strTextOut] ) then
+		if self.FileItems[strTextOut] then
 			local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_DIR_EXIST )
 			ShowError( "Directory error!", ErrorText, self, CreateDir, strTextOut, func, unpack( args ) )
 
 			return
 		end
 
-		strTextOut = path .. "/" .. strTextOut
-		strTextOut = string.Trim( strTextOut, "/" )
-		strTextOut = string.lower( strTextOut )
-		local created = StreamRadioLib.Editor.CreateDir( strTextOut )
+		local created = StreamRadioLib.Editor.CreateDir(fullpath)
 
-		if ( created and func ) then
+		if created and func then
 			func( self, unpack( args ) )
 		end
-	end )
+	end)
 
 	return true
 end
 
 local function AsForDelete( self, func, ... )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
-	if ( not IsValid( self.Files ) ) then return false end
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+	if not IsValid(self.Files) then return false end
+
 	local line = self.Files:GetSelectedLine( )
 	line = self.Files:GetLine( line )
-	if ( not IsValid( line ) ) then return false end
+	if not IsValid( line ) then return false end
+
 	local args = {...}
-	local path = ""
+	local path = line.streamradio_path or ""
+	local format = line.streamradio_filetype
+
+	if path == "" then return false end
+	if not format then return false end
 
 	Derma_Query( "Are you sure to delete this file/folder?", "Delete file!", "Yes", function( )
 		-- Delete.
-		if ( not IsValid( self ) ) then return end
-		if ( not IsValid( line ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		path = line.streamradio_path or ""
-		if ( path == "" ) then return end
-		local removed = StreamRadioLib.Editor.Remove( path )
+		if not IsValid(self) then return end
+		if not IsValid(line) then return end
+		if self:IsLoading() then return end
 
-		if ( removed and func ) then
+		if path == "" then return end
+		if not format then return end
+
+		local removed = StreamRadioLib.Editor.Remove(path, format)
+
+		if removed and func then
 			func( self, unpack( args ) )
 		end
 	end, "No" )
@@ -192,280 +205,334 @@ local function AsForDelete( self, func, ... )
 	return true
 end
 
-local Default_Format = StreamRadioLib.TYPE_TABLE_KEY[StreamRadioLib.TYPE_M3U]
+local Default_Format = StreamRadioLib.Filesystem.GetTypeExt(StreamRadioLib.TYPE_DEFAULT)
 
 local function CreateFile( self, defaultstring, func, ... )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
-	if ( not func ) then return false end
-	local args = {...}
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+	if not func then return false end
 
-	AsForSave( self, function( self, func, args )
+	local args = {...}
+	local path = self.m_strPath or ""
+
+	AsForSave(self, function( self, func, args )
 		Derma_StringRequest( "New playlist..", "", defaultstring or ( "new_playlist." .. Default_Format ), function( strTextOut )
-			if ( not IsValid( self ) ) then return end
-			if ( self:IsLoading( ) ) then return end
+			if not IsValid(self) then return end
+			if self:IsLoading() then return end
+
 			strTextOut = string.gsub( strTextOut, ".", invalid_filename_chars ) or ""
 
-			if ( strTextOut == "" ) then
+			if strTextOut == "" then
 				CreateFile( self, nil, func, unpack( args ) )
-
 				return
 			end
 
 			strTextOut = string.lower( strTextOut )
-			local ext = string.GetExtensionFromFilename( strTextOut ) or ""
 
-			if ( ext == "" ) then
-				ext = Default_Format
-				strTextOut = strTextOut .. "." .. ext
+			local fullpath = path .. "/" .. strTextOut
+			fullpath = string.Trim(fullpath, "/")
+			fullpath = string.lower(fullpath)
+
+			if not StreamRadioLib.Filesystem.GuessType(fullpath) then
+				strTextOut = strTextOut .. "." .. Default_Format
 			end
 
-			if ( self.FileItems[strTextOut] ) then
+			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED )
+				ShowError( "Create error!", ErrorText, self, CreateFile, strTextOut, func, unpack( args ) )
+
+				return
+			end
+
+			if self.FileItems[strTextOut] then
 				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_FILE_EXIST )
 				ShowError( "Create error!", ErrorText, self, CreateFile, strTextOut, func, unpack( args ) )
 
 				return
 			end
 
-			local format = StreamRadioLib.TYPE_TABLE_VALUE[ext]
-
-			if ( not format or format == StreamRadioLib.TYPE_FOLDER or ForbiddenFormats[format] ) then
+			local format = StreamRadioLib.Filesystem.GuessType(fullpath)
+			if not StreamRadioLib.Filesystem.CanCreateFormat(format) then
 				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WFORMAT )
 				ShowError( "Create error!", ErrorText, self, CreateFile, strTextOut, func, unpack( args ) )
 
 				return
 			end
 
-			if ( func ) then
-				func( self, strTextOut, format, unpack( args ) )
+			if func then
+				func(self, strTextOut, format, unpack(args))
 			end
-		end )
-	end, func, args )
+		end)
+	end, func, args)
 
 	return true
 end
 
 --Ask for override
 local function AsForOverride( self, func, filename, ... )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
-	if ( not func ) then return false end
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+	if not func then return false end
 	local args = {...}
 
-	if ( not self.FileItems[filename] ) then
-		func( self, filename, unpack( args ) )
+	local filenamelower = string.lower(filename)
 
+	if not self.FileItems[filenamelower] then
+		func(self, filename, unpack( args ))
 		return true
 	end
 
 	Derma_Query( "Overwrite this file?", "Save to..", "Overwrite", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
+
 		func( self, filename, unpack( args ) )
 	end, "Cancel" )
 
 	return true
 end
 
-local function SaveTo( self, defaultstring, func, ... )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
-	if ( not IsValid( self.Files ) ) then return false end
-	if ( not func ) then return false end
+local function SaveTo(self, defaultstring, func, ...)
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+	if not IsValid(self.Files) then return false end
+	if not func then return false end
+
 	local args = {...}
 	local path = self.m_strFolderPath or ""
 	local line = self.Files:GetSelectedLine( )
 	line = self.Files:GetLine( line )
 	local name = "new_playlist." .. Default_Format
 
-	if ( IsValid( line ) ) then
+	if IsValid(line) then
 		name = line.streamradio_name
 	end
 
-	Derma_StringRequest( "Save to..", "", defaultstring or name, function( strTextOut )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		strTextOut = string.gsub( strTextOut, ".", invalid_filename_chars ) or ""
+	Derma_StringRequest("Save to..", "", defaultstring or name, function(strTextOut)
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
 
-		if ( strTextOut == "" ) then
-			SaveTo( self, nil, func, unpack( args ) )
+		strTextOut = string.gsub(strTextOut, ".", invalid_filename_chars) or ""
 
+		if strTextOut == "" then
+			SaveTo(self, nil, func, unpack(args))
 			return
 		end
 
 		strTextOut = string.lower( strTextOut )
-		local ext = string.GetExtensionFromFilename( strTextOut ) or ""
 
-		if ( ext == "" ) then
-			ext = Default_Format
-			strTextOut = strTextOut .. "." .. ext
+		local fullpath = path .. "/" .. strTextOut
+		fullpath = string.Trim(fullpath, "/")
+		fullpath = string.lower(fullpath)
+
+		if not StreamRadioLib.Filesystem.GuessType(fullpath) then
+			strTextOut = strTextOut .. "." .. Default_Format
 		end
 
-		local format = StreamRadioLib.TYPE_TABLE_VALUE[ext]
+		local format = StreamRadioLib.Filesystem.GuessType(fullpath)
 
-		if ( not format or format == StreamRadioLib.TYPE_FOLDER or ForbiddenFormats[format] ) then
-			local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WFORMAT )
-			ShowError( "Create error!", ErrorText, self, SaveTo, strTextOut, func, unpack( args ) )
+		if not StreamRadioLib.Filesystem.CanWriteFormat(format) then
+			local ErrorText = StreamRadioLib.DecodeEditorErrorCode(StreamRadioLib.EDITOR_ERROR_WFORMAT)
+			ShowError("Save error!", ErrorText, self, SaveTo, strTextOut, func, unpack(args))
 
 			return
 		end
 
-		local fullpath = string.sub( strTextOut, 0, -( 2 + #ext ) ) or ""
-
-		if ( fullpath == "" ) then
-			fullpath = strTextOut
-		end
-
-		fullpath = fullpath .. "_" .. ext .. ".txt"
-		fullpath = path .. "/" .. fullpath
-		fullpath = string.Trim( fullpath, "/" )
-		fullpath = string.lower( fullpath )
-
-		AsForOverride( self, function( self, strTextOut, fullpath, format, func, args )
-			func( self, fullpath, strTextOut, format, unpack( args ) )
-		end, strTextOut, fullpath, format, func, args )
-	end )
-
-	return true
-end
-
-local function FileMenu( self, item, path, name, filetype, parentpath )
-	if ( not IsValid( self ) ) then return false end
-	if ( not self:IsVisible( ) ) then return false end
-	if ( self:IsLoading( ) ) then return end
-	local newfile = self.NewFileItem == item
-	local Menu = DermaMenu( )
-	local MenuItem = nil;
-
-	--New
-	MenuItem = Menu:AddOption( "New", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		CreateFile( self, nil, self.CreateNewFile )
-	end )
-
-	MenuItem:SetImage( "icon16/table_add.png" )
-
-	MenuItem = Menu:AddOption( "New folder", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		CreateDir( self, nil, self.Lock, true )
-	end )
-
-	MenuItem:SetImage( "icon16/folder_add.png" )
-
-	--Copy/Paste (Todo)
-	--[[
-		if (filetype ~= StreamRadioLib.TYPE_FOLDER and !newfile) then
-			MenuItem = Menu:AddOption("Copy", function()
-				if ( !IsValid( self ) ) then return end
-				if ( self:IsLoading() ) then return end
-
-				self.Clipboard = path
-			end)
-			MenuItem:SetImage("icon16/page_paste.png")
-
-			MenuItem = Menu:AddOption("Paste", function()
-				if ( !IsValid( self ) ) then return end
-				if ( self:IsLoading() ) then return end
-
-				StreamRadioLib.Editor.Copy( self.Clipboard, path )
-			end)
-			MenuItem:SetImage("icon16/page_paste.png")
-			if ( !self.Clipboard or self.Clipboard == "" ) then
-				MenuItem:SetTextColor( Disabled_Gray ) // custom disabling
-				MenuItem.DoClick = function() end
-			end
-
-			MenuItem = Menu:AddOption("Cut", function()
-				if ( !IsValid( self ) ) then return end
-				if ( self:IsLoading() ) then return end
-
-				StreamRadioLib.Editor.Rename( self.Clipboard, path )
-				self.Clipboard = nil
-			end)
-			MenuItem:SetImage("icon16/page_paste.png")
-			if ( !self.Clipboard or self.Clipboard == "" ) then
-				MenuItem:SetTextColor( Disabled_Gray ) // custom disabling
-				MenuItem.DoClick = function() end
-			end
-		end
-	]]
-	--Delete
-	if ( not ForbiddenFormats[filetype] ) then
-		MenuItem = Menu:AddOption( "Delete", function( )
-			if ( not IsValid( self ) ) then return end
-			if ( self:IsLoading( ) ) then return end
-
-			if ( newfile ) then
-				AsForDelete( self, self.RemoveNewFile )
+		if not self.FileItems[strTextOut] then
+			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED )
+				ShowError( "Create error!", ErrorText, self, SaveTo, strTextOut, func, unpack( args ) )
 
 				return
 			end
 
-			AsForDelete( self, self.Lock, true )
-		end )
+			if not StreamRadioLib.Filesystem.CanCreateFormat(format) then
+				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WFORMAT )
+				ShowError( "Create error!", ErrorText, self, SaveTo, strTextOut, func, unpack( args ) )
 
-		MenuItem:SetImage( "icon16/bin_closed.png" )
+				return
+			end
+		end
+
+		AsForOverride(self, function(self, fullpath, strTextOut, format, func, args)
+			func(self, fullpath, strTextOut, format, unpack(args))
+		end, fullpath, strTextOut, format, func, args)
+	end)
+
+	return true
+end
+
+local function FileMenu(self, item, path, name, filetype, parentpath)
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+	if self:IsLoading() then return false end
+
+
+	local newfile = self.NewFileItem == item
+	local Menu = DermaMenu()
+	local MenuItem = nil
+
+	MenuItem = Menu:AddOption("Open", function()
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
+
+		self.Files:DoDoubleClick(item:GetID(), item)
+	end)
+
+	MenuItem:SetImage("icon16/table_add.png")
+	Menu:AddSpacer( )
+
+	MenuItem = Menu:AddOption("Refresh", function()
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
+
+		self:Refresh()
+	end)
+
+	MenuItem:SetImage("icon16/arrow_refresh.png")
+
+	if not StreamRadioLib.Filesystem.IsVirtualPath(parentpath) then
+		Menu:AddSpacer( )
+
+		--New
+		MenuItem = Menu:AddOption("New", function()
+			if not IsValid(self) then return end
+			if self:IsLoading() then return end
+
+			CreateFile(self, nil, self.CreateNewFile)
+		end)
+
+		MenuItem:SetImage("icon16/table_add.png")
+
+		MenuItem = Menu:AddOption("New folder", function()
+			if not IsValid(self) then return end
+			if self:IsLoading() then return end
+
+			CreateDir(self, nil, self.Lock, true)
+		end)
+
+		MenuItem:SetImage("icon16/folder_add.png")
+
+		--Copy/Paste (Todo)
+		--[[
+			if (filetype ~= StreamRadioLib.TYPE_FOLDER and !newfile) then
+				MenuItem = Menu:AddOption("Copy", function()
+					if ( !IsValid( self ) ) then return end
+					if ( self:IsLoading() ) then return end
+
+					self.Clipboard = path
+				end)
+				MenuItem:SetImage("icon16/page_paste.png")
+
+				MenuItem = Menu:AddOption("Paste", function()
+					if ( !IsValid( self ) ) then return end
+					if ( self:IsLoading() ) then return end
+
+					StreamRadioLib.Editor.Copy( self.Clipboard, path )
+				end)
+				MenuItem:SetImage("icon16/page_paste.png")
+				if ( !self.Clipboard or self.Clipboard == "" ) then
+					MenuItem:SetTextColor( Disabled_Gray ) // custom disabling
+					MenuItem.DoClick = function() end
+				end
+
+				MenuItem = Menu:AddOption("Cut", function()
+					if ( !IsValid( self ) ) then return end
+					if ( self:IsLoading() ) then return end
+
+					StreamRadioLib.Editor.Rename( self.Clipboard, path )
+					self.Clipboard = nil
+				end)
+				MenuItem:SetImage("icon16/page_paste.png")
+				if ( !self.Clipboard or self.Clipboard == "" ) then
+					MenuItem:SetTextColor( Disabled_Gray ) // custom disabling
+					MenuItem.DoClick = function() end
+				end
+			end
+		]]
+
+		--Delete
+		if StreamRadioLib.Filesystem.CanDeleteFormat(filetype) and not StreamRadioLib.Filesystem.IsVirtualPath(path) then
+			Menu:AddSpacer( )
+			MenuItem = Menu:AddOption("Delete", function()
+				if not IsValid(self) then return end
+				if self:IsLoading() then return end
+
+				if newfile then
+					AsForDelete(self, self.RemoveNewFile)
+
+					return
+				end
+
+				AsForDelete(self, self.Lock, true)
+			end)
+
+			MenuItem:SetImage("icon16/bin_closed.png")
+		end
 	end
 
-	Menu:Open( )
+	Menu:Open()
+	return true
 end
 
 local function PlaylistMenu( self, item, url, name, parentpath )
-	if ( not IsValid( self ) ) then return end
-	if ( not self:IsVisible( ) ) then return end
-	if ( self:IsLoading( ) ) then return end
-	local Menu = DermaMenu( )
-	local MenuItem = nil;
+	if not IsValid(self) then return false end
+	if not self:IsVisible() then return false end
+	if self:IsLoading() then return false end
+
+	local Menu = DermaMenu()
+	local MenuItem = nil
 
 	MenuItem = Menu:AddOption( "Copy Entry", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
 
-		if ( self:AddPlaylistItem( ) ) then
-			self:SetUnsaved( true )
+		if self:AddPlaylistItem() then
+			self:SetUnsaved(true)
 		end
-	end )
+	end)
 
 	MenuItem:SetImage( "icon16/add.png" )
 
 	MenuItem = Menu:AddOption( "Remove Entry", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
 
-		if ( self:RemovePlaylistItem( item ) ) then
-			self:SetUnsaved( true )
+		if self:RemovePlaylistItem(item) then
+			self:SetUnsaved(true)
 		end
-	end )
+	end)
 
 	MenuItem:SetImage( "icon16/delete.png" )
 	Menu:AddSpacer( )
 
 	MenuItem = Menu:AddOption( "Move Up", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		self:PlaylistCheckValid( )
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
+		self:PlaylistCheckValid()
 
-		if ( self:MovePlaylistItemUp( item ) ) then
-			self:SetUnsaved( true )
+		if self:MovePlaylistItemUp(item) then
+			self:SetUnsaved(true)
 		end
 	end )
 
 	MenuItem:SetImage( "icon16/arrow_up.png" )
 
 	MenuItem = Menu:AddOption( "Move Down", function( )
-		if ( not IsValid( self ) ) then return end
-		if ( self:IsLoading( ) ) then return end
-		self:PlaylistCheckValid( )
+		if not IsValid(self) then return end
+		if self:IsLoading() then return end
 
-		if ( self:MovePlaylistItemDown( item ) ) then
+		self:PlaylistCheckValid()
+
+		if self:MovePlaylistItemDown(item) then
 			self:SetUnsaved( true )
 		end
 	end )
 
 	MenuItem:SetImage( "icon16/arrow_down.png" )
 	Menu:Open( )
+
+	return true
 end
 
 function PANEL:IsLoading( )
@@ -505,10 +572,12 @@ function PANEL:Init( )
 		if ( self.LastFileItem == line ) then return end
 		self.LastFileItem = line
 		if ( self.NewFileItem == line ) then return end
+
 		local path = line.streamradio_path
 		local name = line.streamradio_name
 		local filetype = line.streamradio_filetype
 		local parentpath = line.streamradio_parentpath
+
 		self:SetPath( path, filetype )
 	end
 
@@ -870,29 +939,31 @@ function PANEL:Init( )
 end
 
 function PANEL:SavePlaylist( filepath, name, filetype )
-	if ( self:IsLoading( ) ) then return false end
-	if ( self.m_bSaving ) then return false end
+	if self:IsLoading() then return false end
+	if self.m_bSaving then return false end
 
-	if ( filepath and name and filetype ) then
+	if filepath and name and filetype then
 		self.m_strPath = filepath
 		self.Format = filetype
+
 		self.PlaylistItems["format"] = filetype
 		self.PlaylistItems["parentpath"] = self.m_strFolderPath
 	end
 
-	if ( not StreamRadioLib.Editor.Save( filepath or self.m_strPath, self.PlaylistItems ) ) then return false end
-	local fileitem = self:AddFileItem( filepath, name, self.m_strFolderPath, filetype )
+	if not StreamRadioLib.Editor.Save(filepath or self.m_strPath, self.PlaylistItems) then return false end
+	local fileitem = self:AddFileItem(filepath, name, self.m_strFolderPath, filetype)
 
-	if ( IsValid( fileitem ) ) then
-		self.Files:ClearSelection( )
-		self.Files:SortByColumn( 1 )
-		self.Files:SelectItem( fileitem )
+	if IsValid(fileitem) then
+		self.Files:ClearSelection()
+		self.Files:SortByColumn(1)
+		self.Files:SelectItem(fileitem)
+
 		self.NewFileItem = fileitem
 		self.LastFileItem = fileitem
 	end
 
 	self.m_bSaving = true
-	self:Lock( true )
+	self:Lock(true)
 
 	return true
 end
@@ -969,7 +1040,7 @@ local function Refresh( self )
 	filepath = string.Trim( filepath, "/" )
 	self:SetPath( filepath, format, true )
 
-	if ( format ~= StreamRadioLib.TYPE_FOLDER ) then
+	if not StreamRadioLib.Filesystem.IsFolder(format) then
 		self:SetPath( self.m_strFolderPath, StreamRadioLib.TYPE_FOLDER, true, true )
 	end
 
@@ -1041,36 +1112,41 @@ function PANEL:PlaylistCheckValid( )
 	EnablePanel( self.EditMoveDownButton, EnableDown )
 end
 
-function PANEL:Callback( CallbackType, path, name, parentpath, filetype )
-	if ( CallbackType == "files" ) then
-		self.FilesPanel:Lock( true )
+function PANEL:Callback(CallbackType, path, name, parentpath, filetype)
+	if CallbackType == "files" then
 
-		if ( filetype == StreamRadioLib.TYPE_FOLDER ) then
+		self.FilesPanel:Lock(true)
+
+		if StreamRadioLib.Filesystem.IsFolder(filetype) then
 			self:AddFolderItem( path, name, parentpath, filetype )
 		else
 			self:AddFileItem( path, name, parentpath, filetype )
 		end
-	elseif ( CallbackType == "playlist" ) then
+
+	elseif CallbackType == "playlist" then
+
 		self:SetUnsaved( false )
 		self.PlaylistPanel:Lock( true )
 		self:AddPlaylistItem( path, name, parentpath, filetype )
-	elseif ( CallbackType == "error" ) then
-		if ( name == StreamRadioLib.EDITOR_ERROR_RESET ) then
-			self:Reset( )
 
+	elseif CallbackType == "error" then
+
+		if name == StreamRadioLib.EDITOR_ERROR_RESET then
+			self:Reset( )
 			return
 		end
 
-		if ( OK_CODES[name] ) then
+		if OK_CODES[name] then
 			self:OnFinish( path, name )
 		else
 			self:OnError( path, name )
 		end
+
 	end
 end
 
 function PANEL:OnFinish( path, code )
-	if ( code == StreamRadioLib.EDITOR_ERROR_OK ) then
+	if code == StreamRadioLib.EDITOR_ERROR_OK then
 		self.m_bSaving = false
 		self:Lock( false )
 		self:SetUnsaved( false )
@@ -1078,22 +1154,22 @@ function PANEL:OnFinish( path, code )
 		self.FilesPanel:Lock( false )
 	end
 
-	if ( code == StreamRadioLib.EDITOR_ERROR_WRITE_OK ) then
+	if code == StreamRadioLib.EDITOR_ERROR_WRITE_OK then
 		self.m_bSaving = false
 		self:Lock( false )
 		self:SetUnsaved( false )
 	end
 
-	if ( code == StreamRadioLib.EDITOR_ERROR_READ_OK ) then
+	if code == StreamRadioLib.EDITOR_ERROR_READ_OK then
 		self.PlaylistPanel:Lock( false )
 		self:SetUnsaved( false )
 	end
 
-	if ( code == StreamRadioLib.EDITOR_ERROR_FILES_OK ) then
+	if code == StreamRadioLib.EDITOR_ERROR_FILES_OK then
 		self.FilesPanel:Lock( false )
 	end
 
-	if ( code == StreamRadioLib.EDITOR_ERROR_DIR_OK ) then
+	if code == StreamRadioLib.EDITOR_ERROR_DIR_OK then
 		self:Lock( false )
 		local name = string.GetFileFromFilename( path ) or ""
 
@@ -1108,28 +1184,28 @@ function PANEL:OnFinish( path, code )
 		self.Files:SelectItem( fileitem )
 	end
 
-	if ( code == StreamRadioLib.EDITOR_ERROR_DEL_OK ) then
+	if code == StreamRadioLib.EDITOR_ERROR_DEL_OK then
 		self:Lock( false )
 		local line = self.Files:GetSelectedLine( )
 		local linepanel = self.Files:GetLine( line )
 
-		if ( not IsValid( linepanel ) ) then
+		if not IsValid( linepanel ) then
 			self:Refresh( true )
 
 			return
 		end
 
-		if ( linepanel.streamradio_path ~= path ) then
+		if linepanel.streamradio_path ~= path then
 			self:Refresh( true )
 
 			return
 		end
 
-		if ( self.Clipboard == linepanel.streamradio_path ) then
+		if self.Clipboard == linepanel.streamradio_path then
 			self.Clipboard = nil
 		end
 
-		if ( path == self.m_strPath and linepanel.streamradio_filetype ~= StreamRadioLib.TYPE_FOLDER ) then
+		if path == self.m_strPath and linepanel.streamradio_filetype ~= StreamRadioLib.TYPE_FOLDER then
 			self.m_strPath = self.m_strFolderPath
 			self.Format = StreamRadioLib.TYPE_FOLDER
 			self:Refresh( true )
@@ -1137,7 +1213,9 @@ function PANEL:OnFinish( path, code )
 			return
 		end
 
-		self.FileItems[linepanel.streamradio_name] = nil
+		local namelower = string.lower(linepanel.streamradio_name or "")
+		self.FileItems[namelower] = nil
+
 		self.Files:RemoveLine( line )
 		self.Files:SortByColumn( 1 )
 	end
@@ -1146,7 +1224,7 @@ end
 function PANEL:OnError( path, code )
 	local ErrorString = StreamRadioLib.DecodeEditorErrorCode( code )
 
-	if ( WRITE_ERRORS[code] ) then
+	if WRITE_ERRORS[code] then
 		self.m_bSaving = false
 		self:Lock( false )
 		ShowError( "Write error!", ErrorString, self )
@@ -1154,7 +1232,7 @@ function PANEL:OnError( path, code )
 		return
 	end
 
-	if ( READ_ERRORS[code] ) then
+	if READ_ERRORS[code] then
 		self.PlaylistPanel:Lock( false )
 		self:SetUnsaved( false )
 		ShowError( "Read error!", ErrorString, self )
@@ -1162,28 +1240,28 @@ function PANEL:OnError( path, code )
 		return
 	end
 
-	if ( DIR_ERRORS[code] ) then
+	if DIR_ERRORS[code] then
 		self:Lock( false )
 		ShowError( "Directory error!", ErrorString, self )
 
 		return
 	end
 
-	if ( code == StreamRadioLib.EDITOR_ERROR_DEL_ACCES ) then
+	if code == StreamRadioLib.EDITOR_ERROR_DEL_ACCES then
 		self:Lock( false )
 		ShowError( "Delete error!", ErrorString, self )
 
 		return
 	end
 
-	if ( COPY_ERRORS[code] ) then
+	if COPY_ERRORS[code] then
 		self:Lock( false )
 		ShowError( "Copy error!", ErrorString, self )
 
 		return
 	end
 
-	if ( RENAME_ERRORS[code] ) then
+	if RENAME_ERRORS[code] then
 		self:Lock( false )
 		ShowError( "Rename or move error!", ErrorString, self )
 
@@ -1194,94 +1272,107 @@ function PANEL:OnError( path, code )
 	ShowError( "General error! (" .. code .. ")", ErrorString, self )
 end
 
-function PANEL:RemoveNewFile( )
-	if ( not IsValid( self.Files ) ) then return end
-	if ( not IsValid( self.NewFileItem ) ) then return end
+function PANEL:RemoveNewFile()
+	if not IsValid(self.Files) then return end
+	if not IsValid(self.NewFileItem) then return end
 
-	if ( self.Clipboard == self.NewFileItem.streamradio_path ) then
+	if self.Clipboard == self.NewFileItem.streamradio_path then
 		self.Clipboard = nil
 	end
 
-	self.FileItems[self.NewFileItem.streamradio_name] = nil
-	self.Files:RemoveLine( self.NewFileItem:GetID( ) )
+	local namelower = string.lower(self.NewFileItem.streamradio_name or "")
+
+	self.FileItems[namelower] = nil
+	self.Files:RemoveLine(self.NewFileItem:GetID())
 end
 
-function PANEL:CreateNewFile( name, filetype )
-	if ( not name ) then return false end
-	if ( name == "" ) then return false end
-	if ( not filetype ) then return false end
-	local ext = StreamRadioLib.TYPE_TABLE_KEY[filetype]
-	if ( not ext ) then return false end
-	local filename = string.sub( name, 0, -( 2 + #ext ) ) or ""
+function PANEL:CreateNewFile(name, filetype)
+	if not name then return false end
+	if name == "" then return false end
+	if not filetype then return false end
 
-	if ( filename == "" ) then
-		filename = name
-	end
+	local path = self.m_strFolderPath .. "/" .. name
+	path = string.Trim(path, "/")
 
-	filename = filename .. "_" .. ext
-	local path = self.m_strFolderPath .. "/" .. filename .. ".txt"
-	path = string.Trim( path, "/" )
-	local fileitem = self:AddFileItem( path, name, self.m_strFolderPath, filetype )
-	if ( not IsValid( fileitem ) ) then return false end
-	self:ClearPlaylist( )
+	local fileitem = self:AddFileItem(path, name, self.m_strFolderPath, filetype)
+	if not IsValid(fileitem) then return false end
+
+	self:ClearPlaylist()
+
 	self.m_strPath = path
 	self.Format = filetype
 	self.PlaylistItems["format"] = filetype
 	self.PlaylistItems["parentpath"] = self.m_strFolderPath
-	self:SetUnsaved( true )
-	self.Files:ClearSelection( )
-	self.Files:SortByColumn( 1 )
-	self.Files:SelectItem( fileitem )
+
+	self:SetUnsaved(true)
+
+	self.Files:ClearSelection()
+	self.Files:SortByColumn(1)
+	self.Files:SelectItem(fileitem)
+
 	self.NewFileItem = fileitem
 	self.LastFileItem = fileitem
 
 	return true
 end
 
-function PANEL:AddFolderItem( path, name, parentpath, filetype )
-	if ( not path ) then return end
-	if ( not name ) then return end
-	if ( not parentpath ) then return end
-	if ( not filetype ) then return end
-	if ( not IsValid( self.Files ) ) then return end
-	if ( self.FileItems[name] ) then return end
-	local item = self.Files:AddLine( "./" .. name, StreamRadioLib.TYPE_TABLE_KEY[filetype] )
+function PANEL:AddFolderItem(path, name, parentpath, filetype)
+	if not path then return end
+	if not name then return end
+	if not parentpath then return end
+	if not filetype then return end
+	if not IsValid(self.Files) then return end
+
+	local namelower = string.lower(name)
+	if self.FileItems[namelower] then return end
+
+	local item = self.Files:AddLine("./" .. name, StreamRadioLib.Filesystem.GetTypeName(filetype))
+
 	item.streamradio_path = path
 	item.streamradio_name = name
 	item.streamradio_filetype = filetype
 	item.streamradio_parentpath = parentpath
-	self.FileItems[name] = true
 
+	self.FileItems[namelower] = true
 	return item
 end
 
 function PANEL:AddFileItem( path, name, parentpath, filetype )
-	if ( not path ) then return end
-	if ( not name ) then return end
-	if ( not parentpath ) then return end
-	if ( not filetype ) then return end
-	if ( not IsValid( self.Files ) ) then return end
-	if ( self.FileItems[name] and not ForbiddenFormats[filetype] ) then return end
-	local item = self.Files:AddLine( name, StreamRadioLib.TYPE_TABLE_KEY[filetype] )
+	if not path then return end
+	if not name then return end
+	if not parentpath then return end
+	if not filetype then return end
+	if not IsValid(self.Files) then return end
+
+	local namelower = string.lower(name)
+	if self.FileItems[namelower] then return end
+
+	local item = self.Files:AddLine(name, StreamRadioLib.Filesystem.GetTypeName(filetype))
+
 	item.streamradio_path = path
 	item.streamradio_name = name
 	item.streamradio_filetype = filetype
 	item.streamradio_parentpath = parentpath
-	self.FileItems[name] = true
+
+	self.FileItems[namelower] = true
 
 	return item
 end
 
-function PANEL:AddPlaylistItem( url, name, parentpath )
-	if ( not self.PlaylistItems ) then return false end
-	url = url or self.EditURLText:GetText( )
-	name = name or self.EditNameText:GetText( )
+function PANEL:AddPlaylistItem(url, name, parentpath)
+	if not self.PlaylistItems then return false end
+
+	url = url or self.EditURLText:GetText()
+	name = name or self.EditNameText:GetText()
 	parentpath = parentpath or self.PlaylistItems["parentpath"]
-	if ( url == "" ) then return false end
-	if ( name == "" ) then return false end
+
+	if url == "" then return false end
+	if name == "" then return false end
+
 	local id = #self.PlaylistItems + 1
-	local item = self.Playlist:AddLine( id, name, url )
-	if ( not IsValid( item ) ) then return false end
+	local item = self.Playlist:AddLine(id, name, url)
+	if not IsValid(item) then return false end
+
 	item.streamradio_url = url
 	item.streamradio_name = name
 	item.streamradio_id = id
@@ -1298,40 +1389,42 @@ function PANEL:AddPlaylistItem( url, name, parentpath )
 	return true
 end
 
-function PANEL:RemovePlaylistItem( item )
-	if ( not IsValid( item ) ) then return false end
-	if ( not self.PlaylistItems ) then return false end
-	if ( self:IsLoading( ) ) then return false end
+function PANEL:RemovePlaylistItem(item)
+	if not IsValid(item) then return false end
+	if not self.PlaylistItems then return false end
+	if self:IsLoading() then return false end
+
 	local url = item.streamradio_url
 	local name = item.streamradio_name
 	local id = item.streamradio_id
+
 	self.PlaylistItems[id] = nil
-	self.Playlist:RemoveLine( item:GetID( ) )
-	self:SelectPlaylistItem( )
-	self:CleanUpPlaylist( )
+	self.Playlist:RemoveLine(item:GetID())
+	self:SelectPlaylistItem()
+	self:CleanUpPlaylist()
 
 	return true
 end
 
-function PANEL:ChangePlaylistItem( item, url, name )
-	if ( not IsValid( item ) ) then return false end
-	if ( not self.PlaylistItems ) then return false end
-	if ( self:IsLoading( ) ) then return false end
+function PANEL:ChangePlaylistItem(item, url, name)
+	if not IsValid(item) then return false end
+	if not self.PlaylistItems then return false end
+	if self:IsLoading() then return false end
 
-	url = url or self.EditURLText:GetText( )
-	name = name or self.EditNameText:GetText( )
-	if ( url == "" ) then return false end
-	if ( name == "" ) then return false end
+	url = url or self.EditURLText:GetText()
+	name = name or self.EditNameText:GetText()
+	if url == "" then return false end
+	if name == "" then return false end
 
-	item.streamradio_url = url or self.EditURLText:GetText( )
-	item.streamradio_name = name or self.EditNameText:GetText( )
+	item.streamradio_url = url or self.EditURLText:GetText()
+	item.streamradio_name = name or self.EditNameText:GetText()
 
 	local id = item.streamradio_id or 0
-	if ( id <= 0 ) then return false end
+	if id <= 0 then return false end
 
-	item:SetColumnText( 1, id )
-	item:SetColumnText( 2, name )
-	item:SetColumnText( 3, url )
+	item:SetColumnText(1, id)
+	item:SetColumnText(2, name)
+	item:SetColumnText(3, url)
 
 	self.PlaylistItems[id] = {
 		url = url,
@@ -1583,14 +1676,15 @@ function PANEL:SetPath( filepath, filetype, force, nofullclear )
 	filepath = string.Trim( filepath, "/" )
 	filepath = string.Trim( filepath, "\\" )
 	filepath = string.Trim( filepath, "/" )
+
 	filetype = filetype or StreamRadioLib.TYPE_FOLDER
-	local IsFolder = filetype == StreamRadioLib.TYPE_FOLDER
+	local IsFolder = StreamRadioLib.Filesystem.IsFolder(filetype)
 
 	local function LoadFile( self, IsFolder, filepath, filetype )
-		if ( IsFolder ) then
-			if ( self.FilesPanel.IsLocked ) then return end
+		if IsFolder then
+			if self.FilesPanel.IsLocked then return end
 
-			if ( nofullclear ) then
+			if nofullclear then
 				self:ClearFiles( )
 			else
 				self:Clear( )
@@ -1599,36 +1693,42 @@ function PANEL:SetPath( filepath, filetype, force, nofullclear )
 			self.FilesPanel:Lock( true )
 			self.m_strFolderPath = filepath
 		else
-			if ( self.PlaylistPanel.IsLocked ) then return end
-			self:ClearPlaylist( )
+			if self.PlaylistPanel.IsLocked then return end
+
+			self:ClearPlaylist()
 			self.PlaylistPanel:Lock( true )
+
 			local folderpath = string.GetPathFromFilename( filepath ) or ""
 			folderpath = string.Trim( folderpath, "\\" )
 			folderpath = string.Trim( folderpath, "/" )
 			folderpath = string.Trim( folderpath, "\\" )
 			folderpath = string.Trim( folderpath, "/" )
+
 			self.m_strFolderPath = folderpath
 		end
 
 		self.m_strPath = filepath
 		self.Format = filetype
+
 		local backpath = string.GetPathFromFilename( filepath ) or ""
 
-		if ( filepath ~= "" and not IsValid( self.BackItem ) and IsFolder ) then
+		if filepath ~= "" and not IsValid(self.BackItem) and IsFolder then
 			self.BackItem = self.Files:AddLine( "../", "" )
 			self.BackItem.streamradio_path = backpath
 			self.BackItem.streamradio_filetype = StreamRadioLib.TYPE_FOLDER
 		end
 
-		self:UpdateListNameLabel( )
+		self:UpdateListNameLabel()
+
 		local ListenID = StreamRadioLib.Editor.ListenToPath( filepath )
 		StreamRadioLib.Editor.SetCallback( self.Callback, self )
+
 		net.Start( "Streamradio_Editor_Request_Files" )
-		StreamRadioLib.NetSendFileEditor( filepath, "", filetype or StreamRadioLib.TYPE_FOLDER, ListenID )
+			StreamRadioLib.NetSendFileEditor( filepath, "", filetype or StreamRadioLib.TYPE_FOLDER, ListenID )
 		net.SendToServer( )
 	end
 
-	if ( force ) then
+	if force then
 		LoadFile( self, IsFolder, filepath, filetype )
 	else
 		AsForSave( self, LoadFile, IsFolder, filepath, filetype )
@@ -1638,7 +1738,7 @@ end
 function PANEL:SetUnsaved( bool )
 	self.m_bUnsaved = bool
 
-	if ( not bool ) then
+	if not bool then
 		self.NewFileItem = nil
 	end
 
@@ -1646,8 +1746,8 @@ function PANEL:SetUnsaved( bool )
 end
 
 function PANEL:UpdateListNameLabel( )
-	if ( not IsValid( self.ListNameLabel ) ) then return end
-	self.ListNameLabel:SetText( ( self.m_bUnsaved and "*" or "" ) .. ( self.m_strPath or "" ) )
+	if not IsValid(self.ListNameLabel) then return end
+	self.ListNameLabel:SetText((self.m_bUnsaved and "*" or "") .. (self.m_strPath or ""))
 end
 
 --gtest_123 = "Streamradio_VGUI_PlaylistEditor".."_"..tostring({})

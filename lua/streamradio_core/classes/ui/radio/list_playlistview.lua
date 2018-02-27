@@ -38,6 +38,21 @@ function CLASS:Create()
 	self:SetIDIcon(0, g_mat_sound)
 end
 
+function CLASS:SetIDIcon(ID, icon)
+	ID = ID or -1
+	if ID < 0 then return end
+
+	self.IconIDs[ID] = icon or ID
+	self:UpdateButtons()
+end
+
+function CLASS:GetIDIcon(ID)
+	ID = ID or -1
+	if ID < 0 then return end
+
+	return self.IconIDs[ID]
+end
+
 function CLASS:OnItemClickInternal(button, value, buttonindex, ListX, ListY, i)
 	if CLIENT and self.Network.Active then return end
 	self:Play(value)
@@ -94,12 +109,7 @@ function CLASS:BuildListInternal()
 		return
 	end
 
-	//local wasduped = nil
-
-	//if self.DupeData then
-	//	wasduped = true
-		self.DupeData = nil
-	//end
+	self.DupeData = nil
 
 	if self.Path.Value == "" then
 		self:UpdateButtons()
@@ -107,10 +117,47 @@ function CLASS:BuildListInternal()
 		return
 	end
 
-	local Read = StreamRadioLib.Playlist.Read(self.Path.Value, self.Path.Type) or {}
+	self._read_playlist = nil
+	self._read_curdata = {
+		path = self.Path.Value,
+		type = self.Path.Type,
+	}
+
+	StreamRadioLib.Filesystem.Read(self.Path.Value, self.Path.Type, function(suggess, data)
+		if self._read_curdata.path ~= self.Path.Value then
+			return
+		end
+
+		if self._read_curdata.type ~= self.Path.Type then
+			return
+		end
+
+		if not suggess then
+			return
+		end
+
+		self._read_playlist = data
+		self:QueueCall("_BuildListInternalAsyc")
+	end)
+end
+
+function CLASS:_BuildListInternalAsyc()
+	if not self._read_playlist then
+		return
+	end
+
+	if self._read_curdata.path ~= self.Path.Value then
+		return
+	end
+
+	if self._read_curdata.type ~= self.Path.Type then
+		return
+	end
+
+	self:QueueCall("UpdateErrorState")
 
 	self.Playlist = {}
-	for i, v in ipairs(Read) do
+	for i, v in ipairs(self._read_playlist) do
 		local entry = {
 			name = v.name,
 			url = v.url,
@@ -128,12 +175,7 @@ function CLASS:BuildListInternal()
 
 	local len = #self.Playlist
 	if len <= 0 then
-		//if wasduped then
-		//	self:CallHook("OnInvalidDupeFilepath")
-		//else
-			self.tmperror = true
-		//end
-
+		self.tmperror = true
 		return
 	end
 
@@ -271,16 +313,45 @@ function CLASS:ApplaDataFromDupe()
 	self:CallHook("OnDupePlaylistApply")
 end
 
-function CLASS:PostDupe(ent, data)
-	local playlistdata = StreamRadioLib.Playlist.Read(data.Path, data.PathType) or {}
+function CLASS:PostDupe(ent, dupedata)
+	local path = dupedata.Path
+	local type = dupedata.PathType
 
-	if #playlistdata > 0 then
-		self:SetFile(data.Path, data.PathType)
-	else
-		self:SetFile("", data.PathType)
-		self:CallHook("OnInvalidDupeFilepath")
-	end
+	self._read_curdata = {
+		path = path,
+		type = type,
+	}
 
-	self.DupeData = data
-	self:ApplaDataFromDupe()
+	StreamRadioLib.Filesystem.Read(path, type, function(suggess, data)
+		if self._read_curdata.path ~= path then
+			return
+		end
+
+		if self._read_curdata.type ~= type then
+			return
+		end
+
+		if not suggess then
+			self:SetFile("", type)
+			self:CallHook("OnInvalidDupeFilepath")
+
+			self.DupeData = dupedata
+			self:ApplaDataFromDupe()
+			return
+		end
+
+		if #data <= 0 then
+			self:SetFile("", type)
+			self:CallHook("OnInvalidDupeFilepath")
+
+			self.DupeData = dupedata
+			self:ApplaDataFromDupe()
+			return
+		end
+
+		self:SetFile(path, type)
+
+		self.DupeData = dupedata
+		self:ApplaDataFromDupe()
+	end)
 end

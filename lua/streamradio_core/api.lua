@@ -46,7 +46,6 @@ local ValidTypes = {
 	StreamLoop = "boolean",
 	PlaylistLoop = "boolean",
 	Sound3D = "boolean",
-	Play3D = "boolean", // Deprecated
 	DisableInput = "boolean",
 	DisableDisplay = "boolean",
 	DisableAdvancedOutputs = "boolean",
@@ -99,7 +98,6 @@ function StreamRadioLib.EditRadio( ent, settings )
 	if not ErrorCheckArg( ent, "Entity", 1, "EditRadio", 3 ) then return false end
 	if not IsValid( ent ) then return false end
 	if not ent.__IsRadio then return false end
-	if not ent.__IsRadio then return false end
 
 	settings = settings or {}
 	if not ErrorCheckRadioSettings( settings, 2, "EditRadio", 3 ) then return false end
@@ -107,15 +105,15 @@ function StreamRadioLib.EditRadio( ent, settings )
 	local StreamName = settings.StreamName or ""
 	local StreamUrl = settings.StreamUrl or ""
 
-	if ( StreamName == "" ) then
+	if StreamName == "" then
 		StreamName = StreamUrl
 	end
 
-	if ( StreamUrl == "" ) then
+	if StreamUrl == "" then
 		StreamUrl = StreamName
 	end
 
-	settings.Sound3D = settings.Sound3D or settings.Play3D
+	settings.Sound3D = settings.Sound3D
 
 	if ent.SetSettings then
 		ent:SetSettings(settings)
@@ -186,12 +184,13 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 	if not StreamRadioLib.EditRadio(ent, settings) then return end
 	ent:PhysWake()
 
-	timer.Simple(0.1, function()
+	timer.Simple(0.05, function()
 		if not IsValid(ent) then return end
 		if not ent._3dstreamradio_classobjs_data then return end
 		if not ent.PostClasssystemPaste then return end
 
 		ent:PostClasssystemPaste()
 	end)
+
 	return ent
 end

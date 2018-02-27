@@ -194,14 +194,14 @@ function CLASS:Create()
 		self:CallHook("OnDupePlaylistApply")
 	end
 
-	self.ListFiles.OnFileClick = function(this, fullpath, path, filename, filetype, ...)
+	self.ListFiles.OnFileClick = function(this, value, ...)
 		if CLIENT then return end
 
-		local r = self:CallHook("OnFileClick", fullpath, path, filename, filetype, ...)
+		local r = self:CallHook("OnFileClick", value, ...)
 		if r == false then return end
 
 		self.State.PlaylistOpened = true
-		self.ListPlaylist:SetFile(path, filetype)
+		self.ListPlaylist:SetFile(value.path, value.type)
 	end
 
 	self.ListFiles.OnPathChange = function(this, ...)

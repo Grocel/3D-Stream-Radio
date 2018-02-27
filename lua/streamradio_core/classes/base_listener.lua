@@ -19,7 +19,7 @@ local g_super_hookname = g_hookname .. "_fast"
 local g_networkhookname = "3dstreamradio_classsystem_listen"
 local g_listengroups = SERVER and 6 or 4
 local g_lastgroup = 1
-local g_hooksruns = false
+local g_hookruns = false
 local g_superhooksruns = false
 local g_hooktimeout = nil
 
@@ -86,8 +86,14 @@ local function g_listenfunc()
 
 	local starttime = SysTime()
 	local found = listentogroup()
-	g_hooksruns = true
 
+	if found then
+		found:SetGlobalVar("base_listener_thinktime", SysTime() - starttime)
+	end
+
+	// Disabled auto hook remove as it causes the addon to break sometimes
+	/*
+	g_hookruns = true
 	g_hooktimeout = g_hooktimeout or 100
 
 	if found then
@@ -102,15 +108,16 @@ local function g_listenfunc()
 	end
 
 	hook.Remove("Think", g_hookname)
-	g_hooksruns = false
+	g_hookruns = false
 	g_hooktimeout = nil
+	*/
+
 end
 
 local function g_superlistenfunc()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 
-	g_superhooksruns = true
 	local starttime = SysTime()
 
 	local found = nil
@@ -497,7 +504,6 @@ function CLASS:StartListen()
 
 	local id = self:GetID()
 
-
 	if not self.listengroupid then
 		self.listengroupid = self:CallHook("PreAssignToListenGroup")
 		self.listengroupid = tonumber(self.listengroupid)
@@ -518,15 +524,10 @@ function CLASS:StartListen()
 
 	g_hooktimeout = nil
 
-	if g_hooksruns then return end
-	StreamRadioLib.Timedcall(function()
-		if not IsValid(self) then return end
-		if g_hooksruns then return end
+	if g_hookruns then return end
 
-		g_hooktimeout = nil
-		hook.Remove("Think", g_hookname)
-		hook.Add("Think", g_hookname, g_listenfunc)
-	end)
+	hook.Add("Think", g_hookname, g_listenfunc)
+	g_hookruns = true
 end
 
 function CLASS:StopListen()
@@ -548,8 +549,8 @@ function CLASS:_StartSuperThink()
 	g_super_listeners[id] = self
 
 	if not g_superhooksruns then
-		hook.Remove("Think", g_super_hookname)
 		hook.Add("Think", g_super_hookname, g_superlistenfunc)
+		g_superhooksruns = true
 	end
 end
 
@@ -566,7 +567,7 @@ function CLASS:IsListening()
 		return false
 	end
 
-	if not g_hooksruns then
+	if not g_hookruns then
 		return false
 	end
 

@@ -39,32 +39,31 @@ function CLASS:Create()
 	end)
 
 	self:SetEvent("OnClose", "SaveScrollPos", "SaveScrollPos")
-
-	self:SetIDIcon(StreamRadioLib.TYPE_FOLDER, StreamRadioLib.GetPNGIcon("folder"))
-	self:SetIDIcon(StreamRadioLib.TYPE_GENERIC_FILE, StreamRadioLib.GetPNGIcon("page"))
-
 	self:BuildList()
+end
+
+function CLASS:SetIDIcon(ID, icon)
+	-- Dummy
+end
+
+function CLASS:GetIDIcon(ID)
+	return StreamRadioLib.Filesystem.GetIcon(ID)
 end
 
 function CLASS:OnItemClickInternal(button, value, buttonindex, ListX, ListY, i)
 	if CLIENT and self.Network.Active then return end
 
-	local fullpath = value.fullpath
-	local path = value.path
-	local filename = value.filename
-	local filetype = value.filetype
-
-	if filetype == StreamRadioLib.TYPE_FOLDER then
-		local shouldswitch = self:CallHook("OnFolderClick", fullpath, path, filename)
+	if value.isfolder then
+		local shouldswitch = self:CallHook("OnFolderClick", value)
 		if shouldswitch == false then
 			return
 		end
 
-		self.Path.Value = path
+		self.Path.Value = value.path
 		return
 	end
 
-	self:CallHook("OnFileClick", fullpath, path, filename, filetype)
+	self:CallHook("OnFileClick", value)
 end
 
 function CLASS:BuildList()

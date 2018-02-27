@@ -136,8 +136,7 @@ function CLASS:Create()
 			OutVolume = 1,
 		}, function(this, k, v)
 			if k == "WorldSound" then
-				self.ChannelChanged = true
-				self:Update()
+				self:QueueCall("Retry")
 			end
 
 			self:UpdateChannelWS()
@@ -151,7 +150,8 @@ function CLASS:Create()
 	}, function(this, k, v)
 		if k ~= "MuteSlide" then
 			v = tonumber(v) or 0
-			v = math.max(v, 0)
+			v = math.Clamp(v, 0, 1)
+
 			self.Volume[k] = v
 		end
 
@@ -642,9 +642,7 @@ function CLASS:UpdateChannelMuted()
 end
 
 function CLASS:UpdateChannelWS()
-	if SERVER then return end
-	if not self.Valid then return end
-	if not IsValid( self.Channel ) then return end
+	if not self:Is3DChannel() then return end
 
 	self.Channel:SetPos( self.WSData.Position, self.WSData.Forward, self.WSData.Velocity )
 	self.Channel:Set3DFadeDistance( self.WSData.DistanceStart, self.WSData.DistanceEnd )
@@ -657,7 +655,7 @@ function CLASS:UpdateChannelVolume()
 	if not IsValid( self.CV_Volume ) then return end
 	if not IsValid( self.Channel ) then return end
 
-	local boost3d = self:Is3DChannel() and 2.50 or 1
+	local boost3d = self:Is3DChannel() and 2.00 or 1
 
 	local SVvol = self.Volume.SVMul
 	local CLvol = self.Volume.CLMul
@@ -669,14 +667,10 @@ function CLASS:UpdateChannelVolume()
 		volume = SVvol * CLvol * self.CV_Volume:GetValue() * boost3d
 	end
 
-	local volume_noboost = math.min( volume, 1 )
+	// Max 5000% normal volume on all cases.
+	volume = math.Clamp(volume, 0, 50)
 
-	local boost = math.max( volume - 1, 0)
-
-	self.Channel:SetVolume( volume_noboost )
-	if self.State.HasBass then
-		self.Channel:SetVolumeBoost( boost )
-	end
+	self.Channel:SetVolume(volume)
 end
 
 function CLASS:UpdateChannel()

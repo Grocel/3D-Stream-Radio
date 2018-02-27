@@ -7,15 +7,6 @@ local BASE = CLASS:GetBaseClass()
 
 function CLASS:Create()
 	BASE.Create(self)
-
-	self:SetIDIcon(StreamRadioLib.TYPE_PLS, StreamRadioLib.GetPNGIcon("format_pls", true))
-	self:SetIDIcon(StreamRadioLib.TYPE_M3U, StreamRadioLib.GetPNGIcon("page"))
-	self:SetIDIcon(StreamRadioLib.TYPE_JSON, StreamRadioLib.GetPNGIcon("table"))
-	self:SetIDIcon(StreamRadioLib.TYPE_VDF, StreamRadioLib.GetPNGIcon("table"))
-	self:SetIDIcon(StreamRadioLib.TYPE_MXRADIO, StreamRadioLib.GetPNGIcon("format_radio", true))
-	self:SetIDIcon(StreamRadioLib.TYPE_WEBRADIO, StreamRadioLib.GetPNGIcon("format_radio", true))
-	self:SetIDIcon(StreamRadioLib.TYPE_PPLAY, StreamRadioLib.GetPNGIcon("format_pplay", true))
-	self:SetIDIcon(StreamRadioLib.TYPE_SCARSRADIO, StreamRadioLib.GetPNGIcon("format_radio", true))
 end
 
 function CLASS:BuildListInternal()
@@ -30,36 +21,25 @@ function CLASS:BuildListInternal()
 		return
 	end
 
-	StreamRadioLib.Playlist.Find(self, function( fullpath, path, filename, filetype, k, len )
-		if not IsValid(self) then return false end
-		if not self.Network.Active then return false end
-		if not self:IsVisible() then return false end
+	local files = StreamRadioLib.Filesystem.Find(self.Path.Value)
+	if not files then
+		self:UpdateButtons()
+		self:RestoreScrollPos()
+		return
+	end
 
+	for i, v in ipairs(files) do
 		local data = {}
 
-		data.value = {
-			fullpath = fullpath,
-			path = path,
-			filename = filename,
-			filetype = filetype,
-		}
-
-		if not self:GetIDIcon(filetype) then
-			filetype = StreamRadioLib.TYPE_GENERIC_FILE
-		end
-
-		data.text = filename
-		data.icon = filetype
+		data.value = v
+		data.text = v.file
+		data.icon = v.type
 
 		self:AddData(data, true)
-	end, self.Path.Value, function( )
-		if not IsValid(self) then return false end
-		if not self.Network.Active then return false end
-		if not self:IsVisible() then return false end
+	end
 
-		self:UpdateButtons()
-		self:QueueCall("RestoreScrollPos")
-	end, true )
+	self:UpdateButtons()
+	self:QueueCall("RestoreScrollPos")
 end
 
 function CLASS:PostDupe(ent, data)

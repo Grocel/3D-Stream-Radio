@@ -37,7 +37,7 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 
 	local vol = ent:GetVolume()
 
-	speakerlevel = speakerlevel * vol * 3 * soundlevel
+	speakerlevel = speakerlevel * vol * 1.5 * soundlevel
 	speakerlevel = math.Clamp(speakerlevel, -1, 1)
 
 	ent:ManipulateBonePosition( Speaker, Vector( 0, speakerlevel * (SpeakerSize / 36), 0 ) )
