@@ -43,7 +43,7 @@ function CLASS:BuildListInternal()
 end
 
 function CLASS:PostDupe(ent, data)
-	if StreamRadioLib.Playlist.IsValidFolder(data.Path) then
+	if StreamRadioLib.Filesystem.Exists(data.Path, StreamRadioLib.TYPE_FOLDER) then
 		self:SetPath(data.Path)
 	else
 		self:SetPath("")
