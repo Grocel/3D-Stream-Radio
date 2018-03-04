@@ -154,6 +154,7 @@ function CLASS:_BuildListInternalAsyc()
 		return
 	end
 
+	self:ClearData()
 	self:QueueCall("UpdateErrorState")
 
 	self.Playlist = {}

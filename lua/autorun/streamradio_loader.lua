@@ -173,6 +173,8 @@ local function saveCSLuaFile(lua, force)
 end
 
 local g_loaded = {}
+local g_debug = false
+
 local function saveinclude(lua, force)
 	if not StreamRadioLib then
 		return nil
@@ -184,6 +186,14 @@ local function saveinclude(lua, force)
 	if lua == "" then
 		return nil
 	end
+
+	if g_debug then
+		// For easier reloading during development
+		include(lua)
+		return true, true
+	end
+
+ 	// Anything below is too ensure that the addon has loaded correctly without errors
 
 	if force then
 		g_loaded[lua] = nil

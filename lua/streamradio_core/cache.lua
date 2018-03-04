@@ -1,8 +1,6 @@
 StreamRadioLib.Cache = StreamRadioLib.Cache or {}
 local LIB = StreamRadioLib.Cache
 
-LIB.queue = LIB.queue or {}
-LIB.loading = LIB.loading or {}
 LIB.forbidden = LIB.forbidden or {}
 LIB.lastloaded = LIB.lastloaded or {}
 
@@ -317,105 +315,6 @@ function LIB.CanDownload( len )
 	return true
 end
 
-local function CallCallbacks(queueurl, ...)
-	if not queueurl then return end
-
-	local queue = LIB.queue
-	if not queue then return end
-
-	queue = LIB.queue[queueurl]
-	if not queue then return end
-
-	for i, v in ipairs(queue) do
-		if not v then continue end
-		v(...)
-	end
-
-	LIB.queue[queueurl] = nil
-end
-
-local function InternalDownload(url, saveas_url)
-	local queueurl = saveas_url or url or ""
-	if queueurl == "" then return false end
-
-	if SERVER and not g_isDedicatedServer then
-		CallCallbacks(queueurl, 0, {}, -1, false)
-		return true
-	end
-
-	if LIB.forbidden[queueurl] then
-		CallCallbacks(queueurl, 0, {}, -1, false)
-		return true
-	end
-
-	if LIB.loading[queueurl] then
-		return true
-	end
-
-	LIB.loading[queueurl] = true
-
-	local onLoad = function( data, len, headers, code )
-		LIB.loading[queueurl] = nil
-
-		data = data or ""
-		len = len or 0
-		headers = headers or {}
-		code = code or -1
-
-		if LIB.forbidden[queueurl] then
-			CallCallbacks(queueurl, len, headers, -1, false)
-			return
-		end
-
-		local contenttype, maintype, subtype = GetContentType( headers )
-
-		if contenttype_blacklist[contenttype] then
-			CallCallbacks(queueurl, len, headers, -1, false)
-			return
-		end
-
-		if maintype and contenttype_blacklist[maintype .. "/*"] then
-			CallCallbacks(queueurl, len, headers, -1, false)
-			return
-		end
-
-		if subtype and contenttype_blacklist["*/" .. subtype] then
-			CallCallbacks(queueurl, len, headers, -1, false)
-			return
-		end
-
-		if not LIB.CanDownload( len ) then
-			LIB.forbidden[queueurl] = true
-			CallCallbacks(queueurl, len, headers, -1, false)
-		end
-
-		local saved = Cache_Save(queueurl, data)
-
-		LIB.lastloaded = {}
-		LIB.lastloaded[queueurl] = {
-			data = data,
-			len = len,
-			headers = headers,
-			code = code,
-		}
-
-		CallCallbacks(queueurl, len, headers, code, saved)
-	end
-
-	local cache = LIB.lastloaded[queueurl]
-	if cache then
-		StreamRadioLib.Timedcall(onLoad, cache.data, cache.len, cache.headers, cache.code)
-		return true
-	end
-
-	http.Fetch(url or "", onLoad, function( err )
-		LIB.loading[queueurl] = nil
-		CallCallbacks(queueurl, 0, {}, err, false)
-	end)
-
-	return true
-end
-
 function LIB.Download(url, callback, saveas_url)
 	local queueurl = saveas_url or url or ""
 	if queueurl == "" then return false end
@@ -426,9 +325,76 @@ function LIB.Download(url, callback, saveas_url)
 		end
 	end
 
-	LIB.queue = LIB.queue or {}
-	LIB.queue[queueurl] = LIB.queue[queueurl] or {}
-	LIB.queue[queueurl][#LIB.queue[queueurl] + 1] = callback
+	if SERVER and not g_isDedicatedServer then
+		LIB.lastloaded[queueurl] = nil
+		callback(queueurl, 0, {}, -1, false)
+		return true
+	end
 
-	return InternalDownload(url, saveas_url)
+	if LIB.forbidden[queueurl] then
+		LIB.lastloaded[queueurl] = nil
+		callback(queueurl, 0, {}, -1, false)
+		return true
+	end
+
+	local onLoad = function(suggess, data)
+		local err = data.err or data.code
+		local len = data.len
+		local headers = data.headers
+		local code = data.code
+
+		if not suggess then
+			LIB.lastloaded[queueurl] = nil
+			callback(queueurl, 0, {}, err, false)
+			return
+		end
+
+		if LIB.forbidden[queueurl] then
+			LIB.lastloaded[queueurl] = nil
+			callback(queueurl, len, headers, -1, false)
+			return
+		end
+
+		local contenttype, maintype, subtype = GetContentType( headers )
+
+		if contenttype_blacklist[contenttype] then
+			LIB.lastloaded[queueurl] = nil
+			callback(queueurl, len, headers, -1, false)
+			return
+		end
+
+		if maintype and contenttype_blacklist[maintype .. "/*"] then
+			LIB.lastloaded[queueurl] = nil
+			callback(queueurl, len, headers, -1, false)
+			return
+		end
+
+		if subtype and contenttype_blacklist["*/" .. subtype] then
+			LIB.lastloaded[queueurl] = nil
+			callback(queueurl, len, headers, -1, false)
+			return
+		end
+
+		if not LIB.CanDownload(len) then
+			LIB.lastloaded[queueurl] = nil
+			LIB.forbidden[queueurl] = true
+			callback(queueurl, len, headers, -1, false)
+		end
+
+		local saved = Cache_Save(queueurl, data.body)
+
+		LIB.lastloaded = {}
+		LIB.lastloaded[queueurl] = data
+
+		callback(queueurl, len, headers, code, saved)
+	end
+
+	local cache = LIB.lastloaded[queueurl]
+	if cache then
+		StreamRadioLib.Timedcall(onLoad, true, cache)
+		return true
+	end
+
+	local status = StreamRadioLib.Http.Request(url, onLoad)
+	return status
 end

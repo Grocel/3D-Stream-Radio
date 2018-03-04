@@ -45,6 +45,7 @@ local OK_CODES = {
 local WRITE_ERRORS = {
 	[StreamRadioLib.EDITOR_ERROR_WPATH] = true,
 	[StreamRadioLib.EDITOR_ERROR_WDATA] = true,
+	[StreamRadioLib.EDITOR_ERROR_WVIRTUAL] = true,
 	[StreamRadioLib.EDITOR_ERROR_WFORMAT] = true,
 	[StreamRadioLib.EDITOR_ERROR_WRITE] = true,
 	[StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED] = true,
@@ -238,7 +239,7 @@ local function CreateFile( self, defaultstring, func, ... )
 			end
 
 			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
-				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED )
+				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WVIRTUAL )
 				ShowError( "Create error!", ErrorText, self, CreateFile, strTextOut, func, unpack( args ) )
 
 				return
@@ -332,6 +333,13 @@ local function SaveTo(self, defaultstring, func, ...)
 		local format = StreamRadioLib.Filesystem.GuessType(fullpath)
 
 		if not StreamRadioLib.Filesystem.CanWriteFormat(format) then
+			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WVIRTUAL )
+				ShowError( "Save error!", ErrorText, self, SaveTo, strTextOut, func, unpack( args ) )
+
+				return
+			end
+
 			local ErrorText = StreamRadioLib.DecodeEditorErrorCode(StreamRadioLib.EDITOR_ERROR_WFORMAT)
 			ShowError("Save error!", ErrorText, self, SaveTo, strTextOut, func, unpack(args))
 
@@ -340,7 +348,7 @@ local function SaveTo(self, defaultstring, func, ...)
 
 		if not self.FileItems[strTextOut] then
 			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
-				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED )
+				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WVIRTUAL )
 				ShowError( "Create error!", ErrorText, self, SaveTo, strTextOut, func, unpack( args ) )
 
 				return

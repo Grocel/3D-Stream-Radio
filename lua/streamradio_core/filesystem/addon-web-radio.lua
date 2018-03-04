@@ -22,12 +22,10 @@ RADIOFS._filename = g_addonname
 RADIOFS._filenamelower = string.lower(RADIOFS._filename)
 
 function RADIOFS:IsInFolder(vfolder)
-	vfolder = string.Trim(vfolder, "/")
-	vfolder = string.Trim(vfolder, "\\")
-	vfolder = string.Trim(vfolder, "/")
-	vfolder = string.Trim(vfolder, "\\")
+	local levels = self:GetPathLevels(vfolder)
+	local firstlevel = levels[1] or ""
 
-	if vfolder ~= ":addons" then
+	if firstlevel ~= ":addons" then
 		return false
 	end
 
@@ -72,6 +70,10 @@ end
 function RADIOFS:Find(globalpath, vfolder)
 	if not self:IsInstalled() then
 		return nil
+	end
+
+	if vfolder == "" then
+		return nil, {":addons"}
 	end
 
 	if not self:IsInFolder(vfolder) then

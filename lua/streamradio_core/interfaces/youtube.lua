@@ -145,10 +145,6 @@ function RADIOIFACE:CheckConvertCondition(url, callback)
 end
 
 function RADIOIFACE:Convert(url, callback)
-	if not self:CheckConvertCondition(url, callback) then
-		return true
-	end
-
 	local id = self:ParseURL(url)
 
 	if not id then
@@ -156,16 +152,45 @@ function RADIOIFACE:Convert(url, callback)
 		return true
 	end
 
+	self._quene = self._quene or {}
+	self._quene[id] = self._quene[id] or {}
+
+	local q = self._quene[id]
+
+	q.quene = q.quene or {}
+	q.quene[callback] = true
+
+	local function callcallbacks(...)
+		if not q.quene then return end
+		if not q.started then return end
+
+		local tmp = q.quene
+
+		q.quene = nil
+		q.started = nil
+
+		for func, v in pairs(tmp) do
+			if not isfunction(func) then continue end
+			func(...)
+		end
+	end
+
+	if not self:CheckConvertCondition(url, callcallbacks) then
+		return true
+	end
+
+	if q.started then return true end
+
 	local stack = self:GetSubInterfaceStack()
 	if not stack then
-		callback(self, false, nil, -1)
+		callcallbacks(self, false, nil, -1)
 		return true
 	end
 
 	local lasterror = nil
 
 	local function iterration()
-		if not self:CheckConvertCondition(url, callback) then
+		if not self:CheckConvertCondition(url, callcallbacks) then
 			return
 		end
 
@@ -175,14 +200,14 @@ function RADIOIFACE:Convert(url, callback)
 
 		local subiface = stack:Top()
 		if not subiface then
-			callback(self, false, nil, lasterror or -1)
+			callcallbacks(self, false, nil, lasterror or -1)
 			return
 		end
 
 		stack:Pop()
 
 		if not subiface.Convert then
-			callback(self, false, nil, lasterror or -1)
+			callcallbacks(self, false, nil, lasterror or -1)
 			return
 		end
 
@@ -197,10 +222,12 @@ function RADIOIFACE:Convert(url, callback)
 				return
 			end
 
-			callback(self, success, convered_url, errorcode, data)
+			callcallbacks(self, success, convered_url, errorcode, data)
 		end, id)
 	end
 
 	iterration()
+	q.started = true
+
 	return true
 end

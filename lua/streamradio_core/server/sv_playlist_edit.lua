@@ -109,7 +109,14 @@ function LIB.Save( ply, path, data )
 
 	local format = data["format"]
 	local canwrite = StreamRadioLib.Filesystem.CanWriteFormat(format)
-	if not canwrite then return EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_WFORMAT ) end
+
+	if not canwrite then
+		if StreamRadioLib.Filesystem.IsVirtualPath(path) then
+			return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_WVIRTUAL)
+		end
+
+		return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_WFORMAT)
+	end
 
 	data["format"] = nil
 	data["player"] = nil
@@ -124,13 +131,9 @@ function LIB.Save( ply, path, data )
 end
 
 function LIB.Remove(ply, path, type)
-	print("Remove1", path, type)
-
 	StreamRadioLib.Filesystem.Delete(path, type, function(suggess)
 		if not IsValid(ply) then return end
 		if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
-
-		print("Remove2", suggess, path, type)
 
 		if not suggess then
 			return EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_DEL_ACCES )

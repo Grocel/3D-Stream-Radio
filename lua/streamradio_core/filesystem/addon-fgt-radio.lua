@@ -22,12 +22,10 @@ RADIOFS._filenamelower = string.lower(RADIOFS._filename)
 RADIOFS._cachetimeout = 300
 
 function RADIOFS:IsInFolder(vfolder)
-	vfolder = string.Trim(vfolder, "/")
-	vfolder = string.Trim(vfolder, "\\")
-	vfolder = string.Trim(vfolder, "/")
-	vfolder = string.Trim(vfolder, "\\")
+	local levels = self:GetPathLevels(vfolder)
+	local firstlevel = levels[1] or ""
 
-	if vfolder ~= ":addons" then
+	if firstlevel ~= ":addons" then
 		return false
 	end
 
@@ -89,6 +87,10 @@ function RADIOFS:Find(globalpath, vfolder)
 		return nil
 	end
 
+	if vfolder == "" then
+		return nil, {":addons"}
+	end
+
 	if not self:IsInFolder(vfolder) then
 		return nil
 	end
@@ -110,35 +112,29 @@ end
 
 RADIOFS.Delete = nil
 
-function RADIOFS:ProccessQueue()
-	if self._request_started then return true end
+function RADIOFS:Read(globalpath, vpath, callback)
+	if self._cache_playlist and self._cache_playlist.time and self._cache_playlist.data then
+		local time = self._cache_playlist.time
+		local data = self._cache_playlist.data
 
-	local function callcallbacks(...)
-		if not self._quene then return end
-		if not self._request_started then return end
-
-		local tmp = self._quene
-
-		self._quene = nil
-		self._request_started = nil
-
-		for func, v in pairs(tmp) do
-			if not isfunction(func) then continue end
-
-			func(...)
+		if #data > 0 and (RealTime() - time) <= self._cachetimeout then
+			callback(true, data)
+			return true
 		end
+
+		self._cache_playlist = nil
 	end
 
-	local status = self:Request("http://fgtradio.fgthou.se/list.php", function(suggess, result)
+	local status = StreamRadioLib.Http.Request("http://fgtradio.fgthou.se/list.php", function(suggess, result)
 		if not suggess then
-			callcallbacks(false, nil)
+			callback(false, nil)
 			return
 		end
 
 		local body = result.body
 
 		if body == "" then
-			callcallbacks(false, nil)
+			callback(false, nil)
 			return
 		end
 
@@ -190,33 +186,8 @@ function RADIOFS:ProccessQueue()
 			data = playlist,
 		}
 
-		callcallbacks(true, playlist)
+		callback(true, playlist)
 	end)
 
-	self._request_started = status
-	return status
-end
-
-
-function RADIOFS:Read(globalpath, vpath, callback)
-	if self._cache_playlist and self._cache_playlist.time and self._cache_playlist.data then
-		local time = self._cache_playlist.time
-		local data = self._cache_playlist.data
-
-		if #data > 0 and (RealTime() - time) <= self._cachetimeout then
-			self._quene = nil
-			self._request_started = nil
-
-			callback(true, data)
-			return true
-		end
-
-		self._cache_playlist = nil
-	end
-
-	self._quene = self._quene or {}
-	self._quene[callback] = true
-
-	local status = self:ProccessQueue()
 	return status
 end

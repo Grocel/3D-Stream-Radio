@@ -29,26 +29,33 @@ StreamRadioLib.EDITOR_ERROR_DIR_OK = 4
 StreamRadioLib.EDITOR_ERROR_DEL_OK = 5
 StreamRadioLib.EDITOR_ERROR_COPY_OK = 6
 StreamRadioLib.EDITOR_ERROR_RENAME_OK = 7
+
 StreamRadioLib.EDITOR_ERROR_WPATH = 10
 StreamRadioLib.EDITOR_ERROR_WDATA = 11
 StreamRadioLib.EDITOR_ERROR_WFORMAT = 12
-StreamRadioLib.EDITOR_ERROR_WRITE = 13
+StreamRadioLib.EDITOR_ERROR_WVIRTUAL = 13
+StreamRadioLib.EDITOR_ERROR_WRITE = 14
+
 StreamRadioLib.EDITOR_ERROR_DIR_WRITE = 14
 StreamRadioLib.EDITOR_ERROR_DIR_EXIST = 15
 StreamRadioLib.EDITOR_ERROR_FILE_EXIST = 16
 StreamRadioLib.EDITOR_ERROR_DEL_ACCES = 17
+
 StreamRadioLib.EDITOR_ERROR_RPATH = 20
 StreamRadioLib.EDITOR_ERROR_RDATA = 21
 StreamRadioLib.EDITOR_ERROR_RFORMAT = 22
 StreamRadioLib.EDITOR_ERROR_READ = 23
+
 StreamRadioLib.EDITOR_ERROR_COPY_DIR = 30
 StreamRadioLib.EDITOR_ERROR_COPY_EXIST = 31
 StreamRadioLib.EDITOR_ERROR_COPY_WRITE = 32
 StreamRadioLib.EDITOR_ERROR_COPY_READ = 33
+
 StreamRadioLib.EDITOR_ERROR_RENAME_DIR = 40
 StreamRadioLib.EDITOR_ERROR_RENAME_EXIST = 41
 StreamRadioLib.EDITOR_ERROR_RENAME_WRITE = 42
 StreamRadioLib.EDITOR_ERROR_RENAME_READ = 43
+
 StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED = 50
 StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED = 51
 StreamRadioLib.EDITOR_ERROR_NOADMIN = 252
@@ -68,6 +75,7 @@ local EditorErrors = {
 	[StreamRadioLib.EDITOR_ERROR_RENAME_OK] = "OK",
 	[StreamRadioLib.EDITOR_ERROR_WPATH] = "Invalid path!",
 	[StreamRadioLib.EDITOR_ERROR_WDATA] = "Invalid data!",
+	[StreamRadioLib.EDITOR_ERROR_WVIRTUAL] = "This virtual file is readonly!",
 	[StreamRadioLib.EDITOR_ERROR_WFORMAT] = "Invalid file format!\nValid formats are: m3u, pls, json, vdf",
 	[StreamRadioLib.EDITOR_ERROR_WRITE] = "Couldn't write the file!",
 	[StreamRadioLib.EDITOR_ERROR_DIR_WRITE] = "Couldn't create the directory!",

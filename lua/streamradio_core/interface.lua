@@ -150,78 +150,23 @@ local function AddCommonFunctions(interface)
 	function interface:RequestHeader(url, callback, parameters, headers)
 		callback = callback or (function() end)
 
-		local req = self:Request(url, function(suggess, data)
-			data.body = nil
+		StreamRadioLib.Http.RequestHeader(url, function(suggess, data)
+			data.custom_data = {}
+			data.reload = false
 			callback(suggess, data)
-		end, "HEAD", parameters, headers)
-
-		if not req then
-			callback(false, nil)
-			return false
-		end
+		end, parameters, headers)
 
 		return true
 	end
 
-	function interface:Request(url, callback, parameters, method, headers, body, type)
-		url = url or ""
+	function interface:Request(url, callback, parameters, method, headers)
 		callback = callback or (function() end)
-		parameters = parameters or {}
-		method = method or ""
 
-		if method == "" then
-			method = "GET"
-		end
-
-		local req = HTTP({
-			url = url,
-			method = method,
-			parameters = parameters,
-			headers = headers,
-			body = body,
-			type = type,
-
-			failed = function(err)
-				callback(false, {
-					err = err or "",
-					method = method,
-					parameters = parameters,
-					url = url,
-					custom_data = {},
-					reload = false,
-				})
-			end,
-
-			success = function(code, body, headers)
-				code = code or -1
-
-				local suggess = true
-
-				if code < 0 then
-					suggess = false
-				end
-
-				if code >= 400 then
-					suggess = false
-				end
-
-				callback(suggess, {
-					code = code or -1,
-					body = body or "",
-					headers = headers or {},
-					method = method,
-					parameters = parameters,
-					url = url,
-					custom_data = {},
-					reload = false,
-				})
-			end,
-		})
-
-		if not req then
-			callback(false, nil)
-			return false
-		end
+		StreamRadioLib.Http.Request(url, function(suggess, data)
+			data.custom_data = {}
+			data.reload = false
+			callback(suggess, data)
+		end, parameters, method, headers)
 
 		return true
 	end

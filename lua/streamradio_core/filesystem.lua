@@ -110,83 +110,21 @@ local function AddCommonFunctions(fs)
 		return pcall(func, ...)
 	end
 
-	function fs:RequestHeader(url, callback, parameters, headers)
-		callback = callback or (function() end)
+	function fs:GetPathLevels(vfolder)
+		local levels = string.Explode("[%/%\\]", vfolder, true) or {}
+		local out = {}
 
-		local req = self:Request(url, function(suggess, data)
-			data.body = nil
-			callback(suggess, data)
-		end, "HEAD", parameters, headers)
+		for i, v in ipairs(levels) do
+			v = string.Trim(v, "/")
+			v = string.Trim(v, "\\")
+			v = string.Trim(v, "/")
+			v = string.Trim(v, "\\")
 
-		if not req then
-			callback(false, nil)
-			return false
+			if v == "" then continue end
+			out[#out + 1] = v
 		end
 
-		return true
-	end
-
-	function fs:Request(url, callback, parameters, method, headers, body, type)
-		url = url or ""
-		callback = callback or (function() end)
-		parameters = parameters or {}
-		method = method or ""
-
-		if method == "" then
-			method = "GET"
-		end
-
-		local req = HTTP({
-			url = url,
-			method = method,
-			parameters = parameters,
-			headers = headers,
-			body = body,
-			type = type,
-
-			failed = function(err)
-				callback(false, {
-					err = err or "",
-					method = method,
-					parameters = parameters,
-					url = url,
-					custom_data = {},
-					reload = false,
-				})
-			end,
-
-			success = function(code, body, headers)
-				code = code or -1
-
-				local suggess = true
-
-				if code < 0 then
-					suggess = false
-				end
-
-				if code >= 400 then
-					suggess = false
-				end
-
-				callback(suggess, {
-					code = code or -1,
-					body = body or "",
-					headers = headers or {},
-					method = method,
-					parameters = parameters,
-					url = url,
-					custom_data = {},
-					reload = false,
-				})
-			end,
-		})
-
-		if not req then
-			callback(false, nil)
-			return false
-		end
-
-		return true
+		return out
 	end
 end
 
@@ -835,6 +773,31 @@ function LIB.Exists(vpath, filetype)
 	return fs:Exists(globalpath, vpath)
 end
 
+local isvname = LIB.IsVirtualPath
+local lower = string.lower
+
+local function sorter(a, b)
+	local a_name = lower(a.file or "")
+	local b_name = lower(b.file or "")
+
+	local a_virtual = isvname(a_name)
+	local b_virtual = isvname(b_name)
+
+	if a_virtual == b_virtual then
+		return a_name < b_name
+	end
+
+	if a_virtual then
+		return true
+	end
+
+	if b_virtual then
+		return false
+	end
+
+	return a_name < b_name
+end
+
 function LIB.Find(vfolder)
 	if not StreamRadioLib.DataDirectory then return nil end
 
@@ -844,65 +807,73 @@ function LIB.Find(vfolder)
 	local _, folders = file.Find(globalpath .. "/*", "DATA", "nameasc")
 
 	local filelist = {}
-	local tmplist = {}
+	local folderlist = {}
+
+	local nodouble_files = {}
+	local nodouble_folder = {}
 
 	for i, name in ipairs(folders or {}) do
 		local filepath = SetupPath(vfolder, name) or name
+		if nodouble_folder[filepath] then continue end
 
-		filelist[#filelist + 1] = {
+		folderlist[#folderlist + 1] = {
 			isfolder = true,
 			type = g_FolderID,
 			file = name,
 			path = filepath,
 		}
+
+		nodouble_folder[filepath] = true
 	end
-
-	if vfolder == "" then
-		for id, fs in ipairs(Filesystem.id) do
-			if not fs then continue end
-			if not fs.Find then continue end
-			if not fs.addonname then continue end
-			if fs.addonname == "" then continue end
-
-			local name = ":addons"
-			local filepath = SetupPath(vfolder, name) or name
-
-			filelist[#filelist + 1] = {
-				isfolder = true,
-				type = g_VirtualFolderID,
-				file = name,
-				path = filepath,
-			}
-
-			break
-		end
-	end
-
-	table.SortByMember(filelist, "file", true)
 
 	for id, fs in ipairs(Filesystem.id) do
 		if not fs then continue end
 		if not fs.Find then continue end
 
-		local files = fs:Find(globalpath, vfolder) or {}
+		local files, folders = fs:Find(globalpath, vfolder)
+
+		files = files or {}
+		folders = folders or {}
+
+		for i, name in ipairs(folders) do
+			local filepath = SetupPath(vfolder, name) or name
+			if nodouble_folder[filepath] then continue end
+
+			folderlist[#folderlist + 1] = {
+				isfolder = true,
+				type = vfolder == "" and g_VirtualFolderID or g_FolderID,
+				file = name,
+				path = filepath,
+			}
+
+			nodouble_folder[filepath] = true
+		end
 
 		for i, name in ipairs(files) do
 			local name = ConvertGlobalFilename(name)
 			local filepath = SetupPath(vfolder, name) or name
 
-			tmplist[#tmplist + 1] = {
+			if nodouble_files[filepath] then continue end
+
+			filelist[#filelist + 1] = {
 				isfolder = false,
 				type = id,
 				file = name,
 				path = filepath,
 			}
+
+			nodouble_files[filepath] = true
 		end
 	end
 
-	table.SortByMember(tmplist, "file", true)
-	table.Add(filelist, tmplist)
+	table.sort(folderlist, sorter)
+	table.sort(filelist, sorter)
 
-	return filelist
+	local outlist = {}
+	table.Add(outlist, folderlist)
+	table.Add(outlist, filelist)
+
+	return outlist
 end
 
 function LIB.GuessType(vpath)
