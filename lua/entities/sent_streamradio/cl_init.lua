@@ -135,6 +135,157 @@ function ENT:OnSetupModelSetup()
 	self:StreamStopAnimModel()
 end
 
+function ENT:GetWallTraceParamenters()
+	if not self.WallTraceParamenters then
+		self.WallTraceParamenters = {
+			mask = MASK_SHOT_PORTAL,
+			filter = function(ent)
+				if not IsValid(ent) then return false end
+				if not IsValid(self) then return false end
+
+				if ent == self then return false end
+				if ent.__IsRadio then return false end
+				if ent:IsPlayer() then return false end
+				if ent:IsVehicle() then return false end
+				if ent:IsNPC() then return false end
+
+				local camera = StreamRadioLib.GetCameraEnt()
+				if IsValid(camera) and ent == camera then return false end
+
+				return true
+			end
+		}
+	end
+
+	return self.WallTraceParamenters
+end
+
+function ENT:TraceToCamera(frompos)
+	local endpos = StreamRadioLib.GetCameraPos()
+	local traceparams = self:GetWallTraceParamenters()
+
+	traceparams.start = frompos
+	traceparams.endpos = endpos
+
+	local trace = util.TraceLine(traceparams)
+
+	//debugoverlay.Line(frompos, trace.HitPos or endpos, 0.1, color_white, false)
+	//debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
+
+	return trace
+end
+
+function ENT:TraceWalls(radius)
+	local coveredvol = StreamRadioLib.GetCoveredVolume()
+	if coveredvol >= 1 then
+		return 1
+	end
+
+	local startpos = self:GetSoundPosAng()
+
+	local camtrace = self:TraceToCamera(startpos)
+	if not camtrace then return 1 end
+	if not camtrace.Hit then return 1 end
+	if not camtrace.HitPos then return 1 end
+
+	local traceparams = self:GetWallTraceParamenters()
+
+	traceparams.start = startpos
+
+	local traces = StreamRadioLib.StarTrace(traceparams, radius, 16, 16)
+	local tracecount = #traces
+
+	local blockcount = 0
+	local wallcount = 0
+
+	for i, trace in ipairs(traces) do
+		if not trace.Hit then
+			continue
+		end
+
+		if not trace.HitPos then
+			continue
+		end
+
+		wallcount = wallcount + 1
+
+		local camtrace = self:TraceToCamera(trace.HitPos)
+		if not camtrace then continue end
+		if not camtrace.Hit then continue end
+		if not camtrace.HitPos then continue end
+
+		blockcount = blockcount + 1
+	end
+
+	if wallcount <= 0 then
+		return 1
+	end
+
+	local f = blockcount / wallcount
+
+	local volfactor = math.Clamp((1 - f) * 2, coveredvol, 1)
+	return volfactor
+end
+
+function ENT:GetWallVolumeFactor()
+	if self:GetVolume() <= 0 then
+		self.wallvolcache = nil
+		return 0
+	end
+
+	if self.Muted then
+		self.wallvolcache = nil
+		return 0
+	end
+
+	local now = RealTime()
+
+	self.wallvolcache = self.wallvolcache or {}
+	if (self.wallvolcache.nexttime or 0) >= now then
+		return self.wallvolcache.value or 0
+	end
+
+	local mintime = math.max(FrameTime() * 3, 0.125)
+
+	self.wallvolcache.value = self:TraceWalls(self.Radius)
+	self.wallvolcache.nexttime = now + math.Rand(mintime, mintime * 4)
+
+	return self.wallvolcache.value or 1
+end
+
+function ENT:GetWallVolumeFactorSmoothed()
+	local now = RealTime()
+	local last = self._wallvoltime or now
+	self._wallvoltime = now
+
+	local ticktime = now - last
+
+	if ticktime <= 0 then
+		return self._wallvolvalue or 0
+	end
+
+	local curwallvol = self:GetWallVolumeFactor()
+	self._wallvolvalue = self._wallvolvalue or 0
+
+	if self._wallvolvalue == curwallvol then
+		return curwallvol
+	end
+
+	local speed = ticktime * 2
+
+	if self._wallvolvalue > curwallvol then
+		self._wallvolvalue = math.max(self._wallvolvalue - speed, curwallvol)
+		return self._wallvolvalue
+	end
+
+	if self._wallvolvalue < curwallvol then
+		self._wallvolvalue = math.min(self._wallvolvalue + speed, curwallvol)
+		return self._wallvolvalue
+	end
+
+	return self._wallvolvalue
+end
+
 function ENT:UpdateStream()
 	if not IsValid(self.StreamObj) then
 		self:StreamStopAnimModel()
@@ -149,26 +300,24 @@ function ENT:UpdateStream()
 	local ply = LocalPlayer()
 	local camerapos = StreamRadioLib.GetCameraPos()
 
+
 	self.StreamObj:Set3D(StreamRadioLib.Is3DSound() and self:GetSound3D())
 	self.Sound3D = self.StreamObj:Get3D()
 
-	self.BlockedVolume = 1
-
 	self.PlayerDistance = self:DistanceToPlayer(ply, nil, camerapos)
-	self.PlayerDistanceSound = self.PlayerDistance
 
-	if not self.Sound3D then
-		self.PlayerDistanceSound = self.PlayerDistance * (2 - self.BlockedVolume)
-	end
+	local wallvol = self:GetWallVolumeFactorSmoothed()
+	self.PlayerDistanceSound = self.PlayerDistance * (2 - wallvol)
 
 	self.Radius = self:GetRadius() or 0
 	self.StreamObj:Set3DFadeDistance(self.Radius / 3)
 
 	local distVolume = StreamRadioLib.CalcDistanceVolume(self.PlayerDistanceSound, self.Radius)
-	local StreamVol = distVolume * self.BlockedVolume
 
 	local MuteDistance = math.min(self.Radius + 1000, StreamRadioLib.GetMuteDistance())
 	self.Muted = StreamRadioLib.IsMuted() or self:IsDormant() or (self.PlayerDistanceSound >= MuteDistance)
+
+	local StreamVol = distVolume * wallvol
 
 	self.StreamObj:SetMuted(self.Muted)
 	self.StreamObj:SetClientVolume(StreamVol)
@@ -177,7 +326,7 @@ function ENT:UpdateStream()
 		local global_vol = StreamRadioLib.Settings.GetConVarValue("volume")
 		global_vol = math.Clamp(global_vol, 0, 1)
 
-		self.NoiseSound:ChangeVolume(self.StreamObj:GetVolume() * global_vol * self.BlockedVolume * self.NoiseSound_vol, 0.5)
+		self.NoiseSound:ChangeVolume(self.StreamObj:GetVolume() * global_vol * wallvol * self.NoiseSound_vol, 0.5)
 	end
 
 	self:StreamAnimModel()

@@ -50,11 +50,22 @@ function StreamRadioLib.GetVersionTime()
 	return VersionTime
 end
 
+function StreamRadioLib.IsDebug()
+	local devconvar = GetConVar("developer")
+	if not devconvar then return end
+
+	return devconvar:GetInt() > 0
+end
+
 local loader_ok = true
 
 local g_loaded_dll = {}
 local function saveRequireDLL(dll, optional)
 	if not StreamRadioLib then
+		return false
+	end
+
+	if not StreamRadioLib.IsDebug then
 		return false
 	end
 
@@ -118,6 +129,10 @@ local function saveCSLuaFile(lua, force)
 		return false
 	end
 
+	if not StreamRadioLib.IsDebug then
+		return false
+	end
+
 	lua = tostring(lua or "")
 	lua = string.lower(lua or "")
 
@@ -173,10 +188,13 @@ local function saveCSLuaFile(lua, force)
 end
 
 local g_loaded = {}
-local g_debug = false
 
 local function saveinclude(lua, force)
 	if not StreamRadioLib then
+		return nil
+	end
+
+	if not StreamRadioLib.IsDebug then
 		return nil
 	end
 
@@ -187,7 +205,7 @@ local function saveinclude(lua, force)
 		return nil
 	end
 
-	if g_debug then
+	if StreamRadioLib.IsDebug() then
 		// For easier reloading during development
 		include(lua)
 		return true, true

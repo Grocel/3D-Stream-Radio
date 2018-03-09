@@ -69,6 +69,13 @@ LIB.AddConVar("mute", "cl_streamradio_mute", "0", {
 	userdata = true,
 })
 
+LIB.AddConVar("muteunfocused", "cl_streamradio_muteunfocused", "0", {
+	label = "Mute radios on game unfocus",
+	help = "Mutes all radios when the game is not in focus if set to 1. Default: 0",
+	type = "bool",
+	userdata = true,
+})
+
 LIB.AddConVar("mutedistance", "cl_streamradio_mutedistance", "2000", {
 	label = "Mute at distance",
 	help = "Mutes all radios which are further away than the given units. Min: 500, Max: 5000, Default: 2000",
@@ -192,7 +199,7 @@ local function BuildMenuPanel(CPanel)
 	toplabel:SizeToContents()
 	CPanel:AddPanel(toplabel)
 
-	if not StreamRadioLib.Loaded then
+	if not StreamRadioLib or not StreamRadioLib.Loaded then
 		local errorlabel = vgui.Create("DLabel")
 
 		errorlabel:SetDark(false)
@@ -206,7 +213,11 @@ local function BuildMenuPanel(CPanel)
 
 	for i, v in ipairs(LIB.g_CV_List) do
 		if not IsValid(v) then continue end
-		v:BuildPanel(CPanel)
+
+		local p = v:BuildPanel(CPanel)
+		if not IsValid(p) then continue end
+
+		p:SetTooltip(v:GetPanellabel())
 	end
 
 	CPanel:AddControl( "button", {
@@ -239,23 +250,23 @@ function LIB.RebuildBuildMenuPanel()
 	BuildMenuPanel(LIB.g_panel)
 end
 
-function StreamRadioLib.GetDrawDistance( )
+function StreamRadioLib.GetDrawDistance()
 	return LIB.GetConVarValue("drawdistance")
 end
 
-function StreamRadioLib.IsSpectrumHidden( )
+function StreamRadioLib.IsSpectrumHidden()
 	return LIB.GetConVarValue("hidespectrumbars")
 end
 
-function StreamRadioLib.GetSpectrumDistance( )
+function StreamRadioLib.GetSpectrumDistance()
 	return LIB.GetConVarValue("spectrumdistance")
 end
 
-function StreamRadioLib.GetSpectrumBars( )
+function StreamRadioLib.GetSpectrumBars()
 	return LIB.GetConVarValue("spectrumbars")
 end
 
-function StreamRadioLib.IsRenderTarget( )
+function StreamRadioLib.IsRenderTarget()
 	if ScrW() < 1024 then
 		return false
 	end
@@ -267,15 +278,15 @@ function StreamRadioLib.IsRenderTarget( )
 	return LIB.GetConVarValue("rendertarget")
 end
 
-function StreamRadioLib.RenderTargetFPS( )
+function StreamRadioLib.RenderTargetFPS()
 	return LIB.GetConVarValue("rendertarget_fps")
 end
 
-function StreamRadioLib.IsCursorHidden( )
+function StreamRadioLib.IsCursorHidden()
 	return LIB.GetConVarValue("hidecursor")
 end
 
-function StreamRadioLib.Is3DSound( )
+function StreamRadioLib.Is3DSound()
 	return not LIB.GetConVarValue("no3dsound")
 end
 
@@ -283,18 +294,18 @@ function StreamRadioLib.HasYoutubeSupport()
 	return LIB.GetConVarValue("youtubesupport")
 end
 
-function StreamRadioLib.GetControlKey( )
+function StreamRadioLib.GetControlKey()
 	return LIB.GetConVarValue("key")
 end
 
-function StreamRadioLib.GetControlKeyVehicle( )
+function StreamRadioLib.GetControlKeyVehicle()
 	return LIB.GetConVarValue("vehiclekey")
 end
 
-function StreamRadioLib.GetGlobalVolume( )
+function StreamRadioLib.GetGlobalVolume()
 	return LIB.GetConVarValue("volume")
 end
 
-function StreamRadioLib.GetCoveredVolume( )
+function StreamRadioLib.GetCoveredVolume()
 	return LIB.GetConVarValue("coveredvolume")
 end

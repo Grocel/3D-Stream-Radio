@@ -116,14 +116,6 @@ function StreamRadioLib.Msg(ply, msgstring)
 	end
 end
 
-function StreamRadioLib.IsDebug()
-	local devconvar = GetConVar("developer")
-	if not devconvar then return end
-
-	return devconvar:GetInt() > 0
-end
-
-
 function StreamRadioLib.Debug(format, ...)
 	if not StreamRadioLib.IsDebug() then return end
 
@@ -242,34 +234,54 @@ function StreamRadioLib.HasWiremod()
 	return true
 end
 
-function StreamRadioLib.IsGUIHidden( ply )
-	if ( not IsValid( ply ) and CLIENT ) then
-		ply = LocalPlayer( )
+function StreamRadioLib.IsGUIHidden(ply)
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
 	end
 
-	if ( not IsValid( ply ) ) then return true end
-	if ( not ply:IsPlayer( ) ) then return true end
-	if ( ply:IsBot( ) ) then return true end
+	if not IsValid(ply) then return true end
+	if not ply:IsPlayer() then return true end
+	if ply:IsBot() then return true end
 
-	return tobool( ply:GetInfo( "cl_streamradio_hidegui" ) )
+	return tobool(ply:GetInfo("cl_streamradio_hidegui"))
 end
 
-function StreamRadioLib.IsMuted( ply )
-	if ( not IsValid( ply ) and CLIENT ) then
-		ply = LocalPlayer( )
+function StreamRadioLib.IsMuted(ply)
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
 	end
 
-	if ( not IsValid( ply ) ) then return true end
-	if ( not ply:IsPlayer( ) ) then return true end
-	if ( ply:IsBot( ) ) then return true end
+	if not IsValid(ply) then return true end
+	if not ply:IsPlayer() then return true end
+	if ply:IsBot() then return true end
 
-	return tobool( ply:GetInfo( "cl_streamradio_mute" ) )
+	local muted = tobool(ply:GetInfo("cl_streamradio_mute"))
+
+	if muted then
+		return true
+	end
+
+	if SERVER then
+		return false
+	end
+
+	local muteunfocused = tobool(ply:GetInfo("cl_streamradio_muteunfocused"))
+
+	if not muteunfocused then
+		return false
+	end
+
+	if system.HasFocus() then
+		return false
+	end
+
+	return true
 end
 
 function StreamRadioLib.GameIsPaused()
 	local frametime = FrameTime()
 
-	if ( frametime > 0 ) then
+	if frametime > 0 then
 		return false
 	end
 
@@ -277,15 +289,15 @@ function StreamRadioLib.GameIsPaused()
 end
 
 function StreamRadioLib.GetMuteDistance( ply )
-	if ( not IsValid( ply ) and CLIENT ) then
-		ply = LocalPlayer( )
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
 	end
 
-	if ( not IsValid( ply ) ) then return 0 end
-	if ( not ply:IsPlayer( ) ) then return 0 end
-	if ( ply:IsBot( ) ) then return 0 end
+	if not IsValid(ply) then return 0 end
+	if not ply:IsPlayer() then return 0 end
+	if ply:IsBot() then return 0 end
 
-	return math.Clamp( tonumber( ply:GetInfo( "cl_streamradio_mutedistance" ) ) or 500, 500, 5000 )
+	return math.Clamp(tonumber(ply:GetInfo("cl_streamradio_mutedistance")) or 500, 500, 5000)
 end
 
 function StreamRadioLib.GetCameraEnt(ply)
@@ -349,6 +361,63 @@ function StreamRadioLib.Trace(ply)
 	end
 
 	return util.TraceLine(trace)
+end
+
+local g_PI = math.pi
+local g_TAU = g_PI * 2
+
+function StreamRadioLib.StarTrace(traceparams, size, edges, layers)
+	traceparams = traceparams or {}
+
+	local centerpos = traceparams.start or Vector()
+
+	size = math.abs(size or 0)
+	edges = math.abs(edges or 0)
+	layers = math.abs(layers or 0)
+
+	traceparams.start = centerpos
+	traceparams.output = nil
+
+	local traceposes = {}
+	local traces = {}
+
+	for e = 1, edges do
+		local u = g_TAU / edges * e
+
+		for l = 1, layers do
+			local v = g_TAU / layers * l
+
+			local x = math.cos(u) * math.cos(v)
+			local y = math.cos(u) * math.sin(v)
+			local z = math.sin(u)
+
+			local v = Vector(x, y, z)
+			v:Normalize()
+
+			if traceposes[v] then continue end
+			traceposes[v] = true
+		end
+	end
+
+	traceposes[Vector(0, 0, 1)] = true
+	traceposes[Vector(0, 1, 0)] = true
+	traceposes[Vector(1, 0, 0)] = true
+
+	traceposes[Vector(0, 0, -1)] = true
+	traceposes[Vector(0, -1, 0)] = true
+	traceposes[Vector(-1, 0, 0)] = true
+
+	for v, _ in pairs(traceposes) do
+		local endpos = centerpos + v * size
+		traceparams.endpos = endpos
+
+		local trace = util.TraceLine(traceparams)
+
+		//debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.1, color_white, false)
+		traces[#traces + 1] = trace
+	end
+
+	return traces
 end
 
 local g_mat_cache = {}
