@@ -127,6 +127,59 @@ function ENT:GetMasterRadioRecursive()
 	return supermasterradio
 end
 
+function ENT:GetSlaveRadios()
+	local mr = self:GetMasterRadioRecursive()
+	if mr then
+		self.slavesradios = nil
+	end
+
+	self.slavesradios = self.slavesradios or {}
+
+	for slave, v in pairs(self.slavesradios) do
+		if not IsValid(slave) then
+			self.slavesradios[slave] = nil
+			continue
+		end
+
+		if not slave.__IsRadio then
+			self.slavesradios[slave] = nil
+			continue
+		end
+
+		if not IsValid(slave.StreamObj) then
+			self.slavesradios[slave] = nil
+			continue
+		end
+
+		if slave == self then
+			self.slavesradios[slave] = nil
+			continue
+		end
+
+		local slavemasterradio = slave:GetMasterRadioRecursive()
+		if slavemasterradio ~= self then
+			self.slavesradios[slave] = nil
+			continue
+		end
+	end
+
+	return self.slavesradios
+end
+
+function ENT:IsMutedForPlayer(ply)
+	local muted = BaseClass.IsMutedForPlayer(self, ply)
+	if not muted then return false end
+
+	local slaves = self:GetSlaveRadios()
+
+	for slave, v in pairs(slaves) do
+		if not IsValid(slave) then continue end
+		if not slave:IsMutedForPlayer() then return false end
+	end
+
+	return true
+end
+
 function ENT:OnGUIShowCheck(ply)
 	local masterradio = self:GetMasterRadioRecursive()
 	if not masterradio then return true end
@@ -176,6 +229,14 @@ function ENT:MasterRadioSyncThink()
 			if self._StopInternal then
 				self:_StopInternal()
 			end
+		end
+
+		if IsValid(oldmasterradio) and oldmasterradio.slavesradios then
+			oldmasterradio.slavesradios[self] = nil
+		end
+
+		if IsValid(masterradio) and masterradio.slavesradios then
+			masterradio.slavesradios[self] = true
 		end
 
 		if self.OnMasterradioChange then

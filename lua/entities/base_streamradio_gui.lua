@@ -21,23 +21,6 @@ function ENT:SetDisplayPosAng(pos, ang)
 	self.DisplayAngles = ang
 end
 
-function ENT:GetDisplayPosAng()
-	if not self:HasGUI() then return end
-	if self:GetDisableDisplay() then return end
-
-	local pos = self:GetPos( )
-	local ang = self:GetAngles( )
-
-	local DisplayPosOffset = self.DisplayOffset or vec_zero
-	local DisplayAngOffset = self.DisplayAngles or ang_zero
-
-	pos, ang = LocalToWorld( DisplayPosOffset, DisplayAngOffset, pos, ang )
-
-	debugoverlay.Axis( pos, ang, 5, 0.05, color_white )
-
-	return pos, ang
-end
-
 function ENT:CanSeeDisplay(ply)
 	if not self.__IsLibLoaded then return false end
 
@@ -79,7 +62,8 @@ function ENT:GetDisplayPos( )
 
 	pos, ang = LocalToWorld( DisplayPosOffset, DisplayAngOffset, pos, ang )
 
-	debugoverlay.Axis( pos, ang, 5, 0.05, color_white )
+	debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
+	debugoverlay.EntityTextAtPosition(pos, 1, "Display pos", 0.05, color_white)
 
 	return pos, ang
 end
@@ -237,6 +221,11 @@ function ENT:SetUpModel()
 	self.GUI:SetName("gui")
 	self.GUI:SetEntity(self)
 	self.GUI:ActivateNetworkedMode()
+
+	if StreamRadioLib.IsDebug() then
+		self:SetEnableDebug(true)
+	end
+
 	self.GUI:SetDebug(self:GetEnableDebug())
 
 	if not IsValid(self.GUI_Main) then
@@ -342,8 +331,9 @@ function ENT:Control(ply, tr, pressed)
 	if not self:CanSeeDisplay(ply) then return end
 
 	if pressed then
-		if ( ( RealTime( ) - ( self.oldusetime or 0 ) ) < 0.1 ) then return end
-		self.oldusetime = RealTime( )
+		local now = RealTime()
+		if (now - (self.oldusetime or 0)) < 0.1 then return end
+		self.oldusetime = now
 	end
 
 	local Cursor, CursorX, CursorY = self:GetCursor(ply, tr)
@@ -388,7 +378,7 @@ function ENT:SetupDataTables()
 		KeyName = "EnableDebug",
 		Edit = {
 			category = "GUI",
-			title = "Enable debugging panel",
+			title = "Show debug panel",
 			type = "Boolean",
 			order = 3
 		}

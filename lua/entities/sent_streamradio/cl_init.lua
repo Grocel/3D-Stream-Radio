@@ -92,6 +92,7 @@ function ENT:Initialize()
 	BaseClass.Initialize(self)
 
 	self.streamswitchsound = true
+	self.slavesradios = {}
 	self.old = {}
 
 	if IsValid(self.StreamObj) then
@@ -300,22 +301,18 @@ function ENT:UpdateStream()
 	local ply = LocalPlayer()
 	local camerapos = StreamRadioLib.GetCameraPos()
 
-
 	self.StreamObj:Set3D(StreamRadioLib.Is3DSound() and self:GetSound3D())
 	self.Sound3D = self.StreamObj:Get3D()
 
 	self.PlayerDistance = self:DistanceToPlayer(ply, nil, camerapos)
 
-	local wallvol = self:GetWallVolumeFactorSmoothed()
-	self.PlayerDistanceSound = self.PlayerDistance * (2 - wallvol)
-
 	self.Radius = self:GetRadius() or 0
 	self.StreamObj:Set3DFadeDistance(self.Radius / 3)
 
-	local distVolume = StreamRadioLib.CalcDistanceVolume(self.PlayerDistanceSound, self.Radius)
+	local wallvol = self:GetWallVolumeFactorSmoothed()
+	local distVolume = StreamRadioLib.CalcDistanceVolume(self.PlayerDistance, self.Radius)
 
-	local MuteDistance = math.min(self.Radius + 1000, StreamRadioLib.GetMuteDistance())
-	self.Muted = StreamRadioLib.IsMuted() or self:IsDormant() or (self.PlayerDistanceSound >= MuteDistance)
+	self.Muted = self:IsMutedForPlayer(ply)
 
 	local StreamVol = distVolume * wallvol
 
@@ -436,8 +433,10 @@ function ENT:OnMasterradioChange(masterradio, oldmasterradio)
 	this_st:RemoveEvent("OnConnect", eventname)
 	this_st:TimerRemove(timername)
 
-	if IsValid(oldmasterradio) and IsValid(oldmasterradio.StreamObj) then
-		oldmasterradio.StreamObj:RemoveEvent("OnConnect", eventname)
+	if IsValid(oldmasterradio) then
+		if IsValid(oldmasterradio.StreamObj) then
+			oldmasterradio.StreamObj:RemoveEvent("OnConnect", eventname)
+		end
 	end
 
 	if IsValid(masterradio) then

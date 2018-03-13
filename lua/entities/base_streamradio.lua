@@ -233,13 +233,24 @@ function ENT:GetSoundPosAng()
 	local pos = self:GetPos()
 	local ang = self:GetAngles()
 
+	local stream = self.StreamObj
+	local channeltext = "no sound"
+
+	if stream then
+		channeltext = tostring(stream)
+	end
+
 	if not self.SoundPosOffset then
-		debugoverlay.Axis( pos, ang, 5, 0.05, color_white )
+		debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
+		debugoverlay.EntityTextAtPosition(pos, 1, "Sound pos: " .. channeltext, 0.05, color_white)
+
 		return pos, ang
 	end
 
-	pos, ang = LocalToWorld( self.SoundPosOffset, self.SoundAngOffset or ang_zero, pos, ang )
-	debugoverlay.Axis( pos, ang, 5, 0.05, color_white )
+	pos, ang = LocalToWorld(self.SoundPosOffset, self.SoundAngOffset or ang_zero, pos, ang)
+
+	debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
+	debugoverlay.EntityTextAtPosition(pos, 1, "Sound pos: " .. channeltext, 0.05, color_white)
 
 	return pos, ang
 end
@@ -287,6 +298,25 @@ function ENT:OnReloaded()
 	self:Remove()
 end
 
+function ENT:IsMutedForPlayer(ply)
+	if not self.__IsLibLoaded then
+		return true
+	end
+
+	if StreamRadioLib.IsMuted(ply) then
+		return true
+	end
+
+	local playerdist = self:DistanceToPlayer(ply)
+	local mutedist = math.min(self:GetRadius() + 1000, StreamRadioLib.GetMuteDistance(ply))
+
+	if playerdist >= mutedist then
+		return true
+	end
+
+	return false
+end
+
 function ENT:IsMutedForAll()
 	if not self.__IsLibLoaded then
 		return true
@@ -297,11 +327,9 @@ function ENT:IsMutedForAll()
 	for k, v in pairs(allplayers) do
 		if not IsValid(v) then continue end
 
-		local playerdist = self:DistanceToPlayer(v)
-		local mutedist = math.min(self:GetRadius() + 1000, StreamRadioLib.GetMuteDistance(v))
-		local muted = StreamRadioLib.IsMuted(v) or (playerdist >= mutedist)
-
+		local muted = self:IsMutedForPlayer(v)
 		if muted then continue end
+
 		return false
 	end
 

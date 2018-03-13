@@ -770,7 +770,7 @@ function CLASS:ToString()
 		return r
 	end
 
-	r = r .. "[" .. tostring( self:GetChannel() or "no channel" ) .. "][" .. self:GetError() .. "]"
+	r = r .. " <" .. tostring( self:GetChannel() or "no channel" ) .. "> [err:" .. self:GetError() .. "]"
 	return r
 end
 

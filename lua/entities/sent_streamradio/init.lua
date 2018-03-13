@@ -13,9 +13,10 @@ function ENT:Initialize( )
 	self:SetSolid( SOLID_VPHYSICS )
 
 	self.old = {}
+	self.slavesradios = {}
+
 	self.ExtraURLs = {}
 	self.ExtraNames = {}
-
 
 	self.ExtraURLs.Tool = ""
 	self.ExtraURLs.Wire = ""
