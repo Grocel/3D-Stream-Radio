@@ -806,21 +806,22 @@ hook.Add("Think", "Streamradio_Think", function()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 
-	if (RealTime() - LastThink) < 0.01 then return end
-	LastThink = RealTime()
+	local now = RealTime()
+	if (now - LastThink) < 0.01 then return end
+	LastThink = now
 
 	StreamRadioLib.SpawnedRadios = StreamRadioLib.SpawnedRadios or {}
 
 	for ent, _ in pairs(StreamRadioLib.SpawnedRadios) do
-		if not IsValid(ent) then return end
-		if not ent.__IsRadio then return end
+		if not IsValid(ent) then continue end
+		if not ent.__IsRadio then continue end
 
 		if ent.FastThink then
 			ent:FastThink()
 		end
 
-		if ent:IsDormant() then return end
-		if not ent.DormantThink then return end
+		if ent:IsDormant() then continue end
+		if not ent.DormantThink then continue end
 
 		ent:DormantThink()
 	end

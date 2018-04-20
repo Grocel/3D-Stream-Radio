@@ -31,6 +31,7 @@ function StreamRadioLib.TimedpairsStop( name )
 	if data then
 		local lookup = data.lookup or {}
 
+		-- If we had any end callback function
 		if data.endcallback then
 			local kv = lookup[data.currentindex - 1] or {} -- get previous key & value
 			local ok, err = pcall( data.endcallback, kv.key, kv.value, unpack( data.args ) )
@@ -41,10 +42,10 @@ function StreamRadioLib.TimedpairsStop( name )
 		end
 	end
 
-	-- If we had any end callback function
 	functions[name] = nil
 end
 
+-- custom table copy function to convert to numerically indexed table
 local function copy( t )
 	local ret = {}
 
@@ -58,7 +59,6 @@ local function copy( t )
 	return ret
 end
 
--- custom table copy function to convert to numerically indexed table
 local function Timedpairs( )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
@@ -66,6 +66,7 @@ local function Timedpairs( )
 	if not next( functions ) then return end
 	local toremove = {}
 
+	-- If there are any more values..
 	for name, data in pairs( functions ) do
 		for i = 1, data.step do
 			data.currentindex = data.currentindex + 1 -- increment index counter
@@ -113,13 +114,12 @@ local function Timedpairs( )
 		end
 	end
 
-	-- If there are any more values..
+	-- Remove all that were flagged for removal
 	for i = 1, #toremove do
 		functions[toremove[i]] = nil
 	end
 end
 
--- Remove all that were flagged for removal
 if ( CLIENT ) then
 	hook.Add( "PostRenderVGUI", "StreamRadioLib_Timedpairs", Timedpairs ) -- Doesn't get paused in single player. Can be important for vguis.
 else
@@ -137,6 +137,7 @@ function StreamRadioLib.Timedpairs( name, tab, step, callback, endcallback, ... 
 	}
 end
 
+-- calls the given function like simple timer, but isn't affected by game pausing.
 function StreamRadioLib.Timedcall( callback, ... )
 	local dummytab = {true}
 
@@ -144,4 +145,3 @@ function StreamRadioLib.Timedcall( callback, ... )
 		callback( ... )
 	end, nil, ... )
 end
--- calls the given function like simple timer, but isn't affected by game pausing.
