@@ -878,6 +878,10 @@ function CLASS:DeactivateNetworkedMode()
 end
 
 function CLASS:PostDupeInternal(ent, name, data)
+	if not IsValid(ent) then return end
+	if not name then return end
+	if not ent._3dstraemradio_classobjs_data then return end
+
 	ent._3dstreamradio_classobjs_data[name] = nil
 	self:CallHook("PostDupe", ent, data)
 end

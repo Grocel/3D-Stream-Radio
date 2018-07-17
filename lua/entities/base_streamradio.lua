@@ -281,7 +281,7 @@ function ENT:Initialize()
 	end
 
 	if SERVER then
-		self.WireOutputCache = {}
+		self._WireOutputCache = {}
 	end
 
 	self:CreateStream()
@@ -576,8 +576,8 @@ else
 			value = value and 1 or 0
 		end
 
-		if value == self.WireOutputCache[name] and not istable(value) then return end
-		self.WireOutputCache[name] = value
+		if value == self._WireOutputCache[name] and not istable(value) then return end
+		self._WireOutputCache[name] = value
 
 		WireLib.TriggerOutput(self, name, value)
 	end
@@ -587,7 +587,7 @@ else
 		self:OnWireInputTrigger(name, value, wired)
 	end
 
-	function ENT:OnWireInputTrigger(name, value)
+	function ENT:OnWireInputTrigger(name, value, wired)
 		-- Override me
 	end
 
@@ -608,35 +608,92 @@ else
 	end
 
 	function ENT:OnEntityCopyTableFinish(data)
-		for k, v in pairs(data) do
-			if isfunction(v) then
-				data[k] = nil
-				continue
+		local done = {}
+
+		// Filter out all variables/members with an storable values
+		// to avoid any abnormal, invalid or unexpectedly shared entity stats on duping (especially for Garry-Dupe)
+		local function recursive_filter(tab, newtable)
+			if done[tab] then return tab end
+			done[tab] = true
+
+			if newtable then
+				for k, v in pairs(tab) do
+					if isfunction(k) or isfunction(v) then
+						continue
+					end
+
+					if isentity(k) or isentity(v) then
+						continue
+					end
+
+					if istable(k) then
+						k = recursive_filter(k, {})
+						newtable[k] = v
+					end
+
+					if istable(v) then
+						newtable[k] = recursive_filter(v, {})
+					end
+				end
+
+				return newtable
 			end
 
+			for k, v in pairs(tab) do
+				if isfunction(k) or isfunction(v) then
+					tab[k] = nil
+					continue
+				end
+
+				if isentity(k) or isentity(v) then
+					tab[k] = nil
+					continue
+				end
+
+				if istable(k) then
+					tab[k] = nil
+					continue
+				end
+
+				if istable(v) then
+					tab[k] = recursive_filter(v, {})
+				end
+			end
+
+			return tab
+		end
+
+		local EntityMods = data.EntityMods
+
+		data.StreamObj = nil
+		data.pl = nil
+		data.Owner = nil
+
+		data.Inputs = nil
+		data.Outputs = nil
+
+		data.BaseClass = nil
+		data.OnDieFunctions = nil
+		data.PhysicsObjects = nil
+		data.EntityMods = nil
+
+		data.old = nil
+
+		if self.OnSetupCopyData then
+			self:OnSetupCopyData(data)
+		end
+
+		// Filter out all variables/members with an underscore in the beginning
+		// to avoid any abnormal, invalid or unexpectedly shared entity stats on duping (especially for Garry-Dupe)
+		for k, v in pairs(data) do
 			if isstring(k) and #k > 0 and k[1] == "_" then
 				data[k] = nil
 				continue
 			end
 		end
 
-		data.__IsRadio = self.__IsRadio
-		data.__IsLibLoaded = self.__IsLibLoaded
-		data.__IsWiremodLoaded = self.__IsWiremodLoaded
-
-		data.Inputs = nil
-		data.Outputs = nil
-
-		data.StreamObj = nil
-		data.pl = nil
-		data.Owner = nil
-
-		data.old = nil
-		data.WireOutputCache = nil
-
-		if self.OnSetupCopyData then
-			self:OnSetupCopyData(data)
-		end
+		recursive_filter(data)
+		data.EntityMods = EntityMods
 	end
 
 	function ENT:PreEntityCopy()
@@ -689,8 +746,23 @@ else
 				if not IsValid(ent) then return end
 				if not ent._WireData then return end
 
-				WireLib.ApplyDupeInfo(ply, ent, ent._WireData, function(id)
-					return CreatedEntities[id]
+				WireLib.ApplyDupeInfo(ply, ent, ent._WireData, function(id, default)
+					if id == nil then return default end
+					if id == 0 then return game.GetWorld() end
+
+					local ident = CreatedEntities[id]
+
+					if not IsValid(ident) then
+						if isnumber(id) then
+							ident = ents.GetByIndex(id)
+						end
+					end
+
+					if not IsValid(ident) then
+						ident = default
+					end
+
+					return ident
 				end)
 
 				ent._WireData = nil

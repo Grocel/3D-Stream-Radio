@@ -332,8 +332,8 @@ function ENT:Control(ply, tr, pressed)
 
 	if pressed then
 		local now = RealTime()
-		if (now - (self.oldusetime or 0)) < 0.1 then return end
-		self.oldusetime = now
+		if (now - (self._oldusetime or 0)) < 0.1 then return end
+		self._oldusetime = now
 	end
 
 	local Cursor, CursorX, CursorY = self:GetCursor(ply, tr)
