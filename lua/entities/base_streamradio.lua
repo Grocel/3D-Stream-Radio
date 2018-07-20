@@ -628,12 +628,14 @@ else
 
 					if istable(k) then
 						k = recursive_filter(k, {})
-						newtable[k] = v
 					end
 
 					if istable(v) then
 						newtable[k] = recursive_filter(v, {})
+						continue
 					end
+
+					newtable[k] = v
 				end
 
 				return newtable
@@ -657,13 +659,17 @@ else
 
 				if istable(v) then
 					tab[k] = recursive_filter(v, {})
+					continue
 				end
+
+				tab[k] = v
 			end
 
 			return tab
 		end
 
 		local EntityMods = data.EntityMods
+		local PhysicsObjects = data.PhysicsObjects
 
 		data.StreamObj = nil
 		data.pl = nil
@@ -694,6 +700,7 @@ else
 
 		recursive_filter(data)
 		data.EntityMods = EntityMods
+		data.PhysicsObjects = PhysicsObjects
 	end
 
 	function ENT:PreEntityCopy()
@@ -708,6 +715,7 @@ else
 
 			local name = v:GetName()
 			local ent = v:GetEntity()
+
 			if ent ~= self then continue end
 
 			local func = v.PreDupe
