@@ -6,7 +6,7 @@ end
 
 RADIOIFACE.name = "youtubetoany.com"
 RADIOIFACE.priority = 1000
-RADIOIFACE.disabled = false
+RADIOIFACE.disabled = true
 
 local es = RADIOIFACE.errorspace
 

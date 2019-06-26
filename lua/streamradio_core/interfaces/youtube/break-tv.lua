@@ -96,7 +96,20 @@ function RADIOIFACE:Convert(url, callback, id)
 			end
 
 			local coreservername = "d" .. coreid .. ".ytcore.org"
-			self:Request("https://" .. coreservername .. "/widgets1/dl.php", function(suggess, data)
+			local unixtime = os.time()
+
+			local hashrequestdata = {
+				idv = id,
+				type = "mp3",
+				qu = tostring(self.parent.MaxBitrate),
+				title = title,
+				server = "https://" .. coreservername .. "/",
+				i = "",
+				["_"] = unixtime,
+				callback = "",
+			}
+
+			self:Request("https://" .. coreservername .. "/widget1/dl.php", function(suggess, data)
 				if not self:CheckConvertCondition(url, callback) then
 					return
 				end
@@ -107,7 +120,6 @@ function RADIOIFACE:Convert(url, callback, id)
 					callback(self, false, nil, ERROR_INVALID_COREID, data)
 					return
 				end
-
 
 				local body = string.Trim(data.body)
 
@@ -135,7 +147,7 @@ function RADIOIFACE:Convert(url, callback, id)
 					return
 				end
 
-				local downloadurl = "https://d" .. coreid .. ".ytcore.org/sse/?jobid=" .. StreamRadioLib.URLEncode(hash)
+				local downloadurl = "https://d" .. coreid .. ".ytcore.org/sse1/?jobid=" .. StreamRadioLib.URLEncode(hash)
 
 				data.custom_data.meta = {}
 				data.custom_data.meta.title = title
@@ -145,15 +157,11 @@ function RADIOIFACE:Convert(url, callback, id)
 				data.custom_data.meta.download = true
 
 				callback(self, true, downloadurl, nil, data)
-			end, {
-				idv = id,
-				type = "mp3",
-				qu = tostring(self.parent.MaxBitrate),
-				title = title,
-				server = "https://" .. coreservername .. "/",
-			}, "POST")
+			end, hashrequestdata, "POST")
 		end, {
 			link = "https://www.youtube.com/watch?v=" .. id,
+			color = "000000",
+			text = "FFFFFF",
 		})
 
 		return true

@@ -6,7 +6,7 @@ end
 
 RADIOIFACE.name = "youtube-mp3.info"
 RADIOIFACE.priority = 3000
-RADIOIFACE.disabled = false
+RADIOIFACE.disabled = true
 
 local es = RADIOIFACE.errorspace
 

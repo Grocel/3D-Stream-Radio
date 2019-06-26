@@ -96,7 +96,6 @@ local function CreateClass( classname, baseClass )
 		return self.ID or 0
 	end
 
-	-- Implementation of additional OO properties starts here
 	function new_class:GetClassname()
 		return self.classname
 	end

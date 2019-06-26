@@ -1019,14 +1019,21 @@ function CLASS:PlayStreamInternal(nodownload)
 				self._converter_downloads[URL] = true
 				self._wouldpredownload = true
 
+				self:TimerRemove("download_after")
+				self:TimerRemove("download_timeout")
+
 				if dltimeout > 0 then
 					self:TimerOnce("download_timeout", dltimeout, function()
+						self:TimerRemove("download_after")
 						afterdl()
 					end)
 				end
 
 				local dlstarted = StreamRadioLib.Cache.Download(convered_url, function(len, headers, code, saved)
-					afterdl()
+					self:TimerOnce("download_after", 0.5, function()
+						self:TimerRemove("download_timeout")
+						afterdl()
+					end)
 				end, URL)
 
 				if dlstarted then
@@ -1034,6 +1041,7 @@ function CLASS:PlayStreamInternal(nodownload)
 				end
 
 				self._converter_downloads[URL] = nil
+				self:TimerRemove("download_after")
 				self:TimerRemove("download_timeout")
 			end
 		end

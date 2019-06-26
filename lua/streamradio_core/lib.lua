@@ -742,6 +742,41 @@ local function NormalizeOfflineFilename( path )
 	return path
 end
 
+function StreamRadioLib.URIAddParameter(url, parameter)
+	if not istable(parameter) then
+		parameter = {parameter}
+	end
+
+	url = tostring(url or "")
+
+	local start = "?"
+
+	if string.find(url, "?", 1, true) then
+		start = "&"
+	end
+
+	local uri = {}
+	uri[#uri + 1] = url
+	uri[#uri + 1] = start
+
+	local first = true
+
+	for k, v in pairs(parameter) do
+		if not first then
+			uri[#uri + 1] = "&"
+		end
+
+		first = false
+
+		uri[#uri + 1] = URLEncode(k)
+		uri[#uri + 1] = "="
+		uri[#uri + 1] = URLEncode(v)
+	end
+
+	uri = table.concat(uri)
+	return uri
+end
+
 function StreamRadioLib.IsBlockedURLCode( url )
 	if ( not StreamRadioLib.BlockedURLCode ) then return false end
 	if ( StreamRadioLib.BlockedURLCode == "" ) then return false end

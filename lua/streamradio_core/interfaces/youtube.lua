@@ -37,7 +37,7 @@ Notes:
 RADIOIFACE.youtube_error_end = string.Trim(youtube_error_end)
 youtube_error_end = RADIOIFACE.youtube_error_end
 
-RADIOIFACE.youtube_help_url = "http://steamcommunity.com/workshop/filedetails/discussion/246756300/360671352684917592/"
+RADIOIFACE.youtube_help_url = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/1640915206446609230/"
 local youtube_help_url = RADIOIFACE.youtube_help_url
 
 

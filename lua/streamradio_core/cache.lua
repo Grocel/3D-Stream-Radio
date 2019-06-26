@@ -1,8 +1,8 @@
 StreamRadioLib.Cache = StreamRadioLib.Cache or {}
 local LIB = StreamRadioLib.Cache
 
-LIB.forbidden = LIB.forbidden or {}
-LIB.lastloaded = LIB.lastloaded or {}
+LIB.forbidden = {}
+LIB.lastloaded = {}
 
 local g_isDedicatedServer = (SERVER and game.IsDedicated())
 local MainDir = (StreamRadioLib.DataDirectory or "") .. "/cache"
@@ -63,6 +63,9 @@ local function Cache_Clear( ply, cmd, args )
 			return
 		end
 
+		LIB.lastloaded = {}
+		LIB.forbidden = {}
+
 		StreamRadioLib.Msg( ply, "Server stream cache cleared!" )
 	else
 		StreamRadioLib.Msg( ply, "You need to be an admin clear the server stream cache." )
@@ -77,6 +80,9 @@ if ( CLIENT ) then
 			StreamRadioLib.Msg( ply, "Client stream cache could not be cleared!" )
 			return
 		end
+
+		LIB.lastloaded = {}
+		LIB.forbidden = {}
 
 		StreamRadioLib.Msg( ply, "Client stream cache cleared!" )
 	end
@@ -296,8 +302,9 @@ function LIB.CanDownload( len )
 
 	len = tonumber(len or 0) or 0
 
-	if len <= 0 then
-		return false
+	if len == -1 then
+		-- allow trying to download the file if the size is unknown
+		return true
 	end
 
 	if len > MaxCacheSize then

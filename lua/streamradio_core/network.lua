@@ -298,7 +298,9 @@ function LIB.SetNWVarProxy(ent, key, func, ...)
 	end
 
 	SetDTVarCallbackInternal(ent, key, proxyfunc)
-	ent:SetNWVarProxy(key, proxyfunc, ...)
+
+	local setNWVarProxy = g_hasnw2 and ent.SetNW2VarProxy or ent.SetNWVarProxy
+	setNWVarProxy(ent, key, proxyfunc, ...)
 end
 
 function LIB.SetupDataTables(ent)
