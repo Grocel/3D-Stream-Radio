@@ -467,7 +467,7 @@ if CLIENT then
 		ErrorNoHalt(Addonname .. StreamRadioLib.ErrorString .. "\n")
 	end
 else
-	if Gmodversion < 190430 and Gmodversion > 5 then
+	if Gmodversion < 190428 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "The GMod-Server (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Server!"
 		outdated = true
 
