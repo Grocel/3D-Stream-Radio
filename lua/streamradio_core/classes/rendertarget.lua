@@ -11,6 +11,9 @@ end
 local BASE = CLASS:GetBaseClass()
 local g_classname = CLASS:GetClassname()
 
+local catchAndErrorNoHalt = StreamRadioLib.CatchAndErrorNoHalt
+
+
 local g_RenderTargetsCache = CLASS:GetGlobalVar("rendertarget_RenderTargetsCache", {})
 CLASS:SetGlobalVar("rendertarget_RenderTargetsCache", g_RenderTargetsCache)
 
@@ -345,7 +348,7 @@ function CLASS:Update()
 	render.PushRenderTarget(self._RT.tex, workaround_bug_x, workaround_bug_y, workaround_bug_w, workaround_bug_h)
 		render.Clear(0, 0, 0, 0, true)
 		cam.Start2D()
-			self:CallHook("OnRender")
+			catchAndErrorNoHalt(self.CallHook, self, "OnRender")
 		cam.End2D()
 	render.PopRenderTarget()
 	self:ProfilerEnd("Render")

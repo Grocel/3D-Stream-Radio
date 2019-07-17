@@ -229,12 +229,12 @@ function ENT:TraceWalls(radius)
 end
 
 function ENT:GetWallVolumeFactor()
-	if self:GetVolume() <= 0 then
+	if self.Muted then
 		self.wallvolcache = nil
 		return 0
 	end
 
-	if self.Muted then
+	if self:GetVolume() <= 0 then
 		self.wallvolcache = nil
 		return 0
 	end

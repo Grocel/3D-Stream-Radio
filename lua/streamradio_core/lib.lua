@@ -116,6 +116,19 @@ function StreamRadioLib.Msg(ply, msgstring)
 	end
 end
 
+local catchAndNohalt = function(err)
+	local msgstring = err
+	msgstring = string.Trim(StreamRadioLib.Addonname .. msgstring) .. "\n"
+
+	ErrorNoHalt(msgstring)
+
+	return err
+end
+
+function StreamRadioLib.CatchAndErrorNoHalt(func, ...)
+	return xpcall(func, catchAndNohalt, ...)
+end
+
 function StreamRadioLib.Debug(format, ...)
 	if not StreamRadioLib.IsDebug() then return end
 

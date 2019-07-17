@@ -10,6 +10,8 @@ local ColY = Color(255,255,0, 60)
 local tune_nohdr = Vector( 0.80, 0, 0 )
 local CursorMat = StreamRadioLib.GetPNG("cursor")
 
+local catchAndErrorNoHalt = StreamRadioLib.CatchAndErrorNoHalt
+
 local g_listengroup = 0
 
 function CLASS:PreAssignToListenGroup()
@@ -113,7 +115,7 @@ function CLASS:Create()
 		render.PushFilterMin(TEXFILTER.NONE)
 		render.PushFilterMag(TEXFILTER.NONE)
 
-		self:_RenderInternal()
+		catchAndErrorNoHalt(self._RenderInternal, self)
 
 		render.PopFilterMag()
 		render.PopFilterMin()
@@ -290,26 +292,28 @@ function CLASS:RenderSystem()
 	render.SetToneMappingScaleLinear(tune_nohdr) -- Turns off hdr
 
 	surface.SetAlphaMultiplier(alpha)
-	self:DrawBorder()
+	catchAndErrorNoHalt(self.DrawBorder, self)
 	surface.SetAlphaMultiplier(1)
 
 	if self:HasRendertarget() then
 		surface.SetDrawColor(255, 255, 255, alpha * 255)
-		self._RT:Render()
+
+		catchAndErrorNoHalt(self._RT.Render, self._RT)
+
 		surface.SetDrawColor(255, 255, 255, 255)
 		self.FrameTime = self._RT:ProfilerTime("Render")
 	else
 		self:ProfilerStart("Render_rtfallback")
 		surface.SetAlphaMultiplier(alpha)
 
-		self:_RenderInternal()
+		catchAndErrorNoHalt(self._RenderInternal, self)
 
 		surface.SetAlphaMultiplier(1)
 		self.FrameTime = self:ProfilerEnd("Render_rtfallback")
 	end
 
 	surface.SetAlphaMultiplier(alpha)
-	self:DrawCursor()
+	catchAndErrorNoHalt(self.DrawCursor, self)
 	surface.SetAlphaMultiplier(1)
 
 	render.SetToneMappingScaleLinear(oldtune) -- Resets hdr
