@@ -8,6 +8,7 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
+		dtonly = true,
 	},
 
 	["Bool"] = {
@@ -18,7 +19,7 @@ local g_types = {
 			return tobool(v)
 		end,
 		dtmaxcount = 32,
-		dtonly = true, -- NW2 works better for some reason
+		dtonly = true,
 	},
 
 	["Entity"] = {
@@ -27,6 +28,7 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
+		dtonly = true,
 	},
 
 	["Float"] = {
@@ -35,6 +37,7 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
+		dtonly = true,
 	},
 
 	["Int"] = {
@@ -345,7 +348,10 @@ function LIB.AddDTNetworkVar(ent, datatype, name, ...)
 	assert(g_types[datatype], "argument #1 is an invalid datatype!")
 	assert(name ~= "", "argument #2 is an invalid name!")
 
-	if DTNetworkVarExists(ent, name) then return true end
+
+	//local exists = DTNetworkVarExists(ent, name)
+
+	//if DTNetworkVarExists(ent, name) then return true end
 	if not CanAddDTNetworkVar(ent, datatype, name) then return false end
 
 	ent.StreamRadioDT = ent.StreamRadioDT or {}
