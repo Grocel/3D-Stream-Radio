@@ -15,6 +15,8 @@ local SERVER = SERVER
 local CLIENT = CLIENT
 
 local EmptyVector = Vector()
+local catchAndErrorNoHalt = StreamRadioLib.CatchAndErrorNoHalt
+
 
 local BASS3 = BASS3 or {}
 
@@ -1160,6 +1162,18 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 		StreamCallback( channel, err )
 	end
 
+	local safeCallback = function(...)
+		catchAndErrorNoHalt(callback, ...)
+	end
+
+	if not URLonline then
+		-- avoid playing non existing files to avoid crashing
+		if not file.Exists( URL, "GAME" ) then
+			safeCallback( nil, 2 )
+			return true
+		end
+	end
+
 	local playfunc = nil
 	local Mode = nil
 
@@ -1175,7 +1189,7 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 			return false
 		end
 
-		return playfunc( URL, Mode, callback )
+		return playfunc( URL, Mode, safeCallback )
 	end
 
 	Mode = "noblock noplay "
@@ -1189,7 +1203,7 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 		return false
 	end
 
-	playfunc( URL, Mode, callback )
+	playfunc( URL, Mode, safeCallback )
 	return true
 end
 
