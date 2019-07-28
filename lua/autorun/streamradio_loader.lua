@@ -526,7 +526,9 @@ else
 		if err == "" then return end
 		if not StreamRadioLib then return end
 
-		StreamRadioLib.ErrorString = string.Trim((StreamRadioLib.ErrorString or "") .. "\n\n" .. err)
+		StreamRadioLib.ErrorString = StreamRadioLib.ErrorString or ""
+		StreamRadioLib.ErrorString = string.Trim(StreamRadioLib.ErrorString .. "\n\n" .. err)
+
 		ErrorNoHalt((StreamRadioLib.Addonname or "") .. StreamRadioLib.ErrorString .. "\n")
 		StreamRadioLib.Loaded = nil
 	end)
