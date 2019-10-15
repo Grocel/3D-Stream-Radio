@@ -339,13 +339,8 @@ function CLASS:Update()
 
 	local w, h = self:GetSize()
 
-	local workaround_bug_x = w / 64
-	local workaround_bug_y = h / 64
-	local workaround_bug_w = w + workaround_bug_x * 2 + math.ceil(w / 1024)
-	local workaround_bug_h = h + workaround_bug_y * 2 + math.ceil(h / 1024)
-
 	self:ProfilerStart("Render")
-	render.PushRenderTarget(self._RT.tex, workaround_bug_x, workaround_bug_y, workaround_bug_w, workaround_bug_h)
+	render.PushRenderTarget(self._RT.tex, 0, 0, w, h)
 		render.Clear(0, 0, 0, 0, true)
 		cam.Start2D()
 			catchAndErrorNoHalt(self.CallHook, self, "OnRender")
@@ -384,6 +379,23 @@ function CLASS:Clear()
 	end
 end
 
+local function offsetCorrection(u0, v0, u1, v1)
+	-- Fixes wired offset caused by surface.DrawTexturedRectUV()
+	-- Bug report: https://github.com/Facepunch/garrysmod-issues/issues/3173
+	-- Code from: https://wiki.garrysmod.com/page/surface/DrawTexturedRectUV
+
+	local du = 0.5 / 32 -- half pixel anticorrection
+	local dv = 0.5 / 32 -- half pixel anticorrection
+
+	u0 = ( u0 - du ) / ( 1 - 2 * du )
+	v0 = ( v0 - dv ) / ( 1 - 2 * dv )
+
+	u1 = ( u1 - du ) / ( 1 - 2 * du )
+	v1 = ( v1 - dv ) / ( 1 - 2 * dv )
+
+	return u0, v0, u1, v1
+end
+
 function CLASS:Render()
 	if not self._RT then return end
 	if self:IsDisabled() then return end
@@ -401,8 +413,10 @@ function CLASS:Render()
 		mat:SetTexture( "$basetexture", tex )
 	end
 
+	local u0, v0, u1, v1 = offsetCorrection(0, 0, 1, 1)
+
 	surface.SetMaterial(mat)
-	surface.DrawTexturedRectUV(x, y, w, h, 0, 0, 1, 1)
+	surface.DrawTexturedRectUV(x, y, w, h, u0, v0, u1, v1)
 end
 
 function CLASS:SetSize(w, h)
