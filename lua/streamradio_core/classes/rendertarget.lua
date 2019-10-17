@@ -20,14 +20,23 @@ CLASS:SetGlobalVar("rendertarget_RenderTargetsCache", g_RenderTargetsCache)
 local function next2power(value)
 	value = value or 0
 	if value <= 0 then return 0 end
+
 	return math.ceil(2 ^ math.ceil(math.log(value) / math.log(2)))
 end
 
-local function GetRenderTargetMaterial( name, tex )
-	local protoMaterial = Material( name, "nocull" )
-	local imageName = protoMaterial:GetName( )
+local function GetRenderTargetMaterial(tex)
+	if not tex then
+		return nil
+	end
+
+	if tex:IsError() then
+		return nil
+	end
+
+	local name = tex:GetName()
 
 	local materialParameters = {
+		["$basetexture"] = name,
 		["$vertexcolor"] = 1,
 		["$vertexalpha"] = 1,
 		["$nocull"] = 1,
@@ -36,13 +45,12 @@ local function GetRenderTargetMaterial( name, tex )
 		["$translucent"] = 1,
 	}
 
-	local mat = CreateMaterial( imageName, "UnlitGeneric", materialParameters )
+	local mat = CreateMaterial( name, "UnlitGeneric", materialParameters )
 
 	if not mat then
 		return nil
 	end
 
-	mat:SetTexture( "$basetexture", tex )
 	mat:Recompute()
 	return mat
 end
@@ -300,7 +308,7 @@ function CLASS:CreateRendertarget()
 		IMAGE_FORMAT_RGBA8888
 	)
 
-	local mat = GetRenderTargetMaterial( name, tex )
+	local mat = GetRenderTargetMaterial(tex)
 
 	rt = self:SetCache(mat, tex)
 	if not rt then
@@ -310,12 +318,6 @@ function CLASS:CreateRendertarget()
 	render.PushRenderTarget( tex )
 		render.Clear( 0, 0, 0, 0, true )
 	render.PopRenderTarget( )
-
-	local OldTex = mat:GetTexture( "$basetexture" )
-
-	if OldTex ~= tex then
-		mat:SetTexture( "$basetexture", tex )
-	end
 
 	UnfreeCache(w, h, rt.index)
 	return rt
@@ -371,29 +373,6 @@ function CLASS:Clear()
 	render.PushRenderTarget( tex )
 		render.Clear( 0, 0, 0, 0, true )
 	render.PopRenderTarget( )
-
-	local OldTex = mat:GetTexture( "$basetexture" )
-
-	if OldTex ~= tex then
-		mat:SetTexture( "$basetexture", tex )
-	end
-end
-
-local function offsetCorrection(u0, v0, u1, v1)
-	-- Fixes wired offset caused by surface.DrawTexturedRectUV()
-	-- Bug report: https://github.com/Facepunch/garrysmod-issues/issues/3173
-	-- Code from: https://wiki.garrysmod.com/page/surface/DrawTexturedRectUV
-
-	local du = 0.5 / 32 -- half pixel anticorrection
-	local dv = 0.5 / 32 -- half pixel anticorrection
-
-	u0 = ( u0 - du ) / ( 1 - 2 * du )
-	v0 = ( v0 - dv ) / ( 1 - 2 * dv )
-
-	u1 = ( u1 - du ) / ( 1 - 2 * du )
-	v1 = ( v1 - dv ) / ( 1 - 2 * dv )
-
-	return u0, v0, u1, v1
 end
 
 function CLASS:Render()
@@ -407,16 +386,8 @@ function CLASS:Render()
 	local x, y = self:GetPos()
 	local w, h = self:GetSize()
 
-	local OldTex = mat:GetTexture( "$basetexture" )
-
-	if OldTex ~= tex then
-		mat:SetTexture( "$basetexture", tex )
-	end
-
-	local u0, v0, u1, v1 = offsetCorrection(0, 0, 1, 1)
-
 	surface.SetMaterial(mat)
-	surface.DrawTexturedRectUV(x, y, w, h, u0, v0, u1, v1)
+	surface.DrawTexturedRectUV(x, y, w, h, 0, 0, 1, 1)
 end
 
 function CLASS:SetSize(w, h)
