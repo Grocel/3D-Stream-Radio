@@ -7,11 +7,10 @@ LIB.lastloaded = {}
 local g_isDedicatedServer = (SERVER and game.IsDedicated())
 local MainDir = (StreamRadioLib.DataDirectory or "") .. "/cache"
 
-local MinFileSize = 2 ^ 16 // 64 KB
-local MaxFileSize = 2 ^ 26 // 64 MB
-local MaxCacheSize = 2 ^ 30 // 1 GB
+local MinFileSize = 2 ^ 16 -- 64 KB
+local MaxFileSize = 2 ^ 26 -- 64 MB
+local MaxCacheSize = 2 ^ 30 -- 1 GB
 local MaxCacheCount = 128
-local MaxCacheAge = 3600 * 24 * 7 // 1 Week
 
 local function CreateBaseFolder( dir )
 	if not file.IsDir( dir, "DATA" ) then
@@ -91,7 +90,7 @@ if ( CLIENT ) then
 end
 
 local function IsValidFile( File )
-	return ( not file.IsDir( File, "DATA" ) and file.Exists( File, "DATA" ) )
+	return not file.IsDir( File, "DATA" ) and file.Exists( File, "DATA" )
 end
 
 local function Hash( var )
@@ -166,17 +165,13 @@ local function Cache_Cleanup()
 		sizeleft = 0
 	end
 
-	local now = os.time()
-
 	-- new -> old
 	table.SortByMember( files, "time", false )
 
 	local index = 1
 	for k, v in pairs( files ) do
 		local path = v.path
-		local name = v.name
 		local size = v.size
-		local time = v.time
 
 		if ( index >= MaxCacheCount ) then
 			file.Delete( path )
@@ -212,9 +207,7 @@ local function Cache_Cleanup()
 
 	for k, v in pairs( filesleft ) do
 		local path = v.path
-		local name = v.name
 		local size = v.size
-		local time = v.time
 
 		if ( sizeleft <= 0 ) then continue end
 

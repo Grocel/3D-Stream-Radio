@@ -1,6 +1,5 @@
 -- Loader of the 3D Stream Radio. Made By Grocel.
 local IsValid = IsValid
-local MsgN = MsgN
 local error = error
 local ErrorNoHalt = ErrorNoHalt
 local pcall = pcall
@@ -15,7 +14,6 @@ local string = string
 local concommand = concommand
 local system = system
 local file = file
-local http = http
 local net = net
 local hook = hook
 
@@ -206,12 +204,12 @@ local function saveinclude(lua, force)
 	end
 
 	if StreamRadioLib.IsDebug() then
-		// For easier reloading during development
+		-- For easier reloading during development
 		include(lua)
 		return true, true
 	end
 
- 	// Anything below is too ensure that the addon has loaded correctly without errors
+	-- Anything below is too ensure that the addon has loaded correctly without errors
 
 	if force then
 		g_loaded[lua] = nil
