@@ -45,12 +45,12 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 [Garry's Mod]: <http://garrysmod.com/>
 [Wiremod]: <https://github.com/wiremod/wire>
 [GM_BASS3]: <https://gmod.facepunch.com/f/gmodaddon/jina/gm-bass3-A-cross-plattform-shared-Lua-API-to-BASS/1/>
-[workshop]: <http://steamcommunity.com/sharedfiles/filedetails/?id=246756300>
+[workshop]: <https://steamcommunity.com/sharedfiles/filedetails/?id=246756300>
 
-[Web Radio]: <http://steamcommunity.com/sharedfiles/filedetails/?id=314470705>
-[PatchPlay]: <http://steamcommunity.com/sharedfiles/filedetails/?id=250792180>
-[NM Prop Pack]: <http://steamcommunity.com/sharedfiles/filedetails/?id=605223544>
-[Fallout 3 Jukebox Model]: <http://steamcommunity.com/sharedfiles/filedetails/?id=529954000>
-[Minecraft SWEP]: <http://steamcommunity.com/sharedfiles/filedetails/?id=116592647>
+[Web Radio]: <https://steamcommunity.com/sharedfiles/filedetails/?id=314470705>
+[PatchPlay]: <https://steamcommunity.com/sharedfiles/filedetails/?id=250792180>
+[NM Prop Pack]: <https://steamcommunity.com/sharedfiles/filedetails/?id=605223544>
+[Fallout 3 Jukebox Model]: <https://steamcommunity.com/sharedfiles/filedetails/?id=529954000>
+[Minecraft SWEP]: <https://steamcommunity.com/sharedfiles/filedetails/?id=116592647>
 
 [CPPI]: <http://ulyssesmod.net/archive/CPPI_v1-3.pdf>

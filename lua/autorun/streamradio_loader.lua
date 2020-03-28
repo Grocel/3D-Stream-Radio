@@ -58,24 +58,25 @@ end
 local loader_ok = true
 
 local g_loaded_dll = {}
+
 local function saveRequireDLL(dll, optional)
 	if not StreamRadioLib then
-		return false
+		return false, nil
 	end
 
 	if not StreamRadioLib.IsDebug then
-		return false
+		return false, nil
 	end
 
 	dll = tostring(dll or "")
 	dll = string.lower(dll)
 
 	if dll == "" then
-		return false
+		return false, nil
 	end
 
 	if g_loaded_dll[dll] then
-		return g_loaded_dll[dll] or false
+		return g_loaded_dll[dll] or false, nil
 	end
 
 	local realm = SERVER and "sv" or "cl"
@@ -101,6 +102,14 @@ local function saveRequireDLL(dll, optional)
 			err = "Unknown error"
 		end
 
+		if optional then
+			if StreamRadioLib.IsDebug() then
+				ErrorNoHalt((StreamRadioLib.Addonname or "") .. err .. "\n")
+			end
+
+			return false, err
+		end
+
 		StreamRadioLib.ErrorString = StreamRadioLib.ErrorString or ""
 
 		if StreamRadioLib.ErrorString == "" then
@@ -114,11 +123,11 @@ local function saveRequireDLL(dll, optional)
 		loader_ok = false
 
 		ErrorNoHalt((StreamRadioLib.Addonname or "") .. err .. "\n")
-		return false
+		return false, err
 	end
 
 	g_loaded_dll[dll] = true
-	return true
+	return true, nil
 end
 
 local g_loaded_cs = {}
@@ -259,15 +268,34 @@ local function saveinclude(lua, force)
 	return status, err
 end
 
+local g_bassSupportedBranches = {
+	["dev"] = true,
+	["prerelease"] = true,
+	["unknown"] = true,
+	["none"] = true,
+	["live"] = true,
+	["main"] = true,
+	[""] = true,
+}
+
 local function loadBASS3()
 	if BASS3 and BASS3.Version and BASS3.ModuleVersion then
 		return true
 	end
 
 	local dll = "bass3"
-	local status = saveRequireDLL(dll, true)
+	local dll_name = string.upper("gm_" .. dll)
+
+	local status, err = saveRequireDLL(dll, true)
 
 	if not status then
+		local branch = BRANCH or ""
+
+		if err and not g_bassSupportedBranches[branch] then
+			local ErrorString = dll_name .. " is not supported on branch '" .. branch .. "'!\n"
+			ErrorNoHalt(Addonname .. ErrorString .. "\n")
+		end
+
 		return false
 	end
 
@@ -283,12 +311,13 @@ local function loadBASS3()
 		return false
 	end
 
-	local dll_name = string.upper("gm_" .. dll)
 	local BassModuleVersion = tonumber(BASS3.ModuleVersion) or 0
 
-	if BassModuleVersion < 12 then
+	if BassModuleVersion < 14 then
 		local ErrorString = dll_name .. " is outdated!\n"
 		ErrorNoHalt(Addonname .. ErrorString .. "\n")
+
+		return false
 	end
 
 	return true
@@ -458,14 +487,14 @@ end
 local outdated = false
 
 if CLIENT then
-	if Gmodversion < 190702 and Gmodversion > 5 then
+	if Gmodversion < 200321 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "Your GMod-Client (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Client!"
 		outdated = true
 
 		ErrorNoHalt(Addonname .. StreamRadioLib.ErrorString .. "\n")
 	end
 else
-	if Gmodversion < 190702 and Gmodversion > 5 then
+	if Gmodversion < 200321 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "The GMod-Server (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Server!"
 		outdated = true
 
