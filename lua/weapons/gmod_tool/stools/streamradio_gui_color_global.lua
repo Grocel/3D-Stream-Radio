@@ -343,6 +343,10 @@ else
 	end
 end
 
+function TOOL:IsValid()
+	return IsValid(self:GetSWEP())
+end
+
 function TOOL:GetColors(forceall)
 	local data = {}
 
@@ -398,7 +402,7 @@ function TOOL:AddModeList( panel )
 	listpanel.NextConVarCheck = 0
 
 	local update = function()
-		if not self then return end
+		if not IsValid(self) then return end
 		if not IsValid(listpanel) then return end
 
 		local data = self:GetColors(true)

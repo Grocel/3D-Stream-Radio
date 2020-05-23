@@ -34,7 +34,7 @@ local Addonname = ( Addon .. ":\n" )
 
 local thisfile = "autorun/streamradio_loader.lua"
 
-StreamRadioLib = {}
+StreamRadioLib = StreamRadioLib or {}
 StreamRadioLib.Addonname = Addonname
 StreamRadioLib.Loaded = nil
 StreamRadioLib.HasBass = false
@@ -487,14 +487,14 @@ end
 local outdated = false
 
 if CLIENT then
-	if Gmodversion < 200321 and Gmodversion > 5 then
+	if Gmodversion < 200520 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "Your GMod-Client (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Client!"
 		outdated = true
 
 		ErrorNoHalt(Addonname .. StreamRadioLib.ErrorString .. "\n")
 	end
 else
-	if Gmodversion < 200321 and Gmodversion > 5 then
+	if Gmodversion < 200520 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "The GMod-Server (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Server!"
 		outdated = true
 

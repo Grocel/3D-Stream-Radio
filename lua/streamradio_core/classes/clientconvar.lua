@@ -113,6 +113,48 @@ local g_types = {
 			})
 		end,
 	},
+
+	["dropdown"] = {
+		get = function(this, cv)
+			local options = this:GetOptions()
+			local value = cv:GetString()
+
+			if not options[value] then
+				return ""
+			end
+
+			return value
+		end,
+
+		set = function(this, cv, val)
+			local options = this:GetOptions()
+			local val = tostring(val or "")
+
+			if not options[val] then
+				val = ""
+			end
+
+			cv:SetString(value)
+		end,
+
+		panel_function = function(this, mainpanel, ...)
+			local tmp = {}
+			local options = this:GetOptions()
+			local cmd = this:GetCMD()
+
+			local count = 0
+			for k,v in pairs(options) do
+				tmp[v] = {[cmd] = k}
+				count = count + 1
+			end
+
+			return mainpanel:AddControl("ListBox", {
+				label = this:GetPanellabel(),
+				options = tmp,
+				height = math.min(count * 20 + 1, 225)
+			})
+		end,
+	},
 }
 
 function CLASS:Create()
@@ -124,6 +166,7 @@ function CLASS:Create()
 	self.userdata = false
 	self.helptext = ""
 	self.type = "string"
+	self.options = {}
 
 	self._convar = nil
 end
@@ -164,6 +207,15 @@ function CLASS:GetUserdata()
 	return self.userdata or false
 end
 
+function CLASS:SetDefault(var)
+	if self._convar then return end
+	self.defaultvalue = tostring(var or "")
+end
+
+function CLASS:GetDefault()
+	return self.defaultvalue or ""
+end
+
 function CLASS:SetHelptext(var)
 	if self._convar then return end
 	self.helptext = tostring(var or "")
@@ -171,6 +223,15 @@ end
 
 function CLASS:GetHelptext()
 	return self.helptext or ""
+end
+
+function CLASS:SetOptions(var)
+	if self._convar then return end
+	self.options = var or {}
+end
+
+function CLASS:GetOptions()
+	return self.options or {}
 end
 
 function CLASS:SetPanellabel(var)

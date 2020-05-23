@@ -136,6 +136,8 @@ function StreamRadioLib.Debug(format, ...)
 	if format == "" then return end
 
 	local msgstring = string.format(format, ...)
+	msgstring = string.Trim(msgstring)
+
 	if msgstring == "" then return end
 
 	local tmp = string.Explode("\n", msgstring, false)
@@ -146,7 +148,11 @@ function StreamRadioLib.Debug(format, ...)
 	msgstring = table.concat(tmp)
 	msgstring = string.Trim(StreamRadioLib.Addonname .. msgstring) .. "\n"
 
-	MsgN(msgstring)
+	if StreamRadioLib.VR.IsActive() then
+		StreamRadioLib.VR.Debug(msgstring)
+	else
+		MsgN(msgstring)
+	end
 end
 
 local hashcache = {}
@@ -291,6 +297,18 @@ function StreamRadioLib.IsMuted(ply)
 	return true
 end
 
+function StreamRadioLib.HasYoutubeSupport(ply)
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
+	end
+
+	if not IsValid(ply) then return false end
+	if not ply:IsPlayer() then return false end
+	if ply:IsBot() then return false end
+
+	return tobool(ply:GetInfo("cl_streamradio_youtubesupport"))
+end
+
 function StreamRadioLib.GameIsPaused()
 	local frametime = FrameTime()
 
@@ -327,10 +345,17 @@ function StreamRadioLib.GetCameraEnt(ply)
 end
 
 function StreamRadioLib.GetCameraPos(ply)
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
+	end
+
+	if StreamRadioLib.VR.IsActive(ply) then
+		local pos = StreamRadioLib.VR.GetCameraPos(ply)
+		return pos
+	end
+
 	local camera = StreamRadioLib.GetCameraEnt(ply)
 	if not IsValid(camera) then return nil end
-
-	local pos = nil
 
 	if camera:IsPlayer() then
 		pos = camera:EyePos()
@@ -341,20 +366,55 @@ function StreamRadioLib.GetCameraPos(ply)
 	return pos
 end
 
-local trace = {}
-function StreamRadioLib.Trace(ply)
+function StreamRadioLib.GetControlPosDir(ply)
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
+	end
+
+	if StreamRadioLib.VR.IsActive(ply) then
+		local pos, dir = StreamRadioLib.VR.GetControlPosDir(ply)
+		return pos, dir
+	end
+
 	local camera = StreamRadioLib.GetCameraEnt(ply)
-	local start_pos, end_pos
+
 	if not IsValid(ply) then return nil end
 	if not IsValid(camera) then return nil end
 
 	if camera:IsPlayer() then
-		start_pos = camera:EyePos()
-		end_pos = start_pos + camera:GetAimVector() * 5000
+		pos = camera:EyePos()
+		dir = camera:GetAimVector()
 	else
-		start_pos = camera:GetPos()
-		end_pos = start_pos + ply:GetAimVector() * 5000
+		pos = camera:GetPos()
+		dir = ply:GetAimVector()
 	end
+
+	return pos, dir
+end
+
+
+local trace = {}
+function StreamRadioLib.Trace(ply)
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
+	end
+
+	local pos, dir = StreamRadioLib.GetControlPosDir(ply)
+
+	if not pos then
+		return nil
+	end
+
+	if not dir then
+		return nil
+	end
+
+	local camera = StreamRadioLib.GetCameraEnt(ply)
+	if not IsValid(ply) then return nil end
+	if not IsValid(camera) then return nil end
+
+	local start_pos = pos
+	local end_pos = pos + dir * 5000
 
 	trace.start = start_pos
 	trace.endpos = end_pos
@@ -426,7 +486,6 @@ function StreamRadioLib.StarTrace(traceparams, size, edges, layers)
 
 		local trace = util.TraceLine(traceparams)
 
-		//debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.1, color_white, false)
 		traces[#traces + 1] = trace
 	end
 

@@ -1037,6 +1037,8 @@ function PANEL:PerformLayout( )
 	if ( IsValid( self.Files ) ) then
 		self.Files:OnMouseWheeled( 0 )
 	end
+
+	StreamRadioLib.VR.RenderMenu(self)
 end
 
 local function Refresh( self )

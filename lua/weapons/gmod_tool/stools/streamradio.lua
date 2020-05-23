@@ -109,6 +109,8 @@ function TOOL:BuildToolPanel(CPanel)
 	ModelinfoLabel:SetDark( false )
 	ModelinfoLabel:SetHighlight( true )
 
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+
 	self:AddLabel( CPanel, "radiosettings", false )
 	self:AddURLTextEntry( CPanel, "streamurl", false )
 	self:AddCheckbox( CPanel, "play", true )
@@ -124,10 +126,12 @@ function TOOL:BuildToolPanel(CPanel)
 	VolumeNumSlider:SetMax( 1 )
 	VolumeNumSlider:SetDecimals( 2 )
 
-	local VolumeNumSlider = self:AddNumSlider( CPanel, "radius", true )
-	VolumeNumSlider:SetMin( 0 )
-	VolumeNumSlider:SetMax( 5000 )
-	VolumeNumSlider:SetDecimals( 0 )
+	local RadiusNumSlider = self:AddNumSlider( CPanel, "radius", true )
+	RadiusNumSlider:SetMin( 0 )
+	RadiusNumSlider:SetMax( 5000 )
+	RadiusNumSlider:SetDecimals( 0 )
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
 	self:AddLabel( CPanel, "spawnsettings", false )
 	self:AddCheckbox( CPanel, "freeze", false )
@@ -160,6 +164,9 @@ function TOOL:BuildToolPanel(CPanel)
 			WeldCheckbox:SetValue( 1 )
 		end
 	end
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+	CPanel:AddPanel(StreamRadioLib.Menu.GetPlaylistEditorButton())
 end
 
 local function CalcSpawnAngle( normal, ply_ang, model )

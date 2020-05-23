@@ -227,15 +227,19 @@ local function ClosePanel( ply, cmd, args )
 		return
 	end
 
-	MainPanel:Close()
+	StreamRadioLib.VR.CloseMenu(MainPanel)
 end
 
 local function OpenPanel( ply, cmd, args )
 	if not IsValid(ply) then return end
 
 	if not ply:IsAdmin() then
-		StreamRadioLib.Msg(ply, "You need to be an admin to use the playlist editor.")
+		StreamRadioLib.Msg(ply, "You must be admin to use the playlist editor.")
+		return
+	end
 
+	if StreamRadioLib.VR.IsActive(ply) then
+		StreamRadioLib.Msg(ply, "The playlist editor is not available in VR.")
 		return
 	end
 
@@ -247,9 +251,8 @@ local function OpenPanel( ply, cmd, args )
 		return
 	end
 
-	MainPanel:SetVisible(true)
-	MainPanel:MakePopup()
-	MainPanel:InvalidateLayout(true)
+	-- Open via VR lib regardless so we have smoother transitions without possible leftovers
+	StreamRadioLib.VR.MenuOpen("StreamradioPlaylistEditor", MainPanel, true)
 end
 
 concommand.Add("cl_streamradio_playlisteditor", OpenPanel)

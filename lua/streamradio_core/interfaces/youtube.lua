@@ -175,10 +175,6 @@ function RADIOIFACE:Convert(url, callback)
 		end
 	end
 
-	if not self:CheckConvertCondition(url, callcallbacks) then
-		return true
-	end
-
 	if q.started then return true end
 
 	local stack = self:GetSubInterfaceStack()
@@ -226,8 +222,8 @@ function RADIOIFACE:Convert(url, callback)
 		end, id)
 	end
 
-	iterration()
 	q.started = true
+	iterration()
 
 	return true
 end

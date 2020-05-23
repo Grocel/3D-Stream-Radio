@@ -21,6 +21,30 @@ function ENT:SetDisplayPosAng(pos, ang)
 	self.DisplayAngles = ang
 end
 
+function ENT:CanControlDisplay(ply)
+	if not self.__IsLibLoaded then return false end
+	if self:GetDisableInput() then return false end
+
+	if not self:HasGUI() then return false end
+	if self:GetDisableDisplay() then return false end
+
+	if StreamRadioLib.IsGUIHidden(ply) then return false end
+	if not self:OnGUIShowCheck(ply) then return false end
+
+	local pos, ang = self:GetDisplayPos()
+	if not pos then return false end
+
+	local controlpos = StreamRadioLib.GetControlPosDir(ply)
+	if not controlpos then return false end
+
+	-- Return false if from the backside
+	local a = controlpos - pos
+	local b = ang:Up():Dot( a ) / a:Length()
+
+	local displayVisAng = math.acos( b ) / math.pi * 180
+	return displayVisAng < 90
+end
+
 function ENT:CanSeeDisplay(ply)
 	if not self.__IsLibLoaded then return false end
 
@@ -40,7 +64,8 @@ function ENT:CanSeeDisplay(ply)
 	local a = campos - pos
 	local b = ang:Up():Dot( a ) / a:Length()
 
-	return (math.acos( b ) / math.pi * 180) < 90
+	local displayVisAng = math.acos( b ) / math.pi * 180
+	return displayVisAng < 90
 end
 
 function ENT:CursorInGUI(cx, cy)
@@ -96,11 +121,7 @@ function ENT:GetCursor( ply, trace )
 		return false
 	end
 
-	if self:GetDisableInput() then
-		return false
-	end
-
-	if not self:CanSeeDisplay(ply) then
+	if not self:CanControlDisplay(ply) then
 		return false
 	end
 
@@ -327,8 +348,7 @@ end
 function ENT:Control(ply, tr, pressed)
 	if not IsValid(self.GUI) then return end
 
-	if self:GetDisableInput() then return end
-	if not self:CanSeeDisplay(ply) then return end
+	if not self:CanControlDisplay(ply) then return end
 
 	if pressed then
 		local now = RealTime()
@@ -460,7 +480,7 @@ if CLIENT then
 		if not IsValid(self.GUI) then return false end
 		if not IsValid(ply) then return false end
 
-		if not self:CanSeeDisplay(ply) then return false end
+		if not self:CanControlDisplay(ply) then return false end
 		return true
 	end
 

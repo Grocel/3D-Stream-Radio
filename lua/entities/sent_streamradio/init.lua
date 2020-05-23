@@ -430,6 +430,33 @@ function ENT:DupeDataApply(key, value)
 	self.ExtraURLs.Wire = wireurl
 end
 
+function ENT:PermaPropSave()
+	local dataA = BaseClass.PermaPropSave(self)
+	local dataB = {
+		Model = self:GetModel()
+	}
+
+	return table.Merge(dataA, dataB)
+end
+
+function ENT:PermaPropLoad(data)
+	if data.Model then
+		local model = Model(data.Model)
+
+		if model ~= "" and util.IsValidModel(model) then
+			self.ModelVar = model
+			self:SetModel(model)
+		end
+	end
+
+	BaseClass.PermaPropLoad(self, data)
+
+	self:Spawn()
+	self:Activate()
+
+	return true
+end
+
 function ENT:OnWireInputTrigger(name, value, wired)
 	if not IsValid(self.StreamObj) then return end
 

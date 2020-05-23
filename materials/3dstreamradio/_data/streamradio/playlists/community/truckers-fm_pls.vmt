@@ -1,0 +1,6 @@
+[playlist]
+NumberOfEntries=1
+File1=https://radio.truckers.fm
+Title1=TruckersFM
+Length1=-1
+Version=2

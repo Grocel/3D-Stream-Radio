@@ -385,11 +385,9 @@ function LIB.Setup(toolobj)
 
 			this:BuildToolPanel(CPanel)
 
-			local credits = vgui.Create("DLabel")
-			credits:SetDark(true)
-			credits:SetText(StreamRadioLib.Addonname .. "Made by Grocel")
-			credits:SizeToContents()
-			CPanel:AddPanel(credits)
+			CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(15))
+			CPanel:AddPanel(StreamRadioLib.Menu.GetFAQButton())
+			CPanel:AddPanel(StreamRadioLib.Menu.GetCreditsPanel())
 
 			return true
 		end)

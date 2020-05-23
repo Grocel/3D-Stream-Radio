@@ -47,14 +47,20 @@ net.Receive( "Streamradio_Radio_Playlist", function( length )
 	entity.Playlist[x][y] = fileinfo
 end )
 
-local CamPos
+local CamPos = nil
 local InRenderScene = false
 
 hook.Add( "RenderScene", "Streamradio_CamInfo", function( origin, angles, fov )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 
-	if ( InRenderScene ) then return end
+	if StreamRadioLib.VR.IsActive() then
+		CamPos = nil
+		return
+	end
+
+	if InRenderScene then return end
+
 	InRenderScene = true
 	CamPos = origin
 	InRenderScene = false
@@ -86,6 +92,54 @@ local function ReleaseLastRadioControl()
 	g_lastradio = nil
 end
 
+local function GetPressed(ply)
+	local inVehicle = ply.InVehicle and ply:InVehicle()
+
+	if StreamRadioLib.GameIsPaused() then
+		return false
+	end
+
+	if StreamRadioLib.VR.IsActive(ply) then
+		if inVehicle then
+			return false -- VRMod API is broken for vehicles
+		end
+
+		-- Only allow if there is no focus on any menu
+		if StreamRadioLib.VR.MenuIsOpen() then
+			return false
+		end
+
+		-- Check if trigger is pressed
+		if StreamRadioLib.VR.GetTriggerPressed() then
+			return true
+		end
+
+		-- Or check if the player's right hand touches the radio
+		if StreamRadioLib.VR.GetRadioTouched() then
+			return true
+		end
+
+		return false
+	end
+
+	if gui.IsGameUIVisible() then
+		return false
+	end
+
+	local key = StreamRadioLib.GetControlKey()
+
+	if inVehicle then
+		key = StreamRadioLib.GetControlKeyVehicle()
+	end
+
+	if not key then
+		return false
+	end
+
+	local pressed = input.IsButtonDown( key )
+	return pressed
+end
+
 hook.Add( "Think", "Streamradio_Control", function( )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
@@ -93,18 +147,7 @@ hook.Add( "Think", "Streamradio_Control", function( )
 	local ply = LocalPlayer()
 	if not IsValid( ply ) then return end
 
-	if gui.IsGameUIVisible() then
-		ReleaseLastRadioControl()
-		return
-	end
-
-	local key = StreamRadioLib.GetControlKey()
-
-	if ply.InVehicle and ply:InVehicle( ) then
-		key = StreamRadioLib.GetControlKeyVehicle()
-	end
-
-	local pressed = input.IsButtonDown( key )
+	local pressed = GetPressed(ply)
 	if g_pressed == pressed then return end
 
 	if not pressed then
@@ -148,6 +191,7 @@ hook.Add( "Think", "Streamradio_Control", function( )
 	g_lastradio = Radio
 end )
 
+
 function StreamRadioLib.GetCameraPos(ply)
 	local islocal = false
 
@@ -157,6 +201,11 @@ function StreamRadioLib.GetCameraPos(ply)
 
 	if ply == LocalPlayer() then
 		islocal = true
+	end
+
+	if StreamRadioLib.VR.IsActive(ply) then
+		local pos = StreamRadioLib.VR.GetCameraPos(ply)
+		return pos
 	end
 
 	if not CamPos or not islocal then
@@ -175,6 +224,7 @@ function StreamRadioLib.GetCameraPos(ply)
 
 	return CamPos
 end
+
 
 function StreamRadioLib.CalcDistanceVolume( distance, max )
 	distance = distance or 0

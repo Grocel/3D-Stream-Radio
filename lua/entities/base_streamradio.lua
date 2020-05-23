@@ -607,6 +607,14 @@ else
 		return self.DupeData[key]
 	end
 
+	function ENT:PermaPropSave()
+		return {}
+	end
+
+	function ENT:PermaPropLoad(data)
+		return true
+	end
+
 	function ENT:OnEntityCopyTableFinish(data)
 		local done = {}
 

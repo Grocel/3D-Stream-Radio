@@ -112,7 +112,7 @@ How local or mounted file paths work:
 YouTube note:
   YouTube support is done via third party services, which are NOT under my control. So please do not blame me about problems with this.
 ]],
-	helpurl = "http://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918001392/"
+	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918001392/"
 }
 
 ErrorHelps[3] = {
@@ -233,7 +233,7 @@ Supported formats:
 YouTube note:
   YouTube support is done via third party services, which are NOT under my control. So please do not blame me about problems with this.
 ]],
-	helpurl = "http://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918028290/"
+	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918028290/"
 }
 
 ErrorHelps[42] = {
@@ -266,8 +266,15 @@ The Convar is: sv_streamradio_allow_customurls 0/1
 ErrorHelps[37] = ErrorHelps[4]
 ErrorHelps[44] = ErrorHelps[41]
 
-local HelpPanel = nil
-local HelpPanelYoutube = nil
+local HelpPanel = StreamRadioLib.g_HelpPanel
+
+if IsValid(HelpPanel) then
+	StreamRadioLib.VR.CloseMenu(HelpPanel)
+	HelpPanel:Remove()
+
+	HelpPanel = nil
+	StreamRadioLib.g_HelpPanel = nil
+end
 
 local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHelp, ErrorData )
 	ErrorHeader = ErrorHeader or ""
@@ -282,19 +289,18 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 	if not IsValid( HelpPanel ) then
 		local ErrorHelpFont = StreamRadioLib.Surface.AddFont(14, 1000, "Lucida Console")
 		HelpPanel = vgui.Create( "DFrame" ) -- The main frame.
+
 		HelpPanel:SetPos( 25, 25 )
+		HelpPanel:SetSize( 700, 400 )
 
-		local W = math.min( ScrW( ) - 50, 700 )
-		local H = math.min( ScrH( ) - 50, 400 )
-		HelpPanel:SetSize( W, H )
-
-		HelpPanel:SetMinWidth( 550 )
+		HelpPanel:SetMinWidth( 575 )
 		HelpPanel:SetMinHeight( 200 )
 		HelpPanel:SetSizable( true )
 		HelpPanel:SetDeleteOnClose( false )
 		HelpPanel:SetVisible( false )
 		HelpPanel:SetTitle( "Stream Radio Error Information" )
-		HelpPanel:GetParent( ):SetWorldClicker( true )
+		HelpPanel:SetZPos(150)
+		HelpPanel:GetParent():SetWorldClicker( true )
 
 		HelpPanel.HelpTextPanel = vgui.Create( "DTextEntry", HelpPanel )
 		HelpPanel.HelpTextPanel:SetEditable( true )
@@ -307,41 +313,46 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 		HelpPanel.HelpTextPanel:SetDrawBorder( true )
 		HelpPanel.HelpTextPanel:SetVerticalScrollbarEnabled( true )
 		HelpPanel.HelpTextPanel:SetFont( ErrorHelpFont )
+		HelpPanel.HelpTextPanel:SetZPos(100)
 		HelpPanel.HelpTextPanel:Dock( FILL )
 
 		local ControlPanel = vgui.Create( "DPanel", HelpPanel )
 		ControlPanel:SetPaintBackground( false )
 		ControlPanel:SetTall( 30 )
 		ControlPanel:DockMargin( 0, 5, 0, 0 )
+		ControlPanel:SetZPos(200)
 		ControlPanel:Dock( BOTTOM )
 
 		local OkButton = vgui.Create( "DButton", ControlPanel )
 		OkButton:SetWide( 100 )
 		OkButton:SetText( "OK" )
 		OkButton:DockMargin( 5, 0, 0, 0 )
+		OkButton:SetZPos(300)
 		OkButton:Dock( RIGHT )
 
 		OkButton.DoClick = function( self )
-			if ( not IsValid( HelpPanel ) ) then return end
-			HelpPanel:Close( )
+			StreamRadioLib.VR.CloseMenu(HelpPanel)
 		end
 
 		HelpPanel.CopyButton = vgui.Create( "DButton", ControlPanel )
 		HelpPanel.CopyButton:SetWide( 100 )
 		HelpPanel.CopyButton:SetText( "Copy to clipboard" )
 		HelpPanel.CopyButton:DockMargin( 5, 0, 0, 0 )
+		HelpPanel.CopyButton:SetZPos(400)
 		HelpPanel.CopyButton:Dock( RIGHT )
 
-		HelpPanel.OnlineHelpButton = vgui.Create( "DButton", ControlPanel )
-		HelpPanel.OnlineHelpButton:SetWide( 125 )
-		HelpPanel.OnlineHelpButton:SetText( "View online help" )
+		HelpPanel.OnlineHelpButton = StreamRadioLib.Menu.GetLinkButton("View online help")
+		HelpPanel.OnlineHelpButton:SetParent(ControlPanel)
+		HelpPanel.OnlineHelpButton:SetWide( 175 )
 		HelpPanel.OnlineHelpButton:DockMargin( 5, 0, 20, 0 )
+		HelpPanel.OnlineHelpButton:SetZPos(500)
 		HelpPanel.OnlineHelpButton:Dock( RIGHT )
 
 		HelpPanel.OptionToggleTick = vgui.Create( "DCheckBoxLabel", ControlPanel )
 		HelpPanel.OptionToggleTick:SetWide( 125 )
 		HelpPanel.OptionToggleTick:SetText( "" )
 		HelpPanel.OptionToggleTick:DockMargin( 10, 0, 0, 0 )
+		HelpPanel.OptionToggleTick:SetZPos(600)
 		HelpPanel.OptionToggleTick:Dock( LEFT )
 	end
 
@@ -351,10 +362,41 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 	if ( not IsValid( HelpPanel.OnlineHelpButton ) ) then return end
 	if ( not IsValid( HelpPanel.OptionToggleTick ) ) then return end
 
-	HelpPanel:Close( )
 	HelpPanel:SetTitle( "Stream Radio Error Information | " .. ErrorHeader )
-	HelpPanel:SetVisible( true )
-	HelpPanel:MakePopup( )
+
+	if not StreamRadioLib.VR.IsActive() then
+		local X, Y = HelpPanel:GetPos()
+		local W, H = HelpPanel:GetSize()
+
+		if X <= 0 then
+			X = 25
+		end
+
+		if Y <= 0 then
+			Y = 25
+		end
+
+		W = math.min(ScrW() - 50, W)
+		H = math.min(ScrH() - 50, H)
+
+		HelpPanel:SetPos(X, Y)
+		HelpPanel:SetSize(W, H)
+		HelpPanel:SetSizable(true)
+		HelpPanel:SetDraggable(true)
+		HelpPanel:GetParent():SetWorldClicker(true)
+	else
+		HelpPanel:SetPos(0, 0)
+		HelpPanel:SetSize(700, 400)
+		HelpPanel:SetSizable(false)
+		HelpPanel:SetDraggable(false)
+		HelpPanel:GetParent():SetWorldClicker(false)
+	end
+
+	StreamRadioLib.VR.MenuOpen(
+		"StreamRadioErrorInformation",
+		HelpPanel,
+		true
+	)
 
 	if url ~= "" then
 		ErrorText = ErrorHeader .. "\nURL: " .. url .. "\n\n" .. ErrorText
@@ -381,14 +423,7 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 	end
 
 	HelpPanel.OnlineHelpButton:SetVisible( ErrorOnlineHelp ~= "" )
-
-	HelpPanel.OnlineHelpButton.DoClick = function( self )
-		if ( not IsValid( HelpPanel ) ) then return end
-		if ( ErrorOnlineHelp == "" ) then return end
-		gui.OpenURL( ErrorOnlineHelp )
-	end
-
-	HelpPanel:InvalidateLayout( true )
+	HelpPanel.OnlineHelpButton:SetURL( ErrorOnlineHelp )
 
 	HelpPanel.OptionToggleTick:SetVisible(tickboxdata ~= nil)
 
@@ -397,6 +432,9 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 		HelpPanel.OptionToggleTick:SetConVar(tickboxdata.cmd or "")
 	end
 
+	HelpPanel:InvalidateLayout( true )
+
+	StreamRadioLib.g_HelpPanel = HelpPanel
 	return HelpPanel
 end
 
@@ -433,5 +471,5 @@ function StreamRadioLib.ShowErrorHelp( errorcode, url )
 end
 
 function StreamRadioLib.ShowPlaylistErrorHelp( )
-	CreateErrorHelpPanel( "Error: Invalid Playlist", ErrorHelpPlaylistText, nil, "http://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277917951293/" )
+	CreateErrorHelpPanel( "Error: Invalid Playlist", ErrorHelpPlaylistText, nil, "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277917951293/" )
 end

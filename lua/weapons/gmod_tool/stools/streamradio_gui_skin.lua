@@ -95,6 +95,10 @@ local function getnewname()
 	end
 end
 
+function TOOL:IsValid()
+	return IsValid(self:GetSWEP())
+end
+
 function TOOL:AddSkinList( panel )
 	local listpanel = vgui.Create( "DListView" )
 	panel:AddPanel(listpanel)
@@ -250,7 +254,7 @@ function TOOL:AddFileControlPanel( panel )
 	end
 
 	bgpanel.OpenFile = function()
-		if not self then return end
+		if not IsValid(self) then return end
 		if not IsValid(text) then return end
 		if not IsValid(bgpanel) then return end
 
@@ -261,7 +265,7 @@ function TOOL:AddFileControlPanel( panel )
 	end
 
 	buttondelete.DoClick = function()
-		if not self then return end
+		if not IsValid(self) then return end
 		if not IsValid(text) then return end
 		if not IsValid(bgpanel) then return end
 
@@ -275,7 +279,7 @@ function TOOL:AddFileControlPanel( panel )
 			StreamRadioLib.Tool.GetLocaleTranslation(self, "file.delete"),
 			StreamRadioLib.Tool.GetLocaleTranslation(self, "file.delete.yes"),
 			function()
-				if not self then return end
+				if not IsValid(self) then return end
 				if not IsValid(panel) then return end
 				if not IsValid(text) then return end
 				if not IsValid(bgpanel) then return end
@@ -291,7 +295,7 @@ function TOOL:AddFileControlPanel( panel )
 	end
 
 	buttonsave.DoClick = function()
-		if not self then return end
+		if not IsValid(self) then return end
 		if not IsValid(text) then return end
 		if not IsValid(bgpanel) then return end
 
@@ -308,7 +312,7 @@ function TOOL:AddFileControlPanel( panel )
 				StreamRadioLib.Tool.GetLocaleTranslation(self, "file.save"),
 				StreamRadioLib.Tool.GetLocaleTranslation(self, "file.save.yes"),
 				function()
-					if not self then return end
+					if not IsValid(self) then return end
 					if not IsValid(panel) then return end
 					if not IsValid(text) then return end
 					if not IsValid(bgpanel) then return end
@@ -349,7 +353,7 @@ function TOOL:RefreshList()
 
 	if not IsValid(self.filecontrolpanel) then return end
 	timer.Simple(0.1, function()
-		if not self then return end
+		if not IsValid(self) then return end
 		if not IsValid(self.filecontrolpanel) then return end
 
 		self:MakeFileAsOpen(self.OpenName)

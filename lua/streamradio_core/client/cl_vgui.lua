@@ -108,25 +108,6 @@ function PANEL:Init( )
 		StreamRadioLib.ShowErrorHelp(err, url)
 	end
 
-/*
-	// The Wiremod sound browser just confuses people
-	// Todo make a new sound browser for this addon
-
-	if WIRE_CLIENT_INSTALLED then
-		self.WireSoundBrowserIcon = self:Add( "DImageButton" )
-		self.WireSoundBrowserIcon:SetImage( "icon16/sound.png" )
-		self.WireSoundBrowserIcon:SetWide( 20 )
-		self.WireSoundBrowserIcon:Dock( RIGHT )
-		self.WireSoundBrowserIcon:SetStretchToFit( false )
-		self.WireSoundBrowserIcon:DockMargin( 0, 0, 0, 0 )
-		self.WireSoundBrowserIcon:SetTooltip( "Open the Wiremod sound browser for local files." )
-
-		self.WireSoundBrowserIcon.DoClick = function( panel )
-			RunConsoleCommand( "wire_sound_browser_open" )
-		end
-	end
-*/
-
 	self.URLText = self:Add( "DTextEntry" )
 	self.URLText:SetDrawLanguageID( false )
 	self.URLText:SetUpdateOnType( true )
@@ -219,8 +200,9 @@ function PANEL:UpdateURLState(bool)
 		self.URLIcon:SetImage("icon16/arrow_refresh.png")
 		self.URLIcon:SetTooltip("Checking URL...")
 		self.URLText:SetTooltip(self.URLTooltip .. "\n\nChecking URL...")
-		self:InvalidateLayout()
 
+		StreamRadioLib.VR.RenderMenu(self)
+		self:InvalidateLayout()
 		return
 	end
 
@@ -255,6 +237,8 @@ function PANEL:UpdateURLState(bool)
 		self.URLText:SetTooltip(string.Trim(self.URLTooltip .. "\n\n" .. tooltipurl))
 
 		self:OnURLCheck(false, err, url)
+
+		StreamRadioLib.VR.RenderMenu(self)
 		self:InvalidateLayout()
 
 		return
@@ -266,6 +250,8 @@ function PANEL:UpdateURLState(bool)
 		self.URLText:SetTooltip(self.URLTooltip)
 
 		self:OnURLCheck(true, err, url)
+
+		StreamRadioLib.VR.RenderMenu(self)
 		self:InvalidateLayout()
 
 		return
