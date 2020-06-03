@@ -2,7 +2,7 @@ StreamRadioLib.VR = {}
 local LIB = StreamRadioLib.VR
 
 function LIB.IsInstalled()
-	return istable(g_VR)
+	return istable(vrmod)
 end
 
 function LIB.IsActive(ply)
@@ -16,12 +16,7 @@ function LIB.IsActive(ply)
 	if not ply:IsPlayer() then return false end
 	if ply:IsBot() then return false end
 
-	if CLIENT and ply == LocalPlayer() then
-		if not g_VR.active then return false end
-		return true
-	end
-
-	return LIB.GetNetworkedFrame(ply) ~= nil
+	return vrmod.IsPlayerInVR(ply)
 end
 
 function LIB.Debug(txt)
@@ -35,56 +30,6 @@ function LIB.Debug(txt)
 	else
 		MsgN(txt)
 	end
-end
-
-function LIB.GetNetworkedFrame(ply)
-	if not LIB.IsInstalled() then return nil end
-
-	if not IsValid(ply) and CLIENT then
-		ply = LocalPlayer()
-	end
-
-	if not IsValid(ply) then return nil end
-
-	local steamId = ply:SteamID()
-
-	if SERVER then
-		local playerBuffer = nil
-
-		if game.SinglePlayer() then
-			playerBuffer = g_VR['STEAM_0:0:0:']
-		else
-			playerBuffer = g_VR[steamId]
-		end
-
-		if not playerBuffer then
-			return nil
-		end
-
-		local frame = playerBuffer.latestFrame
-		if not frame then
-			return nil
-		end
-
-		return frame
-	end
-
-	local netBuffer = g_VR.net
-	if not netBuffer then
-		return nil
-	end
-
-	local playerBuffer = netBuffer[steamId]
-	if not playerBuffer then
-		return nil
-	end
-
-	local frame = playerBuffer.lerpedFrame
-	if not frame then
-		return nil
-	end
-
-	return frame
 end
 
 function LIB.GetControlPosDir(ply)
@@ -111,31 +56,9 @@ function LIB.GetControlPosDir(ply)
 		return nil
 	end
 
-	local vehicle = ply.GetVehicle and ply:GetVehicle()
-	if IsValid(vehicle) then
-		return nil -- API is broken for vehicles
-	end
-
-	if CLIENT and ply == LocalPlayer() then
-		if g_VR.tracking and g_VR.tracking.pose_righthand and g_VR.tracking.pose_righthand.pos and g_VR.tracking.pose_righthand.ang then
-			local pos = g_VR.tracking.pose_righthand.pos
-			local dir = g_VR.tracking.pose_righthand.ang:Forward()
-
-			return pos, dir
-		end
-	end
-
-	local networkedFrame = LIB.GetNetworkedFrame(ply)
-	if not networkedFrame then return nil end
-
-	local pos = networkedFrame.righthandPos
-	local ang = networkedFrame.righthandAng
-
-	if not pos then return nil end
-	if not ang then return nil end
-
-	if SERVER then
-		pos, ang = LocalToWorld(pos, ang, ply:GetPos(), Angle())
+	local pos, ang = vrmod.GetRightHandPose(ply)
+	if not pos or not ang then
+		return nil
 	end
 
 	local dir = ang:Forward()
@@ -151,30 +74,13 @@ function LIB.GetCameraPos(ply)
 
 	if not IsValid(ply) then return nil end
 
-	if CLIENT and ply == LocalPlayer() then
-		if g_VR.tracking and g_VR.tracking.hmd and g_VR.tracking.hmd.pos and g_VR.tracking.hmd.ang then
-			local pos = g_VR.tracking.hmd.pos
-			local ang = g_VR.tracking.hmd.ang
-			return pos, ang
-		end
+	local pos, ang = vrmod.GetHMDPose(ply)
+	if not pos then
+		return nil
 	end
 
-	local networkedFrame = LIB.GetNetworkedFrame(ply)
-	if not networkedFrame then return nil end
-
-	local pos = networkedFrame.hmdPos
-	if not pos then return nil end
-
-	local ang = networkedFrame.hmdAng
-	if not ang then return nil end
-
-	if SERVER then
-		local vehicle = ply.GetVehicle and ply:GetVehicle()
-		if IsValid(vehicle) then
-			return nil -- API is broken for vehicles
-		end
-
-		pos, ang = LocalToWorld(pos, ang, ply:GetPos(), Angle())
+	if not ang then
+		return nil
 	end
 
 	return pos, ang
@@ -189,17 +95,11 @@ function LIB.HandsEquipped(ply)
 		return false
 	end
 
-	local wep = ply:GetActiveWeapon()
-
-	if IsValid(wep) then
-		local class = wep:GetClass()
-
-		if class ~= "weapon_vrmod_empty" then
-			return false
-		end
+	if ply:InVehicle() then
+		return true
 	end
 
-	return true
+	return vrmod.UsingEmptyHands(ply)
 end
 
 function LIB.GetTriggerPressed()
@@ -219,7 +119,7 @@ function LIB.GetTriggerPressed()
 		return false
 	end
 
-	return g_VR.input and g_VR.input.boolean_primaryfire or false
+	return vrmod.GetInput("boolean_primaryfire") or false
 end
 
 function LIB.GetRadioTouched()
@@ -267,7 +167,7 @@ function LIB.TraceHand()
 		return nil
 	end
 
-	local pos, dir = StreamRadioLib.VR.GetControlPosDir()
+	local pos, dir = LIB.GetControlPosDir()
 
 	if not pos then
 		return nil
@@ -295,7 +195,8 @@ function LIB.TraceHand()
 		return true
 	end
 
-	return util.TraceLine(trace)
+	local tr = util.TraceLine(trace)
+	return tr
 end
 
 function LIB.GetVREnableTouch(ply)
@@ -326,7 +227,7 @@ function LIB.GetMenuUid(panel)
 			return nil
 		end
 
-		return panel
+		return panel, LIB.g_openMenus and LIB.g_openMenus[panel]
 	end
 
 	local curPanel = panel
@@ -337,16 +238,16 @@ function LIB.GetMenuUid(panel)
 		end
 
 		if curPanel == g_SpawnMenu then
-			return "spawnmenu"
+			return "spawnmenu", curPanel
 		end
 
 		if curPanel == g_ContextMenu then
-			return "spawnmenu"
+			return "spawnmenu", curPanel
 		end
 
 		local uid = tostring(curPanel._streamradio_vr_uid or "")
 		if uid ~= "" then
-			return uid
+			return uid, curPanel
 		end
 
 		curPanel = curPanel:GetParent()
@@ -365,7 +266,7 @@ function LIB.MenuIsOpen(panelOrUid)
 	end
 
 	if not panelOrUid then
-		panelOrUid = g_VR.menuFocus
+		panelOrUid = vrmod.MenuFocused()
 	end
 
 	panelOrUid = LIB.GetMenuUid(panelOrUid)
@@ -374,11 +275,7 @@ function LIB.MenuIsOpen(panelOrUid)
 		return false
 	end
 
-	if not VRUtilIsMenuOpen then
-		return false
-	end
-
-	if not VRUtilIsMenuOpen(panelOrUid) then
+	if not vrmod.MenuExists(panelOrUid) then
 		return false
 	end
 
@@ -390,25 +287,27 @@ function LIB.CloseMenu(panel)
 		return
 	end
 
-	local uid = LIB.GetMenuUid(panel)
+	local uid, mainPanel = LIB.GetMenuUid(panel)
 	if not uid then
 		return
+	end
+
+	if not IsValid(mainPanel) then
+		mainPanel = panel
 	end
 
 	LIB.g_openMenus = LIB.g_openMenus or {}
 	LIB.g_openMenus[uid] = nil
 
-	panel:Close()
+	if ispanel(mainPanel) then
+		mainPanel:Close()
+	end
 
 	if not LIB.MenuIsOpen(uid) then
 		return
 	end
 
-	if not VRUtilMenuClose then
-		return
-	end
-
-	VRUtilMenuClose(uid)
+	vrmod.MenuClose(uid)
 end
 
 function LIB.RenderMenu(panel)
@@ -416,7 +315,7 @@ function LIB.RenderMenu(panel)
 		return
 	end
 
-	local uid = LIB.GetMenuUid(panel)
+	local uid, mainPanel = LIB.GetMenuUid(panel)
 	if not uid then
 		return
 	end
@@ -425,11 +324,29 @@ function LIB.RenderMenu(panel)
 		return
 	end
 
-	if not VRUtilMenuRenderPanel then
-		return
+	if not IsValid(mainPanel) then
+		mainPanel = panel
 	end
 
-	VRUtilMenuRenderPanel(uid)
+	if ispanel(mainPanel) then
+		timer.Simple(0.1, function()
+			if not LIB.MenuIsOpen(uid) then
+				return
+			end
+
+			if not IsValid(mainPanel) then
+				return
+			end
+
+			vrmod.MenuRenderStart(uid)
+
+			StreamRadioLib.CatchAndErrorNoHalt(function()
+				mainPanel:PaintManual()
+			end)
+
+			vrmod.MenuRenderEnd(uid)
+		end)
+	end
 end
 
 function LIB.MenuOpen(uid, panel, cursorEnabled, closeFunc)
@@ -456,11 +373,11 @@ function LIB.MenuOpen(uid, panel, cursorEnabled, closeFunc)
 	panel:MakePopup()
 	panel:InvalidateLayout(true)
 
-	if not LIB.IsActive() then
+	if not g_VR then
 		return
 	end
 
-	if not VRUtilMenuOpen then
+	if not LIB.IsActive() then
 		return
 	end
 
@@ -478,11 +395,11 @@ function LIB.MenuOpen(uid, panel, cursorEnabled, closeFunc)
 
 	local w, h = panel:GetSize()
 
-	local ang = Angle(0, camang.y - 90, 80)
+	local ang = Angle(0, camang.y - 90, 85)
 	local pos = campos + Vector(0, 0, -10) + Angle(0, camang.y, 0):Forward() * 30 - ang:Forward() * w / 2 * scale - ang:Right() * h / 2 * scale
 	pos, ang = WorldToLocal(pos, ang, g_VR.origin, g_VR.originAngle)
 
-	VRUtilMenuOpen(uid, w, h, panel, 4, pos, ang, scale, cursorEnabled, closeFunc)
+	vrmod.MenuCreate(uid, w, h, panel, 4, pos, ang, scale, cursorEnabled, closeFunc)
 end
 
 if CLIENT then

@@ -150,11 +150,12 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 
 	local ent = ents.Create( "sent_streamradio" )
 	if not IsValid(ent) then return end
-	if not ErrorCheckArg(ply, "Player", 1, "SpawnRadio", 3) then return end
 
-	if not IsValid(ply) then
+	if not IsValid(ply) or ply:IsWorld() then
 		ply = nil
 	end
+
+	if not ErrorCheckArg(ply, "Player", 1, "SpawnRadio", 3) then return end
 
 	if not ErrorCheckArg(model, "string", 2, "SpawnRadio", 3) then return end
 	if not ErrorCheckArg(pos, "Vector", 3, "SpawnRadio", 3) then return end

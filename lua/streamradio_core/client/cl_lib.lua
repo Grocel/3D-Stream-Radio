@@ -100,10 +100,6 @@ local function GetPressed(ply)
 	end
 
 	if StreamRadioLib.VR.IsActive(ply) then
-		if inVehicle then
-			return false -- VRMod API is broken for vehicles
-		end
-
 		-- Only allow if there is no focus on any menu
 		if StreamRadioLib.VR.MenuIsOpen() then
 			return false

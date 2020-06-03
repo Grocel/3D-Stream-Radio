@@ -18,7 +18,7 @@ local net = net
 local NoHelpText = [[
 There is no help text for this error.
 
-Please report this! Include the URL and the Errorcode in the report please.
+Please report this! Include the URL and the Errorcode in the report!
 ]]
 
 NoHelpText = string.gsub(NoHelpText, "\r", "")

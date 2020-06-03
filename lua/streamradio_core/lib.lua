@@ -735,7 +735,7 @@ end
 
 local function ShowErrorInfo( ply, cmd, args )
 	if ( not args[1] or ( args[1] == "" ) ) then
-		MsgN( "You need to enter a valid error code." )
+		StreamRadioLib.Msg(ply, "You need to enter a valid error code.")
 
 		return
 	end
@@ -909,7 +909,7 @@ end
 StreamRadioLib.SpawnedRadios = {}
 local LastThink = RealTime()
 
-hook.Add("Think", "Streamradio_Think", function()
+hook.Add("Think", "Streamradio_Entity_Think", function()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 

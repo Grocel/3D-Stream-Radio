@@ -4,6 +4,7 @@ local LIB = StreamRadioLib.Filesystem
 local g_playlistdir = ( StreamRadioLib.DataDirectory or "" ) .. "/playlists"
 local LuaFilesystemDirectory = "streamradio_core/filesystem"
 local Filesystem = {}
+local FilesystemBlacklist = {}
 
 local g_FolderID = 0
 local g_VirtualFolderID = 250
@@ -22,8 +23,18 @@ local function getFS(id)
 
 	if not id then return nil end
 
-	local fs = Filesystem.id[id] or Filesystem.type[id]
+	local fs = Filesystem.id[id] or Filesystem.type[id] or Filesystem.name[id]
 	if not fs then return nil end
+
+	if fs.type ~= g_GenericID then
+		if FilesystemBlacklist[fs.id] then return nil end
+		if FilesystemBlacklist[fs.type] then return nil end
+		if FilesystemBlacklist[fs.name] then return nil end
+	end
+
+	if isfunction(fs.IsInstalled) and not fs:IsInstalled() then
+		return nil
+	end
 
 	return fs
 end
@@ -828,6 +839,7 @@ function LIB.Find(vfolder)
 
 	for id, fs in ipairs(Filesystem.id) do
 		if not fs then continue end
+		if not getFS(id) then continue end
 		if not fs.Find then continue end
 
 		local files, folders = fs:Find(globalpath, vfolder)
@@ -887,6 +899,7 @@ function LIB.GuessType(vpath)
 	local globalpath = VirtualPathToGlobal(vpath)
 	for id, fs in ipairs(Filesystem.id) do
 		if not fs then continue end
+		if not getFS(id) then continue end
 		if not fs.IsType then continue end
 		if not fs:IsType(globalpath, vpath) then continue end
 
@@ -895,5 +908,64 @@ function LIB.GuessType(vpath)
 
 	return nil
 end
+
+local function ListFS()
+	MsgN("List of loaded filesystem")
+
+	local lineFormat = "%5s | %25s | %10s | %7s"
+	local topLine = string.format(lineFormat, "ID", "Name", "Type", "Active")
+
+	MsgN(string.format(lineFormat, "ID", "Name", "Type", "Active"))
+	MsgN(string.rep("-", #topLine))
+
+	for id, fs in ipairs(Filesystem.id) do
+		if not fs then continue end
+		if fs.type == g_GenericID then continue end
+
+		local isActive = getFS(id) ~= nil
+		local line = string.format(lineFormat, fs.id, fs.name, fs.type, isActive and "yes" or "no")
+
+		MsgN(line)
+	end
+end
+
+concommand.Add( "info_streamradio_playlist_filesystem_list", ListFS)
+
+local function updateBlacklistFromString(backlist)
+	backlist = tostring(backlist or "")
+	backlist = string.Explode("[%,%;%|]", backlist, true)
+
+	FilesystemBlacklist = {}
+
+	for i, v in ipairs(backlist) do
+		v = string.Trim(v)
+		FilesystemBlacklist[v] = true
+	end
+end
+
+local flags = bit.bor(FCVAR_NOTIFY, FCVAR_REPLICATED, FCVAR_GAMEDLL, FCVAR_SERVER_CAN_EXECUTE)
+
+if SERVER then
+	flags = bit.bor(flags, FCVAR_ARCHIVE)
+end
+
+local CVBacklist = CreateConVar( "sv_streamradio_playlist_filesystem_backlist", "", flags, "Set the list playlist filesystems to be disabled by type, name or id. Entries are seperated by pipe ('|') or comma (','). See info_streamradio_playlist_filesystem_list for details. Default: ''" )
+
+local oldCVValue = CVBacklist:GetString()
+updateBlacklistFromString(oldCVValue)
+
+hook.Add("Think", "Streamradio_Playlist_Filesystem_Think", function()
+	if not StreamRadioLib then return end
+	if not StreamRadioLib.Loaded then return end
+	if not CVBacklist then return end
+
+	local CVvalue = CVBacklist:GetString()
+	if oldCVValue == CVvalue then
+		return
+	end
+
+	oldCVValue = CVvalue
+	updateBlacklistFromString(CVvalue)
+end)
 
 LIB.Load()

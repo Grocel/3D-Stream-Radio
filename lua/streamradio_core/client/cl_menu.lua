@@ -34,10 +34,13 @@ function LIB.GetLinkButton(text, urlStr)
 			return
 		end
 
+		this._infoWasPressed = true
+
 		gui.OpenURL(url)
 	end
 
 	local oldThink = button.Think
+	local infoRed = Color(160, 0, 0)
 
 	button.Think = function(this)
 		oldThink(this)
@@ -50,17 +53,21 @@ function LIB.GetLinkButton(text, urlStr)
 			return
 		end
 
-		this:SetDisabled(gameMenuVisible)
+		local addInfo = gameMenuVisible and this._infoWasPressed
 
-		if gameMenuVisible then
+		this:SetDisabled(addInfo)
+
+		if addInfo then
 			if StreamRadioLib.VR.IsActive(ply) then
 				this:SetText(text .. "\n[Please confirm on monitor]")
 			else
 				this:SetText(text .. "\n[Please confirm]")
 			end
 
-			this:SetTextColor(Color(160, 0, 0))
+			this:SetTextColor(infoRed)
 		else
+			this._infoWasPressed = nil
+
 			this:SetTextColor(nil)
 			this:SetText(text)
 			this:SetDark(true)
@@ -88,7 +95,7 @@ end
 function LIB.GetVRCreditsPanel()
 	local credits = vgui.Create("DLabel")
 	credits:SetDark(true)
-	credits:SetText("Powered by VRMod!\n  - VRMod is made by Catse\n  - VR Headset required!")
+	credits:SetText("Powered by VRMod!\n  - VRMod is made by Catse\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
 	credits:SizeToContents()
 
 	return credits

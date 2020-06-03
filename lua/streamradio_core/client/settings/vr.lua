@@ -43,7 +43,7 @@ local function BuildMenuPanel(CPanel)
 
 		errorlabel:SetDark(false)
 		errorlabel:SetHighlight(true)
-		errorlabel:SetText((StreamRadioLib.Addonname or "") .. "\nVRMod is not loaded, install VRMod to enable VR support.\nVR Headset required!")
+		errorlabel:SetText((StreamRadioLib.Addonname or "") .. "\nVRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
 		errorlabel:SizeToContents()
 		CPanel:AddPanel(errorlabel)
 
