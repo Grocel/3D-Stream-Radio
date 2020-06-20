@@ -265,7 +265,7 @@ function ENT:WiremodThink( )
 
 	self:TriggerWireOutput("This Radio", self)
 
-	if not hasadvoutputs then
+	if hasadvoutputs then
 		local err = self.StreamObj:GetError()
 		self:TriggerWireOutput("Error", err)
 		self:TriggerWireOutput("Error Text", StreamRadioLib.DecodeErrorCode(err))
@@ -602,8 +602,9 @@ function ENT:OnWireInputTrigger(name, value, wired)
 		end
 
 		local delta = math.abs(curtime - value)
+		local maxDelta = 0.25
 
-		if delta < 0.25 then
+		if delta < maxDelta then
 			return
 		end
 

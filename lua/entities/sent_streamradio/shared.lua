@@ -281,8 +281,9 @@ function ENT:MasterRadioSyncThink()
 	local curtime = this_st:GetMasterTime()
 
 	local delta = math.abs(curtime - targettime)
+	local maxDelta = engine.TickInterval() * 4
 
-	if statechange or delta >= 0.05 then
+	if statechange or delta >= maxDelta then
 		this_st:SetTime(targettime, true)
 	end
 

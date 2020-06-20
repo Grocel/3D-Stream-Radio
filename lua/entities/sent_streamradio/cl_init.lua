@@ -170,8 +170,8 @@ function ENT:TraceToCamera(frompos)
 
 	local trace = util.TraceLine(traceparams)
 
-	//debugoverlay.Line(frompos, trace.HitPos or endpos, 0.1, color_white, false)
-	//debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
+	--debugoverlay.Line(frompos, trace.HitPos or endpos, 0.1, color_white, false)
+	--debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
 
 	return trace
 end
@@ -246,7 +246,7 @@ function ENT:GetWallVolumeFactor()
 		return self.wallvolcache.value or 0
 	end
 
-	local mintime = math.max(FrameTime() * 3, 0.125)
+	local mintime = math.max(FrameTime() * 3, 0.075)
 
 	self.wallvolcache.value = self:TraceWalls(self.Radius)
 	self.wallvolcache.nexttime = now + math.Rand(mintime, mintime * 4)

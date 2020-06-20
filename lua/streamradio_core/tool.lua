@@ -168,7 +168,8 @@ function LIB.Setup(toolobj)
 	end
 
 	function toolobj:GetFallbackTrace()
-		local tr = util.GetPlayerTrace(self:GetOwner())
+		local ply = self:GetOwner()
+		local tr = util.GetPlayerTrace(ply)
 		tr.mask = bit.bor( CONTENTS_SOLID, CONTENTS_MOVEABLE, CONTENTS_MONSTER, CONTENTS_WINDOW, CONTENTS_DEBRIS, CONTENTS_GRATE, CONTENTS_AUX )
 
 		local trace = util.TraceLine(tr)

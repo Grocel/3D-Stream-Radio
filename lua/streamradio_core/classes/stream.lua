@@ -432,14 +432,21 @@ function CLASS:SetClientState(ply, key, value)
 	if not self.Network.Active then return end
 
 	if not ply then return end
-	if isentity(ply) and not IsValid(ply) then return end
 	if not key then return end
 
 	local key_index = self.StateTable_r[key]
 	if not key_index then return end
 
+	if ply == "SERVER" then
+		pId = ply
+	else
+		pId = StreamRadioLib.GetPlayerId(ply)
+	end
+
+	if not pId then return end
+
 	self.ClientStateList = self.ClientStateList or {}
-	self.ClientStateList[ply] = self.ClientStateList[ply] or {
+	self.ClientStateList[pId] = self.ClientStateList[pId] or {
 		Error = 0,
 		Ended = false,
 		ValidChannel = false,
@@ -450,12 +457,12 @@ function CLASS:SetClientState(ply, key, value)
 
 	if key == "Time" then
 		value = math.max(value, 0)
-		self.ClientStateList[ply].TimeStamp = self.PlayTime or 0
+		self.ClientStateList[pId].TimeStamp = self.PlayTime or 0
 	end
 
 	if key == "ForceTime" then
 		if value >= 0 then
-			if ply ~= "SERVER" then
+			if pId ~= "SERVER" then
 				self.TimeMaster = nil
 				self._LastMasterState = nil
 				self._server_override_timedata = nil
@@ -470,43 +477,55 @@ function CLASS:SetClientState(ply, key, value)
 		value = nil
 	end
 
-	self.ClientStateList[ply][key] = value
+	self.ClientStateList[pId][key] = value
 
 	if not self:IsValidTimeMaster(self.TimeMaster) then
 		self.TimeMaster = nil
 
-		if self:IsValidTimeMaster(ply) then
-			self.TimeMaster = ply
+		if self:IsValidTimeMaster(pId) then
+			self.TimeMaster = pId
 			self._LastMasterState = nil
 			self._server_override_timedata = nil
 		end
 	end
 
-	if ply == "SERVER" then
+	if pId == "SERVER" then
 		self:CallHook("OnServerStateChange", ply, key, value)
 	else
 		self:CallHook("OnClientStateChange", ply, key, value)
 	end
 end
 
-function CLASS:GetClientStates(ply)
-	if CLIENT then return end
+function CLASS:GetClientStates(plyOrPId)
+	if CLIENT then return nil end
 
-	if not ply then return end
-	if not self.ClientStateList then return end
+	if not plyOrPId then return nil end
+	if not self.ClientStateList then return nil end
 
-	if ply ~= "SERVER" and not IsValid(ply) then
-		self.ClientStateList[ply] = nil
+	if plyOrPId == "SERVER" then
+		return self.ClientStateList["SERVER"]
+	end
+
+	if not StreamRadioLib.IsPlayerNetworkable(plyOrPId) then
+		self.ClientStateList[plyOrPId] = nil
 		return nil
 	end
 
-	return self.ClientStateList[ply]
+	if isentity(plyOrPId) then
+		plyOrPId = StreamRadioLib.GetPlayerId(plyOrPId)
+	end
+
+	if not plyOrPId then
+		return nil
+	end
+
+	return self.ClientStateList[plyOrPId]
 end
 
-function CLASS:IsValidTimeMaster(ply)
+function CLASS:IsValidTimeMaster(plyOrPId)
 	if CLIENT then return end
 
-	local state = self:GetClientStates(ply)
+	local state = self:GetClientStates(plyOrPId)
 	if not state then return false end
 
 	local haschannel = state.ValidChannel
@@ -529,7 +548,7 @@ function CLASS:GetTimeMasterClientState()
 		local state = self:GetClientStates(self.TimeMaster)
 
 		if state and not state._comp then
-			state._comp = "[" .. tostring(self.TimeMaster) .. "][" .. tostring(state) .. "]"
+			state._comp = self.TimeMaster
 		end
 
 		return state
@@ -541,14 +560,13 @@ function CLASS:GetTimeMasterClientState()
 		return nil
 	end
 
-	for ply, v in pairs(self.ClientStateList) do
-		if not self:IsValidTimeMaster(ply) then continue end
+	for pId, state in pairs(self.ClientStateList) do
+		if not self:IsValidTimeMaster(pId) then continue end
 
-		self.TimeMaster = ply
-		local state = self:GetClientStates(self.TimeMaster)
+		self.TimeMaster = pId
 
 		if state and not state._comp then
-			state._comp = "[" .. tostring(self.TimeMaster) .. "][" .. tostring(state) .. "]"
+			state._comp = self.TimeMaster
 		end
 
 		return state
@@ -587,8 +605,9 @@ function CLASS:SuperThink()
 		else
 			local timeB = self:GetNWFloat("MasterTime", 0)
 			local dt = math.abs(timeA - timeB)
+			local maxDt = engine.TickInterval() * 4
 
-			if dt >= 0.05 then
+			if dt >= maxDt then
 				self:SetNWFloat("MasterTime", timeA)
 			end
 		end
@@ -669,7 +688,7 @@ function CLASS:UpdateChannelVolume()
 		volume = SVvol * CLvol * self.CV_Volume:GetValue() * boost3d
 	end
 
-	// Max 5000% normal volume on all cases.
+	-- Max 5000% normal volume on all cases.
 	volume = math.Clamp(volume, 0, 50)
 
 	self.Channel:SetVolume(volume)
@@ -1417,6 +1436,7 @@ function CLASS:GetMasterTime()
 		end
 
 		if self._server_override_timedata then
+			-- Server should be able to override the time even so if not players can hear the stream
 			state = self._server_override_timedata
 		end
 
@@ -1616,8 +1636,9 @@ function CLASS:SyncTime()
 
 	local curtime = self:GetTime()
 	local loop = self:GetLoop()
+	local maxStartDelta = engine.TickInterval() * 4
 
-	if length <= maxdelta and time > 0.05 then
+	if length <= maxdelta and time > maxStartDelta then
 		return
 	end
 

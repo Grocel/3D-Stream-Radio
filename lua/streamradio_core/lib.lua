@@ -319,6 +319,28 @@ function StreamRadioLib.GameIsPaused()
 	return true
 end
 
+
+local g_LastFrameRegister = {}
+function StreamRadioLib.IsSameFrame(id)
+	local id = tostring(id or "")
+	local lastFrame = g_LastFrameRegister[id]
+
+	local frame = nil
+
+	if CLIENT then
+		frame = FrameNumber()
+	else
+		frame = engine.TickCount()
+	end
+
+	if not lastFrame or frame ~= lastFrame then
+		g_LastFrameRegister[id] = frame
+		return false
+	end
+
+	return true
+end
+
 function StreamRadioLib.GetMuteDistance( ply )
 	if not IsValid(ply) and CLIENT then
 		ply = LocalPlayer()
@@ -392,12 +414,22 @@ function StreamRadioLib.GetControlPosDir(ply)
 	return pos, dir
 end
 
+local g_PlayerTraceCache = {}
+local g_PlayerTrace = {}
 
-local trace = {}
 function StreamRadioLib.Trace(ply)
 	if not IsValid(ply) and CLIENT then
 		ply = LocalPlayer()
 	end
+
+	local cacheID = tostring(ply or "")
+	local cacheItem = g_PlayerTraceCache[cacheID]
+
+	if cacheItem and StreamRadioLib.IsSameFrame("StreamRadioLib.Trace_" .. cacheID) then
+		return cacheItem
+	end
+
+	g_PlayerTraceCache[cacheID] = nil
 
 	local pos, dir = StreamRadioLib.GetControlPosDir(ply)
 
@@ -416,10 +448,10 @@ function StreamRadioLib.Trace(ply)
 	local start_pos = pos
 	local end_pos = pos + dir * 5000
 
-	trace.start = start_pos
-	trace.endpos = end_pos
+	g_PlayerTrace.start = start_pos
+	g_PlayerTrace.endpos = end_pos
 
-	trace.filter = function(ent)
+	g_PlayerTrace.filter = function(ent)
 		if not IsValid(ent) then return false end
 		if not IsValid(ply) then return false end
 		if not IsValid(camera) then return false end
@@ -433,7 +465,10 @@ function StreamRadioLib.Trace(ply)
 		return true
 	end
 
-	return util.TraceLine(trace)
+	local tr = util.TraceLine(g_PlayerTrace)
+	g_PlayerTraceCache[cacheID] = tr
+
+	return tr
 end
 
 local g_PI = math.pi
@@ -485,6 +520,9 @@ function StreamRadioLib.StarTrace(traceparams, size, edges, layers)
 		traceparams.endpos = endpos
 
 		local trace = util.TraceLine(traceparams)
+
+		--debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.1, color_white, false)
+		--debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
 
 		traces[#traces + 1] = trace
 	end
@@ -658,6 +696,99 @@ function StreamRadioLib.Control( ply, tr, keydown )
 	setplayervar(ply, "lastusedradio", Radio)
 
 	return rv
+end
+
+local g_PlayerCache = {}
+local g_LocalPlayer = nil
+
+function StreamRadioLib.GetPlayerId(ply)
+	if not IsValid(ply) then
+		return nil
+	end
+
+	if not ply:IsPlayer() then
+		return nil
+	end
+
+	if ply:IsBot() then
+		return nil
+	end
+
+	if game.SinglePlayer() then
+		return 'LOCAL_CLIENT'
+	end
+
+	if SERVER and not ply:IsConnected() then
+		return nil
+	end
+
+	local id = ply:SteamID64()
+	if not id then
+		-- fallback to player string on invalid ids
+		id = tostring(ply) .. "[" .. ply:UserID() .. "]";
+	end
+
+	g_PlayerCache[id] = ply
+	return id
+end
+
+function StreamRadioLib.GetPlayerFromId(id)
+	id = tostring(id or "")
+
+	if id == "" then
+		return nil
+	end
+
+	if game.SinglePlayer() then
+		if id == 'LOCAL_CLIENT' then
+			if not IsValid(g_LocalPlayer) then
+				g_LocalPlayer = player.GetHumans()[1]
+			end
+
+			if not IsValid(g_LocalPlayer) then
+				return nil
+			end
+
+			return g_LocalPlayer
+		end
+
+		return nil
+	end
+
+
+	local ply = g_PlayerCache[id]
+
+	if not IsValid(ply) then
+		ply = player.GetBySteamID64(id)
+	end
+
+	g_PlayerCache[id] = nil
+
+	if not IsValid(ply) then
+		return nil
+	end
+
+	if ply:IsBot() then
+		return nil
+	end
+
+	if SERVER and not ply:IsConnected() then
+		return nil
+	end
+
+	g_PlayerCache[id] = ply
+	return ply
+end
+
+local _GetPlayerId = StreamRadioLib.GetPlayerId
+local _GetPlayerFromId = StreamRadioLib.GetPlayerFromId
+
+function StreamRadioLib.IsPlayerNetworkable(plyOrId)
+	if isentity(plyOrPId) then
+		return _GetPlayerId(plyOrId) ~= nil
+	end
+
+	return IsValid(_GetPlayerFromId(plyOrId))
 end
 
 local Errors = {

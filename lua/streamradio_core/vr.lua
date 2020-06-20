@@ -157,15 +157,25 @@ function LIB.GetRadioTouched()
 	return true
 end
 
-local trace = {}
+local g_PlayerHandTraceCache = nil
+local g_PlayerHandTrace = {}
+g_PlayerHandTrace.output = {}
+
 function LIB.TraceHand()
 	if not CLIENT then
 		return nil
 	end
 
 	if not LIB.IsActive() then
+		g_PlayerHandTraceCache = nil
 		return nil
 	end
+
+	if g_PlayerHandTraceCache and StreamRadioLib.IsSameFrame("StreamRadioLib.VR.TraceHand") then
+		return g_PlayerHandTraceCache
+	end
+
+	g_PlayerHandTraceCache = nil
 
 	local pos, dir = LIB.GetControlPosDir()
 
@@ -180,12 +190,12 @@ function LIB.TraceHand()
 	local start_pos = pos
 	local end_pos = pos + dir * 6.5
 
-	trace.start = start_pos
-	trace.endpos = end_pos
+	g_PlayerHandTrace.start = start_pos
+	g_PlayerHandTrace.endpos = end_pos
 
 	local ply = LocalPlayer()
 
-	trace.filter = function(ent)
+	g_PlayerHandTrace.filter = g_PlayerHandTrace.filter or (function(ent)
 		if not IsValid(ent) then return false end
 		if not IsValid(ply) then return false end
 
@@ -193,10 +203,12 @@ function LIB.TraceHand()
 
 		if ply.GetVehicle and ent == ply:GetVehicle() then return false end
 		return true
-	end
+	end)
 
-	local tr = util.TraceLine(trace)
-	return tr
+	util.TraceLine(g_PlayerHandTrace)
+	g_PlayerHandTraceCache = g_PlayerHandTrace.output
+
+	return g_PlayerHandTraceCache
 end
 
 function LIB.GetVREnableTouch(ply)
@@ -373,10 +385,6 @@ function LIB.MenuOpen(uid, panel, cursorEnabled, closeFunc)
 	panel:MakePopup()
 	panel:InvalidateLayout(true)
 
-	if not g_VR then
-		return
-	end
-
 	if not LIB.IsActive() then
 		return
 	end
@@ -397,7 +405,9 @@ function LIB.MenuOpen(uid, panel, cursorEnabled, closeFunc)
 
 	local ang = Angle(0, camang.y - 90, 85)
 	local pos = campos + Vector(0, 0, -10) + Angle(0, camang.y, 0):Forward() * 30 - ang:Forward() * w / 2 * scale - ang:Right() * h / 2 * scale
-	pos, ang = WorldToLocal(pos, ang, g_VR.origin, g_VR.originAngle)
+	local originPos, originAng = vrmod.GetOrigin()
+
+	pos, ang = WorldToLocal(pos, ang, originPos, originAng)
 
 	vrmod.MenuCreate(uid, w, h, panel, 4, pos, ang, scale, cursorEnabled, closeFunc)
 end
