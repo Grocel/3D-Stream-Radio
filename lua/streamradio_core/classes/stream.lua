@@ -1730,8 +1730,9 @@ function CLASS:_IsSeekingInternal()
 	if not targettime then return false end
 
 	local curtime = self:GetRealTime()
+	local maxDelta = engine.TickInterval() * 8
 
-	return math.abs(targettime - curtime) > 0.1
+	return math.abs(targettime - curtime) > maxDelta
 end
 
 function CLASS:IsSeeking()
