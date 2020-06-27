@@ -219,6 +219,7 @@ function ENT:MasterRadioSyncThink()
 	local statechange = false
 
 	if masterradio ~= oldmasterradio then
+		print("masterradio change")
 		statechange = true
 
 		if not masterradio then
@@ -283,25 +284,31 @@ function ENT:MasterRadioSyncThink()
 		end
 
 		local targettime = master_st:GetMasterTime()
-		local curtime = this_st:GetMasterTime()
 		local tickInterval = engine.TickInterval()
 
 		local lastTargetTime = self._lastMasterTime;
 		self._lastMasterTime = targettime
 
-		local delta = math.abs(curtime - targettime)
 
 		local masterDelta = nil
 		if lastTargetTime then
 			masterDelta = math.abs(targettime - lastTargetTime)
 		end
 
-		local maxDelta = tickInterval * 2
+		local maxThisDelta = tickInterval * 2
 		local maxMasterDelta = tickInterval * 4
+		local realTime = RealTime()
 
-		if statechange or not masterDelta or masterDelta >= maxMasterDelta then
-			if statechange or delta >= maxDelta then
-				this_st:SetTime(targettime, true)
+		if statechange or (self._trySetTimeAgain and realTime > self._trySetTimeAgain) or (not masterDelta or masterDelta > maxMasterDelta) then
+			this_st:SetTime(targettime, true)
+
+			local thisCurtime = this_st:GetMasterTime()
+			local thisDelta = math.abs(thisCurtime - targettime)
+
+			if thisDelta > maxThisDelta then
+				self._trySetTimeAgain = realTime + tickInterval * 8
+			else
+				self._trySetTimeAgain = nil
 			end
 		end
 	end

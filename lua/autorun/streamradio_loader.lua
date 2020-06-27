@@ -58,6 +58,15 @@ end
 local loader_ok = true
 
 local g_loaded_dll = {}
+local g_dllSupportedBranches = {
+	["dev"] = true,
+	["prerelease"] = true,
+	["unknown"] = true,
+	["none"] = true,
+	["live"] = true,
+	["main"] = true,
+	[""] = true,
+}
 
 local function saveRequireDLL(dll, optional)
 	if not StreamRadioLib then
@@ -82,6 +91,7 @@ local function saveRequireDLL(dll, optional)
 	local realm = SERVER and "sv" or "cl"
 	local osname = system.IsWindows() and "win32" or "linux"
 	local dllfile = "lua/bin/gm" .. realm .. "_" .. dll .. "_" .. osname .. ".dll"
+	local branch = BRANCH or ""
 
 	local status, err = pcall(function()
 		if not file.Exists(dllfile, "GAME") then
@@ -90,6 +100,14 @@ local function saveRequireDLL(dll, optional)
 			end
 
 			error("Couldn't require file '" .. dllfile .. "' (File not found)", 0)
+		end
+
+		if g_dllSupportedBranches[branch] then
+			if optional then
+				return
+			end
+
+			error(dllfile .. " is not supported on branch '" .. branch .. "'!\n")
 		end
 
 		require(dll)
@@ -268,16 +286,6 @@ local function saveinclude(lua, force)
 	return status, err
 end
 
-local g_bassSupportedBranches = {
-	["dev"] = true,
-	["prerelease"] = true,
-	["unknown"] = true,
-	["none"] = true,
-	["live"] = true,
-	["main"] = true,
-	[""] = true,
-}
-
 local function loadBASS3()
 	if BASS3 and BASS3.Version and BASS3.ModuleVersion then
 		return true
@@ -289,13 +297,6 @@ local function loadBASS3()
 	local status, err = saveRequireDLL(dll, true)
 
 	if not status then
-		local branch = BRANCH or ""
-
-		if err and not g_bassSupportedBranches[branch] then
-			local ErrorString = dll_name .. " is not supported on branch '" .. branch .. "'!\n"
-			ErrorNoHalt(Addonname .. ErrorString .. "\n")
-		end
-
 		return false
 	end
 
