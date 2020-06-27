@@ -219,7 +219,6 @@ function ENT:MasterRadioSyncThink()
 	local statechange = false
 
 	if masterradio ~= oldmasterradio then
-		print("masterradio change")
 		statechange = true
 
 		if not masterradio then
