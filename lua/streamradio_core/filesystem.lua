@@ -949,7 +949,7 @@ if SERVER then
 	flags = bit.bor(flags, FCVAR_ARCHIVE)
 end
 
-local CVBacklist = CreateConVar( "sv_streamradio_playlist_filesystem_backlist", "", flags, "Set the list playlist filesystems to be disabled by type, name or id. Entries are seperated by pipe ('|') or comma (','). See info_streamradio_playlist_filesystem_list for details. Default: ''" )
+local CVBacklist = CreateConVar( "sv_streamradio_playlist_filesystem_blacklist", "", flags, "Set the list playlist filesystems to be disabled by type, name or id. Entries are seperated by pipe ('|') or comma (','). See info_streamradio_playlist_filesystem_list for details. Default: ''" )
 
 local oldCVValue = CVBacklist:GetString()
 updateBlacklistFromString(oldCVValue)

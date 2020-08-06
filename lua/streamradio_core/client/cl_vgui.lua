@@ -97,6 +97,10 @@ function PANEL:Init( )
 		local err = self.Error
 		local url = self.Stream:GetURL()
 
+		if not err then
+			return
+		end
+
 		if err == 0 then
 			return
 		end
