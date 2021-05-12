@@ -20,7 +20,7 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 - Serverside playlists
 - Playlist browser built into the entity
 - Playlist support for *.pls, *.m3u, *.json and *.vdf
-- Playlist support for these addons: MX Radio, [Web Radio][], [PatchPlay][]
+- Playlist support for these addons: [MX Radio][], [Web Radio][]
 - Model support for these addons: [\[NM\] Prop Pack][NM Prop Pack], [Fallout 3 Jukebox Model][], [Minecraft SWEP][]
 - Build-in playlist editor
 - [Wiremod][] support (inputs and outputs, advanced wiremod support when the optional [gm_bass3][GM_BASS3] is installed on the server.)
@@ -34,7 +34,6 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 - Clientside performance settings
 - An API for developers.
 
-
 # Credits
 - Code: Grocel
 - Models: SligWolf
@@ -47,8 +46,8 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 [GM_BASS3]: <https://gmod.facepunch.com/f/gmodaddon/jina/gm-bass3-A-cross-plattform-shared-Lua-API-to-BASS/1/>
 [workshop]: <https://steamcommunity.com/sharedfiles/filedetails/?id=246756300>
 
+[MX Radio]: <https://steamcommunity.com/sharedfiles/filedetails/?id=649771207>
 [Web Radio]: <https://steamcommunity.com/sharedfiles/filedetails/?id=314470705>
-[PatchPlay]: <https://steamcommunity.com/sharedfiles/filedetails/?id=250792180>
 [NM Prop Pack]: <https://steamcommunity.com/sharedfiles/filedetails/?id=605223544>
 [Fallout 3 Jukebox Model]: <https://steamcommunity.com/sharedfiles/filedetails/?id=529954000>
 [Minecraft SWEP]: <https://steamcommunity.com/sharedfiles/filedetails/?id=116592647>

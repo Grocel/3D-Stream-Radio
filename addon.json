@@ -1,6 +1,26 @@
 {
-	"title" : "3D Stream Radio",
-	"type" : "tool",
-	"tags" : ["fun","roleplay"],
-	"ignore" : ["*.git*", "glualint", "glualint.json","*.svn*","*.txt","*.bat","*.html","*.gma","*.zip","bin/*","noupload/*","*.md","LICENSE", "git-*"]
+	"title": "3D Stream Radio",
+	"type": "tool",
+	"tags": [
+		"fun",
+		"roleplay"
+	],
+	"ignore": [
+		"*.git*",
+		"*.vscode",
+		"glualint",
+		"glualint.json",
+		"*.svn*",
+		"*.txt",
+		"*.bat",
+		"*.html",
+		"*.gma",
+		"*.zip",
+		"bin/*",
+		"bin/*",
+		"noupload/*",
+		"*.md",
+		"LICENSE",
+		"git-*"
+	]
 }
