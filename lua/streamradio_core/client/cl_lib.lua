@@ -2,11 +2,6 @@
 --			Stream Radio Lip
 --////////////////////////////////////
 local IsValid = IsValid
-local type = type
-local Vector = Vector
-local GetViewEntity = GetViewEntity
-local PrintTable = PrintTable
-local unpack = unpack
 local tonumber = tonumber
 local tostring = tostring
 local Color = Color
@@ -14,13 +9,8 @@ local LocalPlayer = LocalPlayer
 local concommand = concommand
 local hook = hook
 local math = math
-local debug = debug
 local string = string
-local vgui = vgui
 local net = net
-local debug = debug
-local EmtyVec = Vector( )
-local BASS = BASS
 
 net.Receive( "Streamradio_Radio_PlaylistMenu", function( length )
 	if ( not istable( StreamRadioLib ) ) then return end

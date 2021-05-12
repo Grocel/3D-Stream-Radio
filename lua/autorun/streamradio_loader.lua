@@ -29,13 +29,14 @@ if Version == "" then
 	Version = "UNKNOWN"
 end
 
-local Addon = ( "3D Stream Radio (ver. " .. Version .. ")" )
-local Addonname = ( Addon .. ":\n" )
+local AddonTitle = ( "3D Stream Radio (ver. " .. Version .. ")" )
+local AddonPrefix = ( AddonTitle .. ":\n" )
 
 local thisfile = "autorun/streamradio_loader.lua"
 
 StreamRadioLib = StreamRadioLib or {}
-StreamRadioLib.Addonname = Addonname
+StreamRadioLib.AddonTitle = AddonTitle
+StreamRadioLib.AddonPrefix = AddonPrefix
 StreamRadioLib.Loaded = nil
 StreamRadioLib.HasBass = false
 StreamRadioLib.ErrorString = nil
@@ -122,7 +123,7 @@ local function saveRequireDLL(dll, optional)
 
 		if optional then
 			if StreamRadioLib.IsDebug() then
-				ErrorNoHalt((StreamRadioLib.Addonname or "") .. err .. "\n")
+				ErrorNoHalt((StreamRadioLib.AddonPrefix or "") .. err .. "\n")
 			end
 
 			return false, err
@@ -140,7 +141,7 @@ local function saveRequireDLL(dll, optional)
 		g_loaded_dll[dll] = nil
 		loader_ok = false
 
-		ErrorNoHalt((StreamRadioLib.Addonname or "") .. err .. "\n")
+		ErrorNoHalt((StreamRadioLib.AddonPrefix or "") .. err .. "\n")
 		return false, err
 	end
 
@@ -204,7 +205,7 @@ local function saveCSLuaFile(lua, force)
 		g_loaded_cs[lua] = nil
 		loader_ok = false
 
-		ErrorNoHalt((StreamRadioLib.Addonname or "") .. err .. "\n")
+		ErrorNoHalt((StreamRadioLib.AddonPrefix or "") .. err .. "\n")
 		return false
 	end
 
@@ -278,7 +279,7 @@ local function saveinclude(lua, force)
 		g_loaded[lua] = nil
 		loader_ok = false
 
-		ErrorNoHalt((StreamRadioLib.Addonname or "") .. err .. "\n")
+		ErrorNoHalt((StreamRadioLib.AddonPrefix or "") .. err .. "\n")
 		return nil
 	end
 
@@ -294,7 +295,7 @@ local function loadBASS3()
 	local dll = "bass3"
 	local dll_name = string.upper("gm_" .. dll)
 
-	local status, err = saveRequireDLL(dll, true)
+	local status = saveRequireDLL(dll, true)
 
 	if not status then
 		return false
@@ -316,7 +317,7 @@ local function loadBASS3()
 
 	if BassModuleVersion < 14 then
 		local ErrorString = dll_name .. " is outdated!\n"
-		ErrorNoHalt(Addonname .. ErrorString .. "\n")
+		ErrorNoHalt(AddonPrefix .. ErrorString .. "\n")
 
 		return false
 	end
@@ -488,18 +489,18 @@ end
 local outdated = false
 
 if CLIENT then
-	if Gmodversion < 200510 and Gmodversion > 5 then
+	if Gmodversion < 210402 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "Your GMod-Client (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Client!"
 		outdated = true
 
-		ErrorNoHalt(Addonname .. StreamRadioLib.ErrorString .. "\n")
+		ErrorNoHalt(AddonPrefix .. StreamRadioLib.ErrorString .. "\n")
 	end
 else
-	if Gmodversion < 200510 and Gmodversion > 5 then
+	if Gmodversion < 210402 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "The GMod-Server (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Server!"
 		outdated = true
 
-		ErrorNoHalt(Addonname .. StreamRadioLib.ErrorString .. "\n")
+		ErrorNoHalt(AddonPrefix .. StreamRadioLib.ErrorString .. "\n")
 	end
 end
 
@@ -523,9 +524,9 @@ if not StreamRadioLib.Loaded then
 	local err = errcol .. indentText(StreamRadioLib.ErrorString)
 	err = string.Replace(err, "\n", "\n" .. errcol)
 
-	printWrapped(Addon .. "[color:255,128,128] could not be loaded " .. realmname .. ".", "Error:\n" .. err)
+	printWrapped(AddonTitle .. "[color:255,128,128] could not be loaded " .. realmname .. ".", "Error:\n" .. err)
 else
-	printWrapped(Addon .. "[color:100,200,100] is loaded " .. realmname .. ".", "Optional GM_BASS3:\n" .. indentText(bassload_msg))
+	printWrapped(AddonTitle .. "[color:100,200,100] is loaded " .. realmname .. ".", "Optional GM_BASS3:\n" .. indentText(bassload_msg))
 end
 
 if SV then
@@ -557,7 +558,7 @@ else
 		StreamRadioLib.ErrorString = StreamRadioLib.ErrorString or ""
 		StreamRadioLib.ErrorString = string.Trim(StreamRadioLib.ErrorString .. "\n\n" .. err)
 
-		ErrorNoHalt((StreamRadioLib.Addonname or "") .. StreamRadioLib.ErrorString .. "\n")
+		ErrorNoHalt((StreamRadioLib.AddonPrefix or "") .. StreamRadioLib.ErrorString .. "\n")
 		StreamRadioLib.Loaded = nil
 	end)
 end

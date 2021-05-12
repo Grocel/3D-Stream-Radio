@@ -13,23 +13,10 @@ local isstring = isstring
 local pairs = pairs
 local ipairs = ipairs
 local PANEL = {}
+
 AccessorFunc( PANEL, "m_bUnsaved", "Unsaved" ) -- edited list file Saved?
 AccessorFunc( PANEL, "m_bSaving", "Saving" ) -- edited list file Saved?
 AccessorFunc( PANEL, "m_strPath", "Path" ) -- List file
-
-local invalid_filename_chars = {
-	["*"] = "",
-	[":"] = "",
-	["?"] = "",
-	[">"] = "",
-	["<"] = "",
-	["|"] = "",
-	["\\"] = "",
-	["/"] = "",
-	["'"] = "",
-	['"'] = "",
-	[" "] = "_",
-}
 
 local OK_CODES = {
 	[StreamRadioLib.EDITOR_ERROR_OK] = true,
@@ -122,29 +109,41 @@ local function AsForSave( self, func, ... )
 	return true
 end
 
-local function CreateDir( self, defaultstring, func, ... )
+local function CreateDir( self, defaultString, func, ... )
 	if not IsValid(self) then return false end
 	if not self:IsVisible() then return false end
 
 	local args = {...}
 	local path = self.m_strPath or ""
+	local name = "new_folder"
 
-	Derma_StringRequest("New folder", "", defaultstring or "new_folder", function( strTextOut )
+	defaultString = string.Trim(defaultString or "")
+
+	if not StreamRadioLib.Filesystem.IsValidFilepath(defaultString) then
+		defaultString = name
+	end
+
+	local helpText = [[
+Create a new folder
+- All invalid characters are fitered out
+- Case insensitive, converted to lowercase
+]];
+
+	helpText = string.Trim(helpText)
+
+	Derma_StringRequest("New folder", helpText, defaultString, function( strTextOut )
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
-		strTextOut = string.gsub(strTextOut, ".", invalid_filename_chars) or ""
+		strTextOut = StreamRadioLib.Filesystem.SanitizeFilename(strTextOut)
 
-		if strTextOut == "" then
-			CreateDir(self, nil, func, unpack(args))
+		if not StreamRadioLib.Filesystem.IsValidFilepath(strTextOut) then
+			CreateDir(self, defaultString, func, unpack(args))
 			return
 		end
 
-		strTextOut = string.lower(strTextOut)
-
 		local fullpath = path .. "/" .. strTextOut
 		fullpath = string.Trim(fullpath, "/")
-		fullpath = string.lower(fullpath)
 
 		if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
 			local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED )
@@ -165,7 +164,7 @@ local function CreateDir( self, defaultstring, func, ... )
 		if created and func then
 			func( self, unpack( args ) )
 		end
-	end)
+	end, nil, "Create folder", "Cancel")
 
 	return true
 end
@@ -208,34 +207,50 @@ end
 
 local Default_Format = StreamRadioLib.Filesystem.GetTypeExt(StreamRadioLib.TYPE_DEFAULT)
 
-local function CreateFile( self, defaultstring, func, ... )
+local function CreateFile( self, defaultString, func, ... )
 	if not IsValid(self) then return false end
 	if not self:IsVisible() then return false end
 	if not func then return false end
 
+	local name = "new_playlist." .. Default_Format
+	defaultString = string.Trim(defaultString or "")
+
+	if not StreamRadioLib.Filesystem.IsValidFilename(defaultString) then
+		defaultString = name
+	end
+
 	local args = {...}
 	local path = self.m_strPath or ""
 
+	local helpText = [[
+Create a new playlist
+- All invalid characters are fitered out
+- Case insensitive, converted to lowercase
+- Valid formats are: %s
+]]
+	helpText = string.format(helpText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST or "")
+	helpText = string.Trim(helpText)
+
 	AsForSave(self, function( self, func, args )
-		Derma_StringRequest( "New playlist..", "", defaultstring or ( "new_playlist." .. Default_Format ), function( strTextOut )
+		Derma_StringRequest( "New playlist..", helpText, defaultString, function( strTextOut )
 			if not IsValid(self) then return end
 			if self:IsLoading() then return end
 
-			strTextOut = string.gsub( strTextOut, ".", invalid_filename_chars ) or ""
+			strTextOut = StreamRadioLib.Filesystem.SanitizeFilename(strTextOut)
 
-			if strTextOut == "" then
-				CreateFile( self, nil, func, unpack( args ) )
+			if not StreamRadioLib.Filesystem.IsValidFilename(strTextOut) then
+				CreateFile( self, defaultString, func, unpack( args ) )
 				return
 			end
 
-			strTextOut = string.lower( strTextOut )
-
 			local fullpath = path .. "/" .. strTextOut
 			fullpath = string.Trim(fullpath, "/")
-			fullpath = string.lower(fullpath)
 
 			if not StreamRadioLib.Filesystem.GuessType(fullpath) then
 				strTextOut = strTextOut .. "." .. Default_Format
+
+				CreateFile( self, strTextOut, func, unpack( args ) )
+				return
 			end
 
 			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
@@ -263,7 +278,7 @@ local function CreateFile( self, defaultstring, func, ... )
 			if func then
 				func(self, strTextOut, format, unpack(args))
 			end
-		end)
+		end, nil, "Create new file", "Cancel")
 	end, func, args)
 
 	return true
@@ -293,7 +308,7 @@ local function AsForOverride( self, func, filename, ... )
 	return true
 end
 
-local function SaveTo(self, defaultstring, func, ...)
+local function SaveTo(self, defaultString, func, ...)
 	if not IsValid(self) then return false end
 	if not self:IsVisible() then return false end
 	if not IsValid(self.Files) then return false end
@@ -309,25 +324,40 @@ local function SaveTo(self, defaultstring, func, ...)
 		name = line.streamradio_name
 	end
 
-	Derma_StringRequest("Save to..", "", defaultstring or name, function(strTextOut)
+	defaultString = string.Trim(defaultString or "")
+
+	if not StreamRadioLib.Filesystem.IsValidFilename(defaultString) then
+		defaultString = name
+	end
+
+	local helpText = [[
+Save a file
+- All invalid characters are fitered out
+- Case insensitive, converted to lowercase
+- Valid formats are: %s
+]]
+	helpText = string.format(helpText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST or "")
+	helpText = string.Trim(helpText)
+
+	Derma_StringRequest("Save to..", helpText, defaultString, function(strTextOut)
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
-		strTextOut = string.gsub(strTextOut, ".", invalid_filename_chars) or ""
+		strTextOut = StreamRadioLib.Filesystem.SanitizeFilename(strTextOut)
 
-		if strTextOut == "" then
-			SaveTo(self, nil, func, unpack(args))
+		if not StreamRadioLib.Filesystem.IsValidFilename(strTextOut) then
+			SaveTo(self, defaultString, func, unpack(args))
 			return
 		end
 
-		strTextOut = string.lower( strTextOut )
-
 		local fullpath = path .. "/" .. strTextOut
 		fullpath = string.Trim(fullpath, "/")
-		fullpath = string.lower(fullpath)
 
 		if not StreamRadioLib.Filesystem.GuessType(fullpath) then
 			strTextOut = strTextOut .. "." .. Default_Format
+
+			SaveTo(self, strTextOut, func, unpack(args))
+			return
 		end
 
 		local format = StreamRadioLib.Filesystem.GuessType(fullpath)
@@ -365,7 +395,7 @@ local function SaveTo(self, defaultstring, func, ...)
 		AsForOverride(self, function(self, fullpath, strTextOut, format, func, args)
 			func(self, fullpath, strTextOut, format, unpack(args))
 		end, fullpath, strTextOut, format, func, args)
-	end)
+	end, nil, "Save to file", "Cancel")
 
 	return true
 end
@@ -440,7 +470,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 				end)
 				MenuItem:SetImage("icon16/page_paste.png")
 				if ( !self.Clipboard or self.Clipboard == "" ) then
-					MenuItem:SetTextColor( Disabled_Gray ) // custom disabling
+					MenuItem:SetTextColor( Disabled_Gray ) -- custom disabling
 					MenuItem.DoClick = function() end
 				end
 
@@ -453,7 +483,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 				end)
 				MenuItem:SetImage("icon16/page_paste.png")
 				if ( !self.Clipboard or self.Clipboard == "" ) then
-					MenuItem:SetTextColor( Disabled_Gray ) // custom disabling
+					MenuItem:SetTextColor( Disabled_Gray ) -- custom disabling
 					MenuItem.DoClick = function() end
 				end
 			end
@@ -544,20 +574,16 @@ local function PlaylistMenu( self, item, url, name, parentpath )
 end
 
 function PANEL:IsLoading( )
-	return self.IsLocked or self.FilesPanel.IsLocked or self.PlaylistPanel.IsLocked
+	return self.IsLocked
 end
 
 function PANEL:Init( )
 	self:SetPaintBackground( false )
 	self.FilesPanel = vgui.Create( "DPanel" )
 	self.FilesPanel:SetPaintBackground( false )
-	self.FilesPanel.PaintOver = self.PaintOver
-	self.FilesPanel.Lock = self.Lock
 
 	self.PlaylistPanel = vgui.Create( "DPanel" )
 	self.PlaylistPanel:SetPaintBackground( false )
-	self.PlaylistPanel.PaintOver = self.PaintOver
-	self.PlaylistPanel.Lock = self.Lock
 
 	self.Files = self.FilesPanel:Add( "DListView" )
 	self.Files:SetMultiSelect( false )
@@ -567,30 +593,20 @@ function PANEL:Init( )
 	Column:SetFixedWidth( 70 )
 	Column:SetWide( 70 )
 
-	self.Files.OnRowSelected = function( parent, id, line )
-		if ( self:IsLoading( ) ) then return end
-		local path = line.streamradio_path
-		local name = line.streamradio_name
-		local filetype = line.streamradio_filetype
-		local parentpath = line.streamradio_parentpath
-	end
-
 	self.Files.DoDoubleClick = function( parent, id, line )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		if ( self.LastFileItem == line ) then return end
 		self.LastFileItem = line
 		if ( self.NewFileItem == line ) then return end
 
 		local path = line.streamradio_path
-		local name = line.streamradio_name
 		local filetype = line.streamradio_filetype
-		local parentpath = line.streamradio_parentpath
 
-		self:SetPath( path, filetype )
+		self:SetPath( path, filetype, false, true )
 	end
 
 	self.Files.OnRowRightClick = function( parent, id, line )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		local path = line.streamradio_path
 		local name = line.streamradio_name
 		local filetype = line.streamradio_filetype
@@ -598,7 +614,33 @@ function PANEL:Init( )
 		FileMenu( self, line, path, name, filetype, parentpath )
 	end
 
-	self.Playlist = self.PlaylistPanel:Add( "DListView" )
+	self.PlaylistTabPanel = self.PlaylistPanel:Add( "DPropertySheet" )
+	self.PlaylistTabPanel:Dock( FILL )
+	self.PlaylistTabPanel:SetFadeTime( 0 )
+
+	self.PlaylistTabPanel.OnActiveTabChanged = function(this, old_panel, new_panel)
+		if self:IsLoading( ) then return end
+
+		StreamRadioLib.Timedcall(function()
+			self:UpdatePlaylistEditorFromTextPanel()
+			self:UpdatePlaylistTextFromEditorPanel()
+		end)
+	end
+
+	self.PlaylistEditorPanel = vgui.Create( "DPanel" )
+	local playlistEditorSheet = self.PlaylistTabPanel:AddSheet( "list", self.PlaylistEditorPanel, "icon16/table.png" )
+	self.PlaylistEditorPanel:SetPaintBackground( false )
+
+	self.PlaylistTextPanel = vgui.Create( "DPanel" )
+	local playlistTextSheet = self.PlaylistTabPanel:AddSheet( "text", self.PlaylistTextPanel, "icon16/page_white.png" )
+	self.PlaylistTextPanel:SetPaintBackground( false )
+
+	playlistEditorSheet.Tab:SetText("List mode")
+	playlistEditorSheet.Tab:SetTooltip("Edit the playlist in a list view")
+	playlistTextSheet.Tab:SetText("Text mode")
+	playlistTextSheet.Tab:SetTooltip("Edit the playlist in a text field (for advanced users)")
+
+	self.Playlist = self.PlaylistEditorPanel:Add( "DListView" )
 	self.Playlist:SetMultiSelect( false )
 	self.Playlist:Dock( FILL )
 	local Column = self.Playlist:AddColumn( "No." )
@@ -609,17 +651,17 @@ function PANEL:Init( )
 	self.Playlist:AddColumn( "URL" )
 
 	self.Playlist.OnRowSelected = function( parent, id, line )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:SelectPlaylistItem( line )
 	end
 
 	self.Playlist.DoDoubleClick = function( parent, id, line )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:SelectPlaylistItem( line )
 	end
 
 	self.Playlist.OnRowRightClick = function( parent, id, line )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		local url = line.streamradio_url
 		local name = line.streamradio_name
 		local id = line.streamradio_id
@@ -627,7 +669,7 @@ function PANEL:Init( )
 		self:SelectPlaylistItem( line )
 	end
 
-	self.PlaylistBottomPanel = self.PlaylistPanel:Add( "DPanel" )
+	self.PlaylistBottomPanel = self.PlaylistEditorPanel:Add( "DPanel" )
 	self.PlaylistBottomPanel:SetPaintBackground( false )
 	self.PlaylistBottomPanel:Dock( BOTTOM )
 	self.PlaylistBottomPanel:SetTall( 70 )
@@ -683,12 +725,12 @@ function PANEL:Init( )
 	self.EditURLText:Dock( FILL )
 
 	self.EditURLText.OnEnter = function( panel )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:PlaylistCheckValid( )
 	end
 
 	self.EditURLText.OnChange = function( panel )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:PlaylistCheckValid( )
 	end
 
@@ -707,7 +749,7 @@ function PANEL:Init( )
 	self.EditChangeButton:SetImage( "icon16/pencil.png" )
 
 	self.EditChangeButton.DoClick = function( panel )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:PlaylistCheckValid( )
 
 		if ( self:ChangePlaylistItem( self.SelectedPlaylistItem ) ) then
@@ -723,7 +765,7 @@ function PANEL:Init( )
 	self.EditAddButton:SetImage( "icon16/add.png" )
 
 	self.EditAddButton.DoClick = function( panel )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:PlaylistCheckValid( )
 
 		if ( self:AddPlaylistItem( ) ) then
@@ -771,7 +813,7 @@ function PANEL:Init( )
 	end
 
 	self.EditMoveUpButton.DoClick = function( panel )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:PlaylistCheckValid( )
 
 		if ( self:MovePlaylistItemUp( self.SelectedPlaylistItem ) ) then
@@ -797,7 +839,7 @@ function PANEL:Init( )
 	end
 
 	self.EditMoveDownButton.DoClick = function( panel )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:PlaylistCheckValid( )
 
 		if ( self:MovePlaylistItemDown( self.SelectedPlaylistItem ) ) then
@@ -830,7 +872,7 @@ function PANEL:Init( )
 	self.EditRemoveButton:SetImage( "icon16/delete.png" )
 
 	self.EditRemoveButton.DoClick = function( panel )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:PlaylistCheckValid( )
 
 		if ( self:RemovePlaylistItem( self.SelectedPlaylistItem ) ) then
@@ -838,11 +880,79 @@ function PANEL:Init( )
 		end
 	end
 
+	self.PlaylistText = self.PlaylistTextPanel:Add( "DTextEntry" )
+	self.PlaylistText:Dock( FILL )
+
+	local TextEditorFont = StreamRadioLib.Surface.AddFont(14, 1000, "Lucida Console")
+
+	self.PlaylistText:SetEditable( true )
+	self.PlaylistText:SetMultiline( true )
+	self.PlaylistText:SetDrawLanguageID( false )
+	self.PlaylistText:SetTabbingDisabled( true )
+	self.PlaylistText:SetHistoryEnabled( false )
+	self.PlaylistText:SetEnterAllowed( true )
+	self.PlaylistText:SetDrawBorder( true )
+	self.PlaylistText:SetVerticalScrollbarEnabled( true )
+	self.PlaylistText:SetUpdateOnType( true )
+	self.PlaylistText:SetFont(TextEditorFont)
+
+	self.PlaylistText.OnValueChange = function( )
+		if self:IsLoading( ) then return end
+
+		self:MarkPlaylistEditorShouldUpdate()
+		self:SetUnsaved( true )
+	end
+
+	self.PlaylistTextBottomPanel = self.PlaylistTextPanel:Add( "DPanel" )
+	self.PlaylistTextBottomPanel:SetPaintBackground( false )
+	self.PlaylistTextBottomPanel:Dock( BOTTOM )
+	self.PlaylistTextBottomPanel:SetTall( 100 )
+	self.PlaylistTextBottomPanel:DockMargin( 0, 3, 0, 0 )
+
+	local helpTextGeneral = [[
+About this text based playlist editor:
+
+- Changes are automatically synchronized between this view and the list view.
+- Enter the name and the URL for each entry you want to add.
+- The syntax is independent from the playlist format.
+- Missing lines are skipped or are filled with placeholders.
+- Whitespaces are trimed on each line.
+]]
+
+	local helpTextSyntax = [[
+Example:
+
+1.FM - ABSOLUTE TOP 40 RADIO [newline]
+http://185.33.21.112:80/top40_128 [newline]
+1.FM - Alternative Rock X Hits [newline]
+http://185.33.21.112:80/x_128 [newline]
+...
+]]
+
+	helpTextGeneral = string.Trim(helpTextGeneral)
+	helpTextSyntax = string.Trim(helpTextSyntax)
+
+	self.PlaylistTextHelpGeneralLabel = self.PlaylistTextBottomPanel:Add( "Streamradio_VGUI_ReadOnlyTextEntry" )
+	self.PlaylistTextHelpGeneralLabel:SetText(helpTextGeneral)
+	self.PlaylistTextHelpGeneralLabel:DockMargin( 6, 0, 0, 0 )
+	self.PlaylistTextHelpGeneralLabel:SetWide( 400 )
+	self.PlaylistTextHelpGeneralLabel:Dock( LEFT )
+	self.PlaylistTextHelpGeneralLabel:SetZPos(100)
+
+	self.PlaylistTextHelpSyntaxLabel = self.PlaylistTextBottomPanel:Add( "Streamradio_VGUI_ReadOnlyTextEntry" )
+	self.PlaylistTextHelpSyntaxLabel:SetText(helpTextSyntax)
+	self.PlaylistTextHelpSyntaxLabel:DockMargin( 6, 0, 0, 0 )
+	self.PlaylistTextHelpSyntaxLabel:SetWide( 400 )
+	self.PlaylistTextHelpSyntaxLabel:Dock( LEFT )
+	self.PlaylistTextHelpSyntaxLabel:SetZPos(200)
+
+
 	self.TopPanel = self:Add( "DPanel" )
 	self.TopPanel:SetPaintBackground( false )
 	self.TopPanel:Dock( TOP )
 	self.TopPanel:SetTall( 20 )
 	self.TopPanel:DockMargin( 0, 0, 0, 3 )
+
 	self.SaveIcon = self.TopPanel:Add( "DImageButton" )
 	self.SaveIcon:SetImage( "icon16/table_save.png" )
 	self.SaveIcon:SetWide( 20 )
@@ -852,7 +962,7 @@ function PANEL:Init( )
 	self.SaveIcon:DockMargin( 0, 0, 0, 0 )
 
 	self.SaveIcon.DoClick = function( )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 
 		if ( not self.m_strPath or self.m_strPath == "" or self.m_strPath == self.m_strFolderPath ) then
 			SaveTo( self, nil, self.SavePlaylist )
@@ -872,7 +982,7 @@ function PANEL:Init( )
 	self.SaveToIcon:DockMargin( 0, 0, 0, 0 )
 
 	self.SaveToIcon.DoClick = function( )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		SaveTo( self, nil, self.SavePlaylist )
 	end
 
@@ -885,7 +995,7 @@ function PANEL:Init( )
 	self.NewIcon:DockMargin( 10, 0, 0, 0 )
 
 	self.NewIcon.DoClick = function( )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		CreateFile( self, nil, self.CreateNewFile )
 	end
 
@@ -898,7 +1008,7 @@ function PANEL:Init( )
 	self.NewFolder:DockMargin( 0, 0, 0, 0 )
 
 	self.NewFolder.DoClick = function( )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		CreateDir( self, nil, self.Lock, true )
 	end
 
@@ -911,7 +1021,7 @@ function PANEL:Init( )
 	self.RefreshIcon:DockMargin( 10, 0, 0, 0 )
 
 	self.RefreshIcon.DoClick = function( )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:Refresh( )
 	end
 
@@ -924,17 +1034,20 @@ function PANEL:Init( )
 	self.ApplySortIcon:DockMargin( 10, 0, 0, 0 )
 
 	self.ApplySortIcon.DoClick = function( )
-		if ( self:IsLoading( ) ) then return end
+		if self:IsLoading( ) then return end
 		self:ApplyPlaylistSort( )
+
 		self:SetUnsaved( true )
+		self:MarkPlaylistTextShouldUpdate( true )
 	end
 
-	self.ListNameLabel = self.TopPanel:Add( "DLabel" )
+	self.ListNameLabel = self.TopPanel:Add( "Streamradio_VGUI_ReadOnlyTextEntry" )
 	self.ListNameLabel:SetText( "" )
 	self.ListNameLabel:SetWide( 20 )
 	self.ListNameLabel:Dock( FILL )
 	self.ListNameLabel:DockMargin( 12, 0, 0, 0 )
-	self.ListNameLabel:SetDark( true )
+	self.ListNameLabel:SetMultiline( false )
+
 	self.SplitPanel = self:Add( "DHorizontalDivider" )
 	self.SplitPanel:Dock( FILL )
 	self.SplitPanel:SetRight( self.PlaylistPanel )
@@ -943,12 +1056,17 @@ function PANEL:Init( )
 	self.SplitPanel:SetLeftMin( 200 )
 	self.SplitPanel:SetRightMin( 400 )
 	self.SplitPanel:SetDividerWidth( 3 )
+
 	self:Reset( )
 end
 
 function PANEL:SavePlaylist( filepath, name, filetype )
 	if self:IsLoading() then return false end
 	if self.m_bSaving then return false end
+
+	if self.PlaylistTextPanel._isDirty then
+		self:BuildPlaylistFromTextPanel()
+	end
 
 	if filepath and name and filetype then
 		self.m_strPath = filepath
@@ -994,9 +1112,156 @@ function PANEL:Lock( bool )
 	bool = bool or false
 
 	EnablePanel( self, not bool )
-
 	self.IsLocked = bool
-	self.LockedTime = RealTime()
+end
+
+function PANEL:BuildPlaylistFromTextPanel()
+	if not self.PlaylistItems then
+		self.PlaylistItems = {}
+
+		self.PlaylistTextPanel._isDirty = nil
+		self.PlaylistEditorPanel._isDirty = nil
+		return
+	end
+
+	lines = self.PlaylistText:GetText()
+	lines = StreamRadioLib.NormalizeNewlines(lines, '\n')
+
+	lines = string.Explode("\n", lines, false) or {}
+
+	local len = #lines
+
+	self.Playlist:Clear( )
+	self.PlaylistItems = self:GetEmptyPlaylistItems()
+
+	local index = 1
+
+	for i = 1, len, 2 do
+		local name = string.Trim(lines[i] or "")
+		local url = string.Trim(lines[i + 1] or "")
+
+		if name == "" and url == "" then
+			continue
+		end
+
+		if name == "" then
+			name = string.format("(no name #%d)", index)
+		end
+
+		if url == "" then
+			url = string.format("(no url #%d)", index)
+		end
+
+		self:AddPlaylistItem(url, name)
+		index = index + 1
+	end
+
+	self:SelectPlaylistItem( )
+	self:PlaylistCheckValid( )
+
+	self.PlaylistTextPanel._isDirty = nil
+	self.PlaylistEditorPanel._isDirty = nil
+end
+
+function PANEL:BuildTextFromPlaylistPanel()
+	local lines = {}
+	local index = 1
+
+	for i, v in ipairs( self.PlaylistItems or {} ) do
+		local name = string.Trim(v.name or "")
+		local url = string.Trim(v.url or "")
+
+		if name == "" and url == "" then
+			continue
+		end
+
+		if name == "" then
+			name = string.format("(no name #%d)", index)
+		end
+
+		if url == "" then
+			url = string.format("(no url #%d)", index)
+		end
+
+		lines[#lines + 1] = name
+		lines[#lines + 1] = url
+
+		index = index + 1
+	end
+
+	lines = table.concat(lines, "\n")
+	self.PlaylistText:SetText(lines)
+
+	self.PlaylistTextPanel._isDirty = nil
+	self.PlaylistEditorPanel._isDirty = nil
+end
+
+function PANEL:MarkPlaylistEditorShouldUpdate(alsoTryUpdate)
+	self.PlaylistTextPanel._isDirty = true
+
+	if alsoTryUpdate then
+		self:UpdatePlaylistEditorFromTextPanel()
+	end
+end
+
+function PANEL:MarkPlaylistTextShouldUpdate(alsoTryUpdate)
+	self.PlaylistEditorPanel._isDirty = true
+
+	if alsoTryUpdate then
+		self:UpdatePlaylistTextFromEditorPanel()
+	end
+end
+
+function PANEL:UpdatePlaylistEditorFromTextPanel()
+	if not self.PlaylistItems then
+		return
+	end
+
+	local tab = self.PlaylistTabPanel:GetActiveTab()
+	if not IsValid(tab) then
+		return
+	end
+
+	local activePanel = tab:GetPanel()
+	if not IsValid(activePanel) then
+		return
+	end
+
+	if activePanel ~= self.PlaylistEditorPanel then
+		return
+	end
+
+	if not self.PlaylistTextPanel._isDirty then
+		return
+	end
+
+	self:BuildPlaylistFromTextPanel()
+end
+
+function PANEL:UpdatePlaylistTextFromEditorPanel()
+	if not self.PlaylistItems then
+		return
+	end
+
+	local tab = self.PlaylistTabPanel:GetActiveTab()
+	if not IsValid(tab) then
+		return
+	end
+
+	local activePanel = tab:GetPanel()
+	if not IsValid(activePanel) then
+		return
+	end
+
+	if activePanel ~= self.PlaylistTextPanel then
+		return
+	end
+
+	if not self.PlaylistEditorPanel._isDirty then
+		return
+	end
+
+	self:BuildTextFromPlaylistPanel()
 end
 
 function PANEL:Clear( )
@@ -1016,7 +1281,25 @@ function PANEL:ClearPlaylist( )
 	self:SelectPlaylistItem( )
 	self:PlaylistCheckValid( )
 	self:SetUnsaved( false )
+	self:ClearPlaylistText( )
 	self:InvalidateLayout( )
+end
+
+function PANEL:ClearPlaylistText( )
+	self.PlaylistText:SetText( "" )
+	self:MarkPlaylistTextShouldUpdate( true )
+	self:InvalidateLayout( )
+end
+
+function PANEL:GetEmptyPlaylistItems()
+	local tmpTab = {}
+
+	for k, v in pairs( self.PlaylistItems or {} ) do
+		if not isstring( k ) then continue end
+		tmpTab[k] = v
+	end
+
+	return tmpTab
 end
 
 function PANEL:PerformLayout( )
@@ -1084,21 +1367,16 @@ local function CallOnHold(panel)
 end
 
 function PANEL:Think( )
-	if ( self:IsLoading( ) ) then return end
+	if self:IsLoading( ) then return end
 
 	CallOnHold(self.EditMoveUpButton)
 	CallOnHold(self.EditMoveDownButton)
 end
 
-local gray = Color( 0, 0, 0, 128 )
 local loadcol = Color( 255, 0, 0, 255 )
 
 function PANEL:PaintOver( w, h )
-	if not self.IsLocked then return end
-	if (RealTime() - (self.LockedTime or RealTime())) < 0.5 then return end
-
-	surface.SetDrawColor( gray )
-	surface.DrawRect( 0, 0, w, h )
+	if not self:IsLoading() then return end
 
 	local sqmax, sqmin = math.max(w, h), math.min(w, h)
 	local isq = math.min(sqmax * 0.125, sqmin * 0.5)
@@ -1125,7 +1403,7 @@ end
 function PANEL:Callback(CallbackType, path, name, parentpath, filetype)
 	if CallbackType == "files" then
 
-		self.FilesPanel:Lock(true)
+		self:Lock(true)
 
 		if StreamRadioLib.Filesystem.IsFolder(filetype) then
 			self:AddFolderItem( path, name, parentpath, filetype )
@@ -1136,7 +1414,7 @@ function PANEL:Callback(CallbackType, path, name, parentpath, filetype)
 	elseif CallbackType == "playlist" then
 
 		self:SetUnsaved( false )
-		self.PlaylistPanel:Lock( true )
+		self:Lock( true )
 		self:AddPlaylistItem( path, name, parentpath, filetype )
 
 	elseif CallbackType == "error" then
@@ -1160,8 +1438,7 @@ function PANEL:OnFinish( path, code )
 		self.m_bSaving = false
 		self:Lock( false )
 		self:SetUnsaved( false )
-		self.PlaylistPanel:Lock( false )
-		self.FilesPanel:Lock( false )
+		self:MarkPlaylistTextShouldUpdate( true )
 	end
 
 	if code == StreamRadioLib.EDITOR_ERROR_WRITE_OK then
@@ -1171,12 +1448,13 @@ function PANEL:OnFinish( path, code )
 	end
 
 	if code == StreamRadioLib.EDITOR_ERROR_READ_OK then
-		self.PlaylistPanel:Lock( false )
+		self:Lock( false )
 		self:SetUnsaved( false )
+		self:MarkPlaylistTextShouldUpdate( true )
 	end
 
 	if code == StreamRadioLib.EDITOR_ERROR_FILES_OK then
-		self.FilesPanel:Lock( false )
+		self:Lock( false )
 	end
 
 	if code == StreamRadioLib.EDITOR_ERROR_DIR_OK then
@@ -1243,7 +1521,7 @@ function PANEL:OnError( path, code )
 	end
 
 	if READ_ERRORS[code] then
-		self.PlaylistPanel:Lock( false )
+		self:Lock( false )
 		self:SetUnsaved( false )
 		ShowError( "Read error!", ErrorString, self )
 
@@ -1323,6 +1601,7 @@ function PANEL:CreateNewFile(name, filetype)
 	self.NewFileItem = fileitem
 	self.LastFileItem = fileitem
 
+	self:ClearPlaylistText()
 	return true
 end
 
@@ -1396,6 +1675,7 @@ function PANEL:AddPlaylistItem(url, name, parentpath)
 	self.PlaylistItems["format"] = self.PlaylistItems["format"] or self.Format
 	self.PlaylistItems["parentpath"] = parentpath
 
+	self:MarkPlaylistTextShouldUpdate()
 	return true
 end
 
@@ -1413,6 +1693,7 @@ function PANEL:RemovePlaylistItem(item)
 	self:SelectPlaylistItem()
 	self:CleanUpPlaylist()
 
+	self:MarkPlaylistTextShouldUpdate()
 	return true
 end
 
@@ -1442,6 +1723,7 @@ function PANEL:ChangePlaylistItem(item, url, name)
 		item = item
 	}
 
+	self:MarkPlaylistTextShouldUpdate()
 	return true
 end
 
@@ -1486,7 +1768,7 @@ function PANEL:SwapItem( itemA, itemB )
 	if ( not IsValid( itemA ) ) then return false end
 	if ( not IsValid( itemB ) ) then return false end
 	if ( not self.PlaylistItems ) then return false end
-	if ( self:IsLoading( ) ) then return false end
+	if self:IsLoading( ) then return false end
 
 	if ( itemA == itemB ) then return false end
 
@@ -1532,13 +1814,14 @@ function PANEL:SwapItem( itemA, itemB )
 
 	self:CleanUpPlaylist()
 
+	self:MarkPlaylistTextShouldUpdate()
 	return true
 end
 
 function PANEL:MovePlaylistItemUp( item )
 	if ( not IsValid( item ) ) then return false end
 	if ( not self.PlaylistItems ) then return false end
-	if ( self:IsLoading( ) ) then return false end
+	if self:IsLoading( ) then return false end
 
 	local id = item.streamradio_id or 0
 	if ( id <= 1 ) then return false end
@@ -1548,7 +1831,7 @@ function PANEL:MovePlaylistItemUp( item )
 		if ( not Line.streamradio_id ) then continue end
 		if ( not item.streamradio_id ) then continue end
 
-		if(Line.streamradio_id != item.streamradio_id) then
+		if (Line.streamradio_id ~= item.streamradio_id) then
 			nextitem = Line
 			continue
 		end
@@ -1558,13 +1841,14 @@ function PANEL:MovePlaylistItemUp( item )
 	if ( not self:SwapItem( item, nextitem ) ) then return false end
 	if ( not self:SelectPlaylistItem( nextitem ) ) then return false end
 
+	self:MarkPlaylistTextShouldUpdate()
 	return true
 end
 
 function PANEL:MovePlaylistItemDown( item )
 	if ( not IsValid( item ) ) then return false end
 	if ( not self.PlaylistItems ) then return false end
-	if ( self:IsLoading( ) ) then return false end
+	if self:IsLoading( ) then return false end
 
 	local id = item.streamradio_id or 0
 	if ( id > #self.PlaylistItems ) then return false end
@@ -1574,13 +1858,13 @@ function PANEL:MovePlaylistItemDown( item )
 		if ( not Line.streamradio_id ) then continue end
 		if ( not item.streamradio_id ) then continue end
 
-		if(Line.streamradio_id == item.streamradio_id) then
+		if (Line.streamradio_id == item.streamradio_id) then
 			nextitem = Line
 			continue
 		end
 		if ( not IsValid( nextitem ) ) then continue end
 
-		if(nextitem.streamradio_id == item.streamradio_id) then
+		if (nextitem.streamradio_id == item.streamradio_id) then
 			nextitem = Line
 			break
 		end
@@ -1589,24 +1873,18 @@ function PANEL:MovePlaylistItemDown( item )
 	if ( not self:SwapItem( item, nextitem ) ) then return false end
 	if ( not self:SelectPlaylistItem( nextitem ) ) then return false end
 
+	self:MarkPlaylistTextShouldUpdate()
 	return true
 end
 
 function PANEL:ApplyPlaylistSort( )
-	if ( not self.PlaylistItems ) then
+	if not self.PlaylistItems then
 		self.PlaylistItems = {}
-
 		return
 	end
 
-	local TmpTab = {}
+	local tmpTab = self:GetEmptyPlaylistItems()
 	local i = 0
-
-	for k, v in pairs( self.PlaylistItems ) do
-		if ( not isstring( k ) ) then continue end
-
-		TmpTab[k] = v
-	end
 
 	for k, v in pairs( self.Playlist.Sorted or self.Playlist:GetLines() or {} ) do
 		if ( not IsValid( v ) ) then continue end
@@ -1624,29 +1902,28 @@ function PANEL:ApplyPlaylistSort( )
 		v:SetColumnText( 2, v.streamradio_name )
 		v:SetColumnText( 3, v.streamradio_url )
 
-		TmpTab[i] =  {
+		tmpTab[i] =  {
 			url = v.streamradio_url,
 			name = v.streamradio_name,
 			item = v
 		}
 	end
 
-	self.PlaylistItems = TmpTab
+	self.PlaylistItems = tmpTab
+	self:MarkPlaylistTextShouldUpdate()
 end
 
 function PANEL:CleanUpPlaylist( )
-	if ( not self.PlaylistItems ) then
+	if not self.PlaylistItems then
 		self.PlaylistItems = {}
-
 		return
 	end
 
-	local TmpTab = {}
+	local tmpTab = self:GetEmptyPlaylistItems()
 	local i = 0
 
 	for k, v in pairs( self.PlaylistItems ) do
-		if ( isstring( k ) ) then
-			TmpTab[k] = v
+		if isstring( k ) then
 			continue
 		end
 
@@ -1666,14 +1943,15 @@ function PANEL:CleanUpPlaylist( )
 		item:SetColumnText( 2, item.streamradio_name )
 		item:SetColumnText( 3, item.streamradio_url )
 
-		TmpTab[i] = {
+		tmpTab[i] = {
 			url = item.streamradio_url,
 			name = item.streamradio_name,
 			item = item
 		}
 	end
 
-	self.PlaylistItems = TmpTab
+	self.PlaylistItems = tmpTab
+	self:MarkPlaylistTextShouldUpdate()
 end
 
 function PANEL:GetPath( )
@@ -1688,25 +1966,23 @@ function PANEL:SetPath( filepath, filetype, force, nofullclear )
 	filepath = string.Trim( filepath, "/" )
 
 	filetype = filetype or StreamRadioLib.TYPE_FOLDER
-	local IsFolder = StreamRadioLib.Filesystem.IsFolder(filetype)
+	local isFolder = StreamRadioLib.Filesystem.IsFolder(filetype)
 
-	local function LoadFile( self, IsFolder, filepath, filetype )
-		if IsFolder then
-			if self.FilesPanel.IsLocked then return end
+	local function LoadFile( self, isFolder, filepath, filetype )
+		if self:IsLoading() then return end
 
+		if isFolder then
 			if nofullclear then
 				self:ClearFiles( )
 			else
 				self:Clear( )
 			end
 
-			self.FilesPanel:Lock( true )
+			self:Lock( true )
 			self.m_strFolderPath = filepath
 		else
-			if self.PlaylistPanel.IsLocked then return end
-
 			self:ClearPlaylist()
-			self.PlaylistPanel:Lock( true )
+			self:Lock( true )
 
 			local folderpath = string.GetPathFromFilename( filepath ) or ""
 			folderpath = string.Trim( folderpath, "\\" )
@@ -1722,7 +1998,7 @@ function PANEL:SetPath( filepath, filetype, force, nofullclear )
 
 		local backpath = string.GetPathFromFilename( filepath ) or ""
 
-		if filepath ~= "" and not IsValid(self.BackItem) and IsFolder then
+		if filepath ~= "" and not IsValid(self.BackItem) and isFolder then
 			self.BackItem = self.Files:AddLine( "../", "" )
 			self.BackItem.streamradio_path = backpath
 			self.BackItem.streamradio_filetype = StreamRadioLib.TYPE_FOLDER
@@ -1738,10 +2014,10 @@ function PANEL:SetPath( filepath, filetype, force, nofullclear )
 		net.SendToServer( )
 	end
 
-	if force then
-		LoadFile( self, IsFolder, filepath, filetype )
+	if force or isFolder then
+		LoadFile( self, isFolder, filepath, filetype )
 	else
-		AsForSave( self, LoadFile, IsFolder, filepath, filetype )
+		AsForSave( self, LoadFile, isFolder, filepath, filetype )
 	end
 end
 
@@ -1760,6 +2036,4 @@ function PANEL:UpdateListNameLabel( )
 	self.ListNameLabel:SetText((self.m_bUnsaved and "*" or "") .. (self.m_strPath or ""))
 end
 
---gtest_123 = "Streamradio_VGUI_PlaylistEditor".."_"..tostring({})
---vgui.Register(gtest_123, PANEL, "DPanel")
 vgui.Register( "Streamradio_VGUI_PlaylistEditor", PANEL, "DPanel" )

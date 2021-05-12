@@ -129,7 +129,7 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 	if not SERVER then return end
 
 	if not StreamRadioLib.Loaded then
-		local Addonname = StreamRadioLib.Addonname or ""
+		local Addonname = StreamRadioLib.AddonPrefix or ""
 		local ErrorString = StreamRadioLib.ErrorString or ""
 		local Prefix = ( Addonname .. ErrorString )
 

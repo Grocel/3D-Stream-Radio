@@ -18,33 +18,6 @@ local function CreateBaseFolder( dir )
 	end
 end
 
-local function DeleteFolder( path )
-	path = path or ""
-	if ( path == "" ) then return end
-
-	local files, folders = file.Find( path .. "/*", "DATA" )
-
-	for k, v in pairs( files or {} ) do
-		file.Delete( path .. "/" .. v )
-	end
-
-	for k, v in pairs( folders or {} ) do
-		DeleteFolder( path .. "/" .. v )
-	end
-
-	file.Delete( path )
-
-	if not file.Exists( path, "DATA" ) then
-		return true
-	end
-
-	if not file.IsDir( path, "DATA" ) then
-		return true
-	end
-
-	return false
-end
-
 local function Cache_Clear( ply, cmd, args )
 	if game.SinglePlayer() then
 		StreamRadioLib.Msg( ply, "A server stream cache does not exist in single player!" )
@@ -57,7 +30,11 @@ local function Cache_Clear( ply, cmd, args )
 	end
 
 	if ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
-		if not DeleteFolder( MainDir ) then
+		if not StreamRadioLib.DataDirectory then
+			return
+		end
+
+		if not StreamRadioLib.DeleteFolder( MainDir ) then
 			StreamRadioLib.Msg( ply, "Server stream cache could not be cleared!" )
 			return
 		end
@@ -75,7 +52,11 @@ concommand.Add( "sv_streamradio_cacheclear", Cache_Clear )
 
 if ( CLIENT ) then
 	local function Cache_Clear( ply, cmd, args )
-		if not DeleteFolder( MainDir ) then
+		if not StreamRadioLib.DataDirectory then
+			return
+		end
+
+		if not StreamRadioLib.DeleteFolder( MainDir ) then
 			StreamRadioLib.Msg( ply, "Client stream cache could not be cleared!" )
 			return
 		end
@@ -337,13 +318,13 @@ function LIB.Download(url, callback, saveas_url)
 		return true
 	end
 
-	local onLoad = function(suggess, data)
+	local onLoad = function(success, data)
 		local err = data.err or data.code
 		local len = data.len
 		local headers = data.headers
 		local code = data.code
 
-		if not suggess then
+		if not success then
 			LIB.lastloaded[queueurl] = nil
 			callback(queueurl, 0, {}, err, false)
 			return

@@ -34,6 +34,16 @@ local OK_CODES = {
 	[StreamRadioLib.EDITOR_ERROR_RESET] = true
 }
 
+local function EditorLog(ply, msgstring, ...)
+	msgstring = tostring(msgstring or "")
+	if msgstring == "" then return end
+
+	msgstring = string.format(msgstring, ...)
+	msgstring = "PLAYLIST EDITOR - " .. msgstring
+
+	StreamRadioLib.Log(ply, msgstring)
+end
+
 local function EditorError( ply, path, code )
 	net.Start( "Streamradio_Editor_Error" )
 	StreamRadioLib.NetSendEditorError( path, code )
@@ -44,7 +54,15 @@ local function EditorError( ply, path, code )
 		net.Broadcast( )
 	end
 
-	return OK_CODES[code] or false
+	local ok = OK_CODES[code] or false
+
+	if not ok then
+		local errorString = StreamRadioLib.DecodeEditorErrorCode( code )
+
+		EditorLog(ply, "User had an error at path '%s': %s (%d)", path, errorString, code)
+	end
+
+	return ok
 end
 
 function LIB.Error( ply, path, code )
@@ -58,6 +76,8 @@ function LIB.Reset( ply )
 end
 
 function LIB.CreateDir( ply, path )
+	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+
 	if string.match( path, "^community/" ) then
 		local mode = StreamRadioLib.GetRebuildCommunityPlaylistsMode()
 
@@ -71,15 +91,16 @@ function LIB.CreateDir( ply, path )
 	end
 
 	if StreamRadioLib.Filesystem.Exists(path, 0) then
-		return EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_DIR_EXIST )
+		return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_DIR_EXIST)
 	end
 
-	StreamRadioLib.Filesystem.CreateFolder(path, function(suggess)
-		if not suggess then
+	StreamRadioLib.Filesystem.CreateFolder(path, function(success)
+		if not success then
 			return EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_DIR_WRITE )
 		end
 
-		EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_DIR_OK )
+		EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_DIR_OK)
+		EditorLog(ply, "User created the folder '%s'", path)
 	end)
 end
 
@@ -95,7 +116,8 @@ function LIB.SaveAll( )
 end
 
 function LIB.Save( ply, path, data )
-	if not path then return EditorError(ply, "*nopath*", StreamRadioLib.EDITOR_ERROR_WPATH) end
+	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+
 	if path == "" then return EditorError(ply, "*nopath*", StreamRadioLib.EDITOR_ERROR_WPATH) end
 	if not data then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_WDATA) end
 
@@ -121,68 +143,78 @@ function LIB.Save( ply, path, data )
 	data["format"] = nil
 	data["player"] = nil
 
-	StreamRadioLib.Filesystem.Write(path, format, data, function(suggess)
-		if not suggess then
+	StreamRadioLib.Filesystem.Write(path, format, data, function(success)
+		if not success then
 			return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_WRITE)
 		end
 
-		EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_WRITE_OK )
+		EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_WRITE_OK)
+		EditorLog(ply, "User saved the file '%s'", path)
 	end)
 end
 
 function LIB.Remove(ply, path, type)
-	StreamRadioLib.Filesystem.Delete(path, type, function(suggess)
-		if not IsValid(ply) then return end
-		if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
+	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
 
-		if not suggess then
+	StreamRadioLib.Filesystem.Delete(path, type, function(success)
+		if not success then
 			return EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_DEL_ACCES )
 		end
 
 		EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_DEL_OK )
+		EditorLog(ply, "User deleted the file '%s'", path)
 	end)
 end
 
 function LIB.Copy( ply, path_old, path_new )
+	path_old = StreamRadioLib.Filesystem.SanitizeFilepath(path_old)
+	path_new = StreamRadioLib.Filesystem.SanitizeFilepath(path_new)
+
 	return EditorError( ply, path_new, StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED )
 end
 
 function LIB.Rename( ply, path_old, path_new )
+	path_old = StreamRadioLib.Filesystem.SanitizeFilepath(path_old)
+	path_new = StreamRadioLib.Filesystem.SanitizeFilepath(path_new)
+
 	return EditorError( ply, path_new, StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED )
 end
 
 function LIB.OpenFolder( ply, path )
-	local files = StreamRadioLib.Filesystem.Find(path) or {}
+	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+	if not IsValid(ply) then return false end
+
 	local pairsname = "Editor_OpenFolder_" .. tostring(ply)
-
 	StreamRadioLib.TimedpairsStop(pairsname)
-	StreamRadioLib.Timedpairs(pairsname, files, 1, function( k, v )
-		if not IsValid(ply) then return false end
-		if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
-		if not istable(v) then return true end
 
-		net.Start("Streamradio_Editor_Return_Files")
-			StreamRadioLib.NetSendFileEditor(v.path, v.file, v.type, ListenPath)
-		net.Send(ply)
-	end, function()
-		if not IsValid(ply) then return false end
-		if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
-		EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_FILES_OK)
+	StreamRadioLib.Filesystem.Find(path, function(success, files)
+		files = files or {}
+
+		StreamRadioLib.TimedpairsStop(pairsname)
+		StreamRadioLib.Timedpairs(pairsname, files, 1, function( k, v )
+			if not IsValid(ply) then return false end
+			if not istable(v) then return true end
+
+			net.Start("Streamradio_Editor_Return_Files")
+				StreamRadioLib.NetSendFileEditor(v.path, v.file, v.type, ListenPath)
+			net.Send(ply)
+		end, function()
+			EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_FILES_OK)
+		end)
 	end)
 end
 
 function LIB.OpenFile( ply, path, type )
-	if not path then return EditorError( ply, "[nopath]", StreamRadioLib.EDITOR_ERROR_RPATH ) end
-	if path == "" then return EditorError( ply, "[nopath]", StreamRadioLib.EDITOR_ERROR_RPATH ) end
+	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+	if path == "" then return EditorError( ply, "*nopath*", StreamRadioLib.EDITOR_ERROR_RPATH ) end
 
 	local canread = StreamRadioLib.Filesystem.CanReadFormat(type)
 	if not canread then return EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_RFORMAT ) end
 
-	StreamRadioLib.Filesystem.Read(path, type, function(suggess, data)
+	StreamRadioLib.Filesystem.Read(path, type, function(success, data)
 		if not IsValid(ply) then return end
-		if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
 
-		if not suggess then
+		if not success then
 			return EditorError( ply, path, StreamRadioLib.EDITOR_ERROR_READ )
 		end
 
@@ -191,15 +223,12 @@ function LIB.OpenFile( ply, path, type )
 		StreamRadioLib.TimedpairsStop(pairsname)
 		StreamRadioLib.Timedpairs(pairsname, data, 1, function( k, v )
 			if not IsValid(ply) then return false end
-			if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
 			if not istable(v) then return true end
 
 			net.Start("Streamradio_Editor_Return_Playlist")
 				StreamRadioLib.NetSendPlaylistEditor( v.url, v.name, ListenPath )
 			net.Send(ply)
 		end, function()
-			if not IsValid(ply) then return false end
-			if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
 			EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_READ_OK)
 		end)
 	end)
@@ -219,8 +248,9 @@ net.Receive( "Streamradio_Editor_Request_Files", function( len, ply )
 end )
 
 net.Receive( "Streamradio_Editor_Request_Playlist", function( len, ply )
-	if ( not IsValid( ply ) ) then return end
-	if ( not ply:IsAdmin( ) ) then return end
+	if not IsValid(ply) then return end
+	if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
+
 	local flag = net.ReadUInt( 4 )
 
 	if ( flag == 0 ) then

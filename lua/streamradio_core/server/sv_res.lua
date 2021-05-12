@@ -1,4 +1,4 @@
-resource.AddWorkshop( "246756300" ) -- Workshop download
+// resource.AddWorkshop( "246756300" ) -- Workshop download
 
 -- Workaround Garry code that disallows shipping *.txt files for the data folder to Workshop.
 local WorkshopDataDirectory = "materials/3dstreamradio/_data"
@@ -25,26 +25,6 @@ local function CopyFiles( dir )
 	end
 end
 
-local function DeleteFolder( path )
-	if ( not path or path == "" ) then return false end
-	local files, folders = file.Find( path .. "/*", "DATA" )
-
-	for k, v in pairs( files or {} ) do
-		file.Delete( path .. "/" .. v )
-	end
-
-	local deleted = true
-
-	for k, v in pairs( folders or {} ) do
-		local del = DeleteFolder( path .. "/" .. v )
-		deleted = deleted and del
-	end
-
-	file.Delete( path )
-	deleted = deleted and not file.IsDir(path, "DATA")
-	return deleted
-end
-
 local function Rebuild_Playlists( ply, cmd, args )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
@@ -58,7 +38,7 @@ local function Rebuild_Playlists( ply, cmd, args )
 	CopyFiles( StreamRadioLib.DataDirectory .. "/playlists" )
 
 	StreamRadioLib.Editor.Reset( ply )
-	local msgstring = StreamRadioLib.Addonname .. "Playlists rebuilt"
+	local msgstring = StreamRadioLib.AddonPrefix .. "Playlists rebuilt"
 	StreamRadioLib.Msg( ply, msgstring )
 end
 
@@ -75,7 +55,7 @@ local function Rebuild_CommunityPlaylists( ply, cmd, args )
 	CopyFiles( StreamRadioLib.DataDirectory .. "/playlists/community" )
 
 	StreamRadioLib.Editor.Reset( ply )
-	local msgstring = StreamRadioLib.Addonname .. "Community playlists rebuilt"
+	local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists rebuilt"
 	StreamRadioLib.Msg( ply, msgstring )
 end
 
@@ -85,6 +65,7 @@ concommand.Add( "sv_streamradio_rebuildplaylists_community", Rebuild_CommunityPl
 local function Reset_Playlists( ply, cmd, args )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib.DataDirectory then return end
 
 	if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
 		StreamRadioLib.Msg( ply, "You need to be an admin to reset the playlists." )
@@ -92,14 +73,14 @@ local function Reset_Playlists( ply, cmd, args )
 		return
 	end
 
-	local deleted = DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists" )
+	local deleted = StreamRadioLib.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists" )
 	if not deleted then
-		local msgstring = StreamRadioLib.Addonname .. "Playlists could not be rebuilt"
+		local msgstring = StreamRadioLib.AddonPrefix .. "Playlists could not be rebuilt"
 		StreamRadioLib.Msg( ply, msgstring )
 		return
 	end
 
-	local msgstring = StreamRadioLib.Addonname .. "Playlists deleted"
+	local msgstring = StreamRadioLib.AddonPrefix .. "Playlists deleted"
 	StreamRadioLib.Msg( ply, msgstring )
 	Rebuild_Playlists( ply, cmd, args )
 end
@@ -107,6 +88,7 @@ end
 local function Reset_CommunityPlaylists( ply, cmd, args )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib.DataDirectory then return end
 
 	if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
 		StreamRadioLib.Msg( ply, "You need to be an admin to reset the community playlists." )
@@ -114,14 +96,14 @@ local function Reset_CommunityPlaylists( ply, cmd, args )
 		return
 	end
 
-	local deleted = DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists/community" )
+	local deleted = StreamRadioLib.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists/community" )
 	if not deleted then
-		local msgstring = StreamRadioLib.Addonname .. "Community playlists could not be rebuilt"
+		local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists could not be rebuilt"
 		StreamRadioLib.Msg( ply, msgstring )
 		return
 	end
 
-	local msgstring = StreamRadioLib.Addonname .. "Community playlists deleted"
+	local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists deleted"
 	StreamRadioLib.Msg( ply, msgstring )
 	Rebuild_CommunityPlaylists( ply, cmd, args )
 end
@@ -132,6 +114,7 @@ concommand.Add( "sv_streamradio_resetplaylists_community", Reset_CommunityPlayli
 
 StreamRadioLib.Timedcall( function()
 	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib.DataDirectory then return end
 
 	if not file.IsDir( StreamRadioLib.DataDirectory, "DATA" ) then
 		CopyFiles(StreamRadioLib.DataDirectory)
@@ -151,7 +134,7 @@ StreamRadioLib.Timedcall( function()
 	end
 
 	if rebuildmode == 2 then
-		DeleteFolder( community_folder )
+		StreamRadioLib.DeleteFolder( community_folder )
 		CopyFiles( community_folder )
 	end
 end )

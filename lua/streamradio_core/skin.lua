@@ -1241,7 +1241,7 @@ function LIB.GetDefaultSkin()
 		return table.Copy(LIB._default)
 	end
 
-	LIB._default = util.JSONToTable(_default_json or "") or {}
+	LIB._default = StreamRadioLib.JSON.Decode(_default_json or "") or {}
 	if not LIB._default.data then
 		LIB._default = nil
 		error("Default skin is corrupted!")

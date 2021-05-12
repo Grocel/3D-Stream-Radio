@@ -24,7 +24,7 @@ local function AddCommonFunctions(interface)
 		json = string.Trim(json, ")")
 		json = string.Trim(json)
 
-		json = util.JSONToTable(json)
+		json = StreamRadioLib.JSON.Decode(json)
 		return json
 	end
 
@@ -150,10 +150,10 @@ local function AddCommonFunctions(interface)
 	function interface:RequestHeader(url, callback, parameters, headers)
 		callback = callback or (function() end)
 
-		StreamRadioLib.Http.RequestHeader(url, function(suggess, data)
+		StreamRadioLib.Http.RequestHeader(url, function(success, data)
 			data.custom_data = {}
 			data.reload = false
-			callback(suggess, data)
+			callback(success, data)
 		end, parameters, headers)
 
 		return true
@@ -162,10 +162,10 @@ local function AddCommonFunctions(interface)
 	function interface:Request(url, callback, parameters, method, headers)
 		callback = callback or (function() end)
 
-		StreamRadioLib.Http.Request(url, function(suggess, data)
+		StreamRadioLib.Http.Request(url, function(success, data)
 			data.custom_data = {}
 			data.reload = false
-			callback(suggess, data)
+			callback(success, data)
 		end, parameters, method, headers)
 
 		return true
@@ -273,7 +273,6 @@ local function AddSubInterfaces(interface)
 		RADIOIFACE.scriptfile = scriptfile
 		RADIOIFACE.parent = interface
 
-		RADIOIFACE.errorspace = interface.errorspace + (#interface.subinterfaces + 1) * 100
 		RADIOIFACE.Errorcodes = {}
 
 		AddCommonFunctions(RADIOIFACE)
@@ -315,7 +314,6 @@ local function AddInterface(script)
 	RADIOIFACE.scriptpath = scriptpath
 	RADIOIFACE.scriptfile = scriptfile
 
-	RADIOIFACE.errorspace = (#Intefaces + 1) * 1000 + 10000
 	RADIOIFACE.Errorcodes = {}
 	RADIOIFACE.subinterfaces = {}
 
@@ -404,23 +402,27 @@ function LIB.Convert(url, callback)
 	callback = callback or (function() end)
 
 	if url == "" then
-		callback(false, nil, nil)
+		callback(nil, false, nil, nil)
 		return false
 	end
 
 	local I = GetInterfaceFromURL(url)
 	if not I then
-		callback(false, nil, nil)
+		callback(I, false, nil, nil)
 		return false
 	end
 
 	if not I.Convert then
-		callback(false, nil, nil)
+		callback(I, false, nil, nil)
 		return false
 	end
 
 	local R = I:Convert(url, function(this, success, convered_url, errorcode, data)
 		errorcode = tonumber(errorcode or -1) or -1
+
+		data = data or {}
+		data.custom_data = data.custom_data or {}
+
 		callback(this, success, convered_url, errorcode, data)
 	end)
 

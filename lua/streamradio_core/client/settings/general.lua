@@ -123,6 +123,8 @@ LIB.AddConVar("general", "youtubesupport", "cl_streamradio_youtubesupport", "0",
 	help = "Enable YouTube support when set to 1. (slow and unreliable!) Default: 0",
 	type = "bool",
 	userdata = true,
+	hidden = true,
+	disabled = true,
 })
 
 local function BuildMenuPanel(CPanel)
@@ -139,7 +141,7 @@ local function BuildMenuPanel(CPanel)
 
 		errorlabel:SetDark(false)
 		errorlabel:SetHighlight(true)
-		errorlabel:SetText((StreamRadioLib.Addonname or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis menu could not be loaded.")
+		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis menu could not be loaded.")
 		errorlabel:SizeToContents()
 		CPanel:AddPanel(errorlabel)
 

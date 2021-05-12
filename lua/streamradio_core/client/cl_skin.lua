@@ -73,7 +73,7 @@ function LIB.Open(name)
 	local skinjson = file.Read(filepath, "DATA") or ""
 	if skinjson == "" then return end
 
-	local skindata = util.JSONToTable(skinjson)
+	local skindata = StreamRadioLib.JSON.Decode(skinjson)
 	if not skindata then return end
 	
 	skindata.name = name
@@ -93,7 +93,7 @@ function LIB.Save(name, skindata)
 	skindata = skindata or {}
 	skindata.name = nil
 
-	local skinjson = util.TableToJSON(skindata, true) or ""
+	local skinjson = StreamRadioLib.JSON.Encode(skindata, true) or ""
 	local filepath = LIB.GetPath(name)
 
 	if not CreateDirForFile(filepath) then return false end

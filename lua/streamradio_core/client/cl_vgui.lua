@@ -131,7 +131,6 @@ function PANEL:Init( )
 You can enter this:
    - A path of a sound file inside and relative to your game's sound folder. Mounted content is supported and included.
    - An URL to an online file or stream. The URL must lead to valid sound content. (No HTML, no Flash, no Videos)
-   - A YouTube URL, if the support is enabled. (Limited availability!)
 ]]
 
 	self.URLTooltip = string.Trim(self.URLTooltip)
@@ -348,5 +347,36 @@ end
 function PANEL:OnURLCheck( ... )
 end
 
--- Override
 vgui.Register( "Streamradio_VGUI_URLTextEntry", PANEL, "DPanel" )
+
+local PANEL = {}
+
+function PANEL:Init( )
+	self:SetEditable( true )
+	self:SetMultiline( true )
+	self:SetDrawLanguageID( false )
+	self:SetTabbingDisabled( true )
+	self:SetHistoryEnabled( false )
+	self:SetEnterAllowed( false )
+	self:SetDrawBorder( false )
+	self:SetPaintBackground( false )
+	self:SetUpdateOnType( true )
+	self:SetNumeric( false )
+	self:SetVerticalScrollbarEnabled( false )
+	self:SetHistoryEnabled( false )
+	self:SetCursorColor( Color( 0, 0, 0, 0 ) )
+	self:SetCursor( "arrow" )
+
+	self._SetText = self.SetText
+	self.SetText = function(this, text, ...)
+		this.m_text = tostring(text or "")
+		this:_SetText(this.m_text, ...)
+	end
+end
+
+function PANEL:OnValueChange()
+	self:_SetText(self.m_text or "")
+end
+
+vgui.Register( "Streamradio_VGUI_ReadOnlyTextEntry", PANEL, "DTextEntry" )
+

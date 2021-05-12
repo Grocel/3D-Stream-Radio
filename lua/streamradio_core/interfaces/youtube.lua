@@ -10,12 +10,9 @@ RADIOIFACE.download = true
 RADIOIFACE.download_timeout = 20
 RADIOIFACE.MaxBitrate = 256
 
-local es = RADIOIFACE.errorspace
-
-local ERROR_DISABLED = es + 0
-local ERROR_NO_ID = es + 1
-
-
+local ERROR_DISABLED = 10000
+local ERROR_UNSUPPORTED = 10001
+local ERROR_NO_ID = 10002
 
 local youtube_error_note = [[
 YouTube support is done via third party services, which are NOT under my control.
@@ -40,10 +37,22 @@ youtube_error_end = RADIOIFACE.youtube_error_end
 RADIOIFACE.youtube_help_url = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/1640915206446609230/"
 local youtube_help_url = RADIOIFACE.youtube_help_url
 
+RADIOIFACE.Errorcodes[ERROR_UNSUPPORTED] = {
+	desc = "YouTube is not supported",
+	text = [[
+YouTube is not supported. Please use other media sources.
+You can use a Youtube to MP3 converter, but it is not recommended.
 
+Notes:
+  - Reliable YouTube support can't be added. It is impossible.
+  - Please, don't ask me about it.
+  - View the online help link for more information.
+]],
+	url = youtube_help_url,
+}
 
 RADIOIFACE.Errorcodes[ERROR_NO_ID] = {
-	desc = "Invalid ID",
+	desc = "Invalid video ID",
 	text = [[
 An invalid video ID was given.
 
@@ -56,7 +65,7 @@ Notes:
 }
 
 RADIOIFACE.Errorcodes[ERROR_DISABLED] = {
-	desc = "Support is not enabled",
+	desc = "YouTube support is not enabled",
 	text = [[
 Playback from YouTube is disabled.
 You can enable it with the tickbox below or in the Stream Radio settings.
@@ -179,7 +188,8 @@ function RADIOIFACE:Convert(url, callback)
 
 	local stack = self:GetSubInterfaceStack()
 	if not stack then
-		callcallbacks(self, false, nil, -1)
+		q.started = true
+		callcallbacks(self, false, nil, ERROR_UNSUPPORTED)
 		return true
 	end
 
@@ -196,14 +206,14 @@ function RADIOIFACE:Convert(url, callback)
 
 		local subiface = stack:Top()
 		if not subiface then
-			callcallbacks(self, false, nil, lasterror or -1)
+			callcallbacks(self, false, nil, lasterror or ERROR_UNSUPPORTED)
 			return
 		end
 
 		stack:Pop()
 
 		if not subiface.Convert then
-			callcallbacks(self, false, nil, lasterror or -1)
+			callcallbacks(self, false, nil, lasterror or ERROR_UNSUPPORTED)
 			return
 		end
 

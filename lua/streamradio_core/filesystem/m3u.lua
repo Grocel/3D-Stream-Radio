@@ -6,32 +6,17 @@ end
 
 RADIOFS.name = "M3U"
 RADIOFS.type = "m3u"
+RADIOFS.extension = "m3u"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("page")
 
 RADIOFS.priority = 10000
 RADIOFS.default = true
 
-function RADIOFS:Read(globalpath, vpath, callback)
-	local f = file.Open(globalpath, "r", "DATA")
 
-	if not f then
-		callback(false, nil)
-		return false
-	end
-
-	local RawPlaylist = string.Trim(f:Read(f:Size()) or "")
-	f:Close()
-
-
-	if RawPlaylist == "" then
-		callback(true, {})
-		return true
-	end
-
+local function decodeM3U(RawPlaylist)
 	local RawPlaylistTab = string.Split( RawPlaylist, "\n" )
-	local AdvancedM3U = string.lower( string.Trim( RawPlaylistTab[1] ) ) == '#extm3u'
+	local AdvancedM3U = string.lower( string.Trim( RawPlaylistTab[1] or "" ) ) == '#extm3u'
 	local Playlist = {}
-	local Index = 1
 
 	if not AdvancedM3U then
 		for i = 1, #RawPlaylistTab do
@@ -46,12 +31,10 @@ function RADIOFS:Read(globalpath, vpath, callback)
 				continue
 			end
 
-			Playlist[Index] = {
+			Playlist[#Playlist + 1] = {
 				name = name,
 				url = url
 			}
-
-			Index = Index + 1
 		end
 
 		callback(true, Playlist)
@@ -59,7 +42,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 	end
 
 	for i = 2, #RawPlaylistTab, 2 do
-		local name = string.Trim( string.match( RawPlaylistTab[i], ( "%s*#EXTINF:%s*%d%s*,%s*([%w%p% %_]+)" ) ) or "" )
+		local name = string.Trim( string.match( RawPlaylistTab[i], "%s*#EXTINF:%s*%d%s*,%s*([^\n]+)" ) or "" )
 		local url = string.Trim( RawPlaylistTab[i + 1] or "" )
 
 		if name == "" then
@@ -70,15 +53,37 @@ function RADIOFS:Read(globalpath, vpath, callback)
 			continue
 		end
 
-		Playlist[Index] = {
+		Playlist[#Playlist + 1] = {
 			name = name,
 			url = url
 		}
-
-		Index = Index + 1
 	end
 
-	callback(true, Playlist)
+	return Playlist
+end
+
+function RADIOFS:Read(globalpath, vpath, callback)
+	file.AsyncRead(globalpath, "DATA", function(fileName, gamePath, status, data)
+		if status ~= FSASYNC_OK then
+			callback(false, nil)
+			return
+		end
+
+		local RawPlaylist = string.Trim(data or "")
+		if RawPlaylist == "" then
+			callback(true, {})
+			return
+		end
+
+		local Playlist = decodeM3U(RawPlaylist)
+		if not Playlist then
+			callback(false, nil)
+			return
+		end
+
+		callback(true, Playlist)
+	end)
+
 	return true
 end
 
@@ -94,15 +99,19 @@ function RADIOFS:Write(globalpath, vpath, data, callback)
 		return false
 	end
 
-	local DataString = "#EXTM3U\n"
+	local dataOut = {}
 	local Seperator = "\n"
 
-	for k, v in pairs(data) do
+	dataOut[#dataOut + 1] = "#EXTM3U\n"
+
+	for i, v in ipairs(data) do
 		local name = string.Trim(string.Replace(v.name, Seperator, ""))
 		local url = string.Trim(string.Replace(v.url, Seperator, ""))
 
-		DataString = DataString .. string.format("#EXTINF:0,%s" .. Seperator .. "%s\n", name, url)
+		dataOut[#dataOut + 1] = string.format("#EXTINF:0,%s" .. Seperator .. "%s\n", name, url)
 	end
+
+	local DataString = table.concat(dataOut, "")
 
 	DataString = string.Trim(DataString)
 	DataString = DataString .. "\n\n"

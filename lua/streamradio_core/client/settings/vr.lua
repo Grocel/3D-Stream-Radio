@@ -31,7 +31,7 @@ local function BuildMenuPanel(CPanel)
 
 		errorlabel:SetDark(false)
 		errorlabel:SetHighlight(true)
-		errorlabel:SetText((StreamRadioLib.Addonname or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis menu could not be loaded.")
+		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis menu could not be loaded.")
 		errorlabel:SizeToContents()
 		CPanel:AddPanel(errorlabel)
 
@@ -43,7 +43,7 @@ local function BuildMenuPanel(CPanel)
 
 		errorlabel:SetDark(false)
 		errorlabel:SetHighlight(true)
-		errorlabel:SetText((StreamRadioLib.Addonname or "") .. "\nVRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
+		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. "\nVRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
 		errorlabel:SizeToContents()
 		CPanel:AddPanel(errorlabel)
 

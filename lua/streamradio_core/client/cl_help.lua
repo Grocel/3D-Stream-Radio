@@ -302,18 +302,13 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 		HelpPanel:SetZPos(150)
 		HelpPanel:GetParent():SetWorldClicker( true )
 
-		HelpPanel.HelpTextPanel = vgui.Create( "DTextEntry", HelpPanel )
-		HelpPanel.HelpTextPanel:SetEditable( true )
-		HelpPanel.HelpTextPanel:SetMultiline( true )
-		HelpPanel.HelpTextPanel:SetDrawLanguageID( false )
-		HelpPanel.HelpTextPanel:AllowInput( false )
-		HelpPanel.HelpTextPanel:SetTabbingDisabled( false )
-		HelpPanel.HelpTextPanel:SetHistoryEnabled( false )
-		HelpPanel.HelpTextPanel:SetEnterAllowed( false )
+		HelpPanel.HelpTextPanel = vgui.Create( "Streamradio_VGUI_ReadOnlyTextEntry", HelpPanel )
 		HelpPanel.HelpTextPanel:SetDrawBorder( true )
+		HelpPanel.HelpTextPanel:SetPaintBackground( true )
 		HelpPanel.HelpTextPanel:SetVerticalScrollbarEnabled( true )
 		HelpPanel.HelpTextPanel:SetFont( ErrorHelpFont )
 		HelpPanel.HelpTextPanel:SetZPos(100)
+		HelpPanel.HelpTextPanel:SetCursor( "beam" )
 		HelpPanel.HelpTextPanel:Dock( FILL )
 
 		local ControlPanel = vgui.Create( "DPanel", HelpPanel )
@@ -405,11 +400,6 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 	end
 
 	HelpPanel.HelpTextPanel:SetText( ErrorText )
-
-	HelpPanel.HelpTextPanel.OnChange = function( self )
-		if ( not IsValid( HelpPanel ) ) then return end
-		self:SetText( ErrorText )
-	end
 
 	local CopyText = string.gsub( ErrorText or "", "\n", "\r\n" )
 	CopyText = string.Trim( CopyText )

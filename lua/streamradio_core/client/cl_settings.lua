@@ -35,6 +35,14 @@ function LIB.AddConVar(namespace, name, cmd, default, data)
 		CV:SetHelptext(data.help)
 	end
 
+	if data.hidden ~= nil then
+		CV:SetHidden(data.hidden)
+	end
+
+	if data.disabled ~= nil then
+		CV:SetDisabled(data.disabled)
+	end
+
 	CV:SetPanellabel(data.label)
 	CV:Setup()
 

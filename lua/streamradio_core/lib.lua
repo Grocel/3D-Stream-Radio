@@ -76,7 +76,7 @@ local EditorErrors = {
 	[StreamRadioLib.EDITOR_ERROR_WPATH] = "Invalid path!",
 	[StreamRadioLib.EDITOR_ERROR_WDATA] = "Invalid data!",
 	[StreamRadioLib.EDITOR_ERROR_WVIRTUAL] = "This virtual file is readonly!",
-	[StreamRadioLib.EDITOR_ERROR_WFORMAT] = "Invalid file format!\nValid formats are: m3u, pls, json, vdf",
+	[StreamRadioLib.EDITOR_ERROR_WFORMAT] = "Invalid file format!\nValid formats are: %s",
 	[StreamRadioLib.EDITOR_ERROR_WRITE] = "Couldn't write the file!",
 	[StreamRadioLib.EDITOR_ERROR_DIR_WRITE] = "Couldn't create the directory!",
 	[StreamRadioLib.EDITOR_ERROR_DIR_EXIST] = "This directory already exists!",
@@ -102,7 +102,14 @@ local EditorErrors = {
 }
 
 function StreamRadioLib.DecodeEditorErrorCode( err )
-	return ( EditorErrors[tonumber( err ) or StreamRadioLib.EDITOR_ERROR_UNKNOWN] or EditorErrors[StreamRadioLib.EDITOR_ERROR_UNKNOWN] )
+	err = tonumber(err) or StreamRadioLib.EDITOR_ERROR_UNKNOWN
+	local errorText = EditorErrors[err] or EditorErrors[StreamRadioLib.EDITOR_ERROR_UNKNOWN]
+
+	if (err == StreamRadioLib.EDITOR_ERROR_WFORMAT) then
+		errorText = string.format(errorText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST)
+	end
+
+	return errorText
 end
 
 function StreamRadioLib.Msg(ply, msgstring)
@@ -116,9 +123,46 @@ function StreamRadioLib.Msg(ply, msgstring)
 	end
 end
 
+local colorSeparator = Color(255,255,255)
+local colorDateTime = Color(180,180,180)
+local colorAddonName = Color(0,200,0)
+local colorPlayer = Color(200,200,0)
+
+function StreamRadioLib.Log(ply, msgstring)
+	msgstring = tostring(msgstring or "")
+	if msgstring == "" then return end
+
+	local playerStr = ""
+
+	if IsValid(ply) then
+		playerStr = string.format("%s - %s", tostring(ply), ply:SteamID())
+	end
+
+	local Timestamp = os.time()
+	local TimeString = os.date("%Y-%m-%d %H:%M:%S" , Timestamp)
+
+	MsgC(colorSeparator, "[")
+	MsgC(colorDateTime, TimeString)
+	MsgC(colorSeparator, "]")
+
+	MsgC(colorSeparator, "[")
+	MsgC(colorAddonName, StreamRadioLib.AddonTitle)
+	MsgC(colorSeparator, "]")
+
+	if playerStr ~= "" then
+		MsgC(colorSeparator, "[")
+		MsgC(colorPlayer, playerStr)
+		MsgC(colorSeparator, "]")
+	end
+
+	Msg(" ")
+
+	MsgN(msgstring)
+end
+
 local catchAndNohalt = function(err)
 	local msgstring = err
-	msgstring = string.Trim(StreamRadioLib.Addonname .. msgstring) .. "\n"
+	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
 
 	ErrorNoHalt(msgstring)
 
@@ -146,7 +190,7 @@ function StreamRadioLib.Debug(format, ...)
 	end
 
 	msgstring = table.concat(tmp)
-	msgstring = string.Trim(StreamRadioLib.Addonname .. msgstring) .. "\n"
+	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
 
 	if StreamRadioLib.VR.IsActive() then
 		StreamRadioLib.VR.Debug(msgstring)
@@ -243,6 +287,31 @@ function StreamRadioLib.HashToHex( h )
 	crc = "awedw" .. crc .. "pwfjh"
 
 	return hex, CRCfloat32(crc)
+end
+
+function StreamRadioLib.NormalizeNewlines(text, nl)
+	nl = tostring(nl or "")
+	text = tostring(text or "")
+
+	local replacemap = {
+		["\r\n"] = true,
+		["\r"] = true,
+		["\n"] = true,
+	}
+
+	if not replacemap[nl] then
+		nl = "\n"
+	end
+
+	replacemap[nl] = nil
+
+	for k, v in pairs(replacemap) do
+		replacemap[k] = nl
+	end
+
+	text = string.gsub(text, "([\r]?[\n]?)", replacemap)
+
+	return text
 end
 
 function StreamRadioLib.HasWiremod()
@@ -873,7 +942,7 @@ local function ShowErrorInfo( ply, cmd, args )
 
 	local err = tonumber( args[1] ) or -1
 	local errstr = StreamRadioLib.DecodeErrorCode( err )
-	local msgstring = StreamRadioLib.Addonname .. "Error code " .. err .. " = " .. errstr
+	local msgstring = StreamRadioLib.AddonPrefix .. "Error code " .. err .. " = " .. errstr
 	StreamRadioLib.Msg( ply, msgstring )
 end
 
@@ -1020,7 +1089,6 @@ function StreamRadioLib.ConvertURL( url )
 		return url, StreamRadioLib.STREAM_URLTYPE_FILE
 	end
 
-	local IsConverted = false
 	local URLType = StreamRadioLib.STREAM_URLTYPE_ONLINE
 
 	local Cachefile = StreamRadioLib.Cache.GetFile( url )
@@ -1031,6 +1099,52 @@ function StreamRadioLib.ConvertURL( url )
 	end
 
 	return url, URLType
+end
+
+function StreamRadioLib.DeleteFolder(path)
+	if not StreamRadioLib.DataDirectory then
+		print("1")
+		return false
+	end
+
+	if StreamRadioLib.DataDirectory == "" then
+		print("2")
+		return false
+	end
+
+	if path == "" then
+		print("3")
+		return false
+	end
+
+	if not string.StartWith(path, StreamRadioLib.DataDirectory) then
+		print("4")
+		return false
+	end
+
+	local files, folders = file.Find(path .. "/*", "DATA")
+
+	for k, v in pairs(folders or {}) do
+		StreamRadioLib.DeleteFolder(path .. "/" .. v)
+	end
+
+	for k, v in pairs(files or {}) do
+		file.Delete(path .. "/" .. v)
+	end
+
+	file.Delete(path)
+
+	if file.Exists(path, "DATA") then
+		print("5", path)
+		return false
+	end
+
+	if file.IsDir(path, "DATA") then
+		print("6")
+		return false
+	end
+
+	return true
 end
 
 function StreamRadioLib.CreateStream()

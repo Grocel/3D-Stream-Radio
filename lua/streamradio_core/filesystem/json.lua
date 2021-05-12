@@ -6,30 +6,29 @@ end
 
 RADIOFS.name = "JSON"
 RADIOFS.type = "json"
+RADIOFS.extension = "json"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("table")
 
 RADIOFS.priority = 2000
 
 function RADIOFS:Read(globalpath, vpath, callback)
-	local f = file.Open(globalpath, "r", "DATA")
+	file.AsyncRead(globalpath, "DATA", function(fileName, gamePath, status, data)
+		if status ~= FSASYNC_OK then
+			callback(false, nil)
+			return
+		end
 
-	if not f then
-		callback(false, nil)
-		return false
-	end
+		local RawPlaylist = string.Trim(data or "")
+		if RawPlaylist == "" then
+			callback(true, {})
+			return
+		end
 
-	local RawPlaylist = string.Trim(f:Read(f:Size()) or "")
-	f:Close()
+		local Playlist = StreamRadioLib.JSON.Decode(RawPlaylist) or {}
 
+		callback(true, Playlist)
+	end)
 
-	if RawPlaylist == "" then
-		callback(true, {})
-		return true
-	end
-
-	local Playlist = util.JSONToTable(RawPlaylist) or {}
-
-	callback(true, Playlist)
 	return true
 end
 
@@ -45,7 +44,7 @@ function RADIOFS:Write(globalpath, vpath, data, callback)
 		return false
 	end
 
-	local DataString = util.TableToJSON(data)
+	local DataString = StreamRadioLib.JSON.Encode(data)
 	DataString = string.Trim(DataString)
 	DataString = DataString .. "\n\n"
 

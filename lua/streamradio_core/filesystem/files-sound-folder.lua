@@ -39,8 +39,8 @@ function RADIOFS:GetSoundPath(vpath)
 	return path
 end
 
-function RADIOFS:IsInFolder(vfolder)
-	local levels = self:GetPathLevels(vfolder)
+function RADIOFS:IsInFolder(vpath)
+	local levels = self:GetPathLevels(vpath)
 	local firstlevel = levels[1] or ""
 
 	if firstlevel ~= ":gamesounds" then
@@ -50,15 +50,9 @@ function RADIOFS:IsInFolder(vfolder)
 	return true
 end
 
-function RADIOFS:IsFileInFolder(vpath)
-	vpath = string.GetPathFromFilename(vpath)
+function RADIOFS:IsType(globalpath, vpath)
 	return self:IsInFolder(vpath)
 end
-
-function RADIOFS:IsType(globalpath, vpath)
-	return self:IsFileInFolder(vpath)
-end
-
 
 function RADIOFS:GetFiles(findpath)
 	local validfiles = {}
@@ -77,19 +71,22 @@ function RADIOFS:GetFiles(findpath)
 	return validfiles
 end
 
-function RADIOFS:Find(globalpath, vfolder)
+function RADIOFS:Find(globalpath, vfolder, callback)
 	if vfolder == "" then
-		return nil, {":gamesounds"}
+		callback(true, nil, {":gamesounds"})
+		return true
 	end
 
 	if not self:IsInFolder(vfolder) then
-		return nil
+		callback(false, nil, nil)
+		return false
 	end
 
 	globalpath = self:GetSoundPath(vfolder)
 
 	if not globalpath then
-		return nil
+		callback(false, nil, nil)
+		return false
 	end
 
 	local findpath = self.rootfolder .. "/" .. globalpath
@@ -101,7 +98,8 @@ function RADIOFS:Find(globalpath, vfolder)
 		files[#files + 1] = ":allfiles"
 	end
 
-	return files, folders
+	callback(true, files, folders)
+	return true
 end
 
 function RADIOFS:Exists(globalpath, vpath)

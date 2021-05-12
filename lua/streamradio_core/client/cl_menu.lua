@@ -86,7 +86,7 @@ end
 function LIB.GetCreditsPanel()
 	local credits = vgui.Create("DLabel")
 	credits:SetDark(true)
-	credits:SetText(StreamRadioLib.Addonname .. "Made by Grocel")
+	credits:SetText(StreamRadioLib.AddonPrefix .. "Made by Grocel")
 	credits:SizeToContents()
 
 	return credits

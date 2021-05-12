@@ -39,7 +39,7 @@ local function request(url, callback, parameters, method, headers, body, type)
 		type = type,
 	}
 
-	local requestname = util.TableToJSON(requestdata)
+	local requestname = StreamRadioLib.JSON.Encode(requestdata)
 	local rq = g_request_quene[requestname] or {}
 	g_request_quene[requestname] = rq
 
@@ -71,17 +71,17 @@ local function request(url, callback, parameters, method, headers, body, type)
 		code = code or -1
 		body = body or ""
 
-		local suggess = true
+		local success = true
 
 		if code < 0 then
-			suggess = false
+			success = false
 		end
 
 		if code >= 400 then
-			suggess = false
+			success = false
 		end
 
-		callcallbacks(rq, suggess, {
+		callcallbacks(rq, success, {
 			code = code or -1,
 			body = body,
 			len = #body,
@@ -122,9 +122,9 @@ end
 function LIB.RequestRawHeader(url, callback, body, headers, type)
 	callback = callback or (function() end)
 
-	local req = LIB.RequestRaw(url, function(suggess, data)
+	local req = LIB.RequestRaw(url, function(success, data)
 		data.body = nil
-		callback(suggess, data)
+		callback(success, data)
 	end, "HEAD", body, headers, type)
 
 	return req
@@ -133,9 +133,9 @@ end
 function LIB.RequestHeader(url, callback, parameters, headers)
 	callback = callback or (function() end)
 
-	local req = LIB.Request(url, function(suggess, data)
+	local req = LIB.Request(url, function(success, data)
 		data.body = nil
-		callback(suggess, data)
+		callback(success, data)
 	end, "HEAD", parameters, headers)
 
 	return req

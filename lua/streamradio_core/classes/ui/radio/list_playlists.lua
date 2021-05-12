@@ -21,14 +21,31 @@ function CLASS:BuildListInternal()
 		return
 	end
 
-	local files = StreamRadioLib.Filesystem.Find(self.Path.Value)
-	if not files then
-		self:UpdateButtons()
-		self:RestoreScrollPos()
+	self._fs_files = nil
+	self._fs_curpath = self.Path.Value
+
+	StreamRadioLib.Filesystem.Find(self.Path.Value, function(success, files)
+		if self._fs_curpath ~= self.Path.Value then
+			return
+		end
+
+		self._fs_files = files or {}
+		self:QueueCall("_BuildListInternalAsyc")
+	end)
+end
+
+function CLASS:_BuildListInternalAsyc()
+	if not self._fs_files then
 		return
 	end
 
-	for i, v in ipairs(files) do
+	if self._fs_curpath ~= self.Path.Value then
+		return
+	end
+
+	self:ClearData()
+
+	for i, v in ipairs(self._fs_files) do
 		local data = {}
 
 		data.value = v
@@ -37,6 +54,8 @@ function CLASS:BuildListInternal()
 
 		self:AddData(data, true)
 	end
+
+	self._fs_files = nil
 
 	self:UpdateButtons()
 	self:QueueCall("RestoreScrollPos")

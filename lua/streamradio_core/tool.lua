@@ -336,7 +336,7 @@ function LIB.Setup(toolobj)
 
 			errorlabel:SetDark(false)
 			errorlabel:SetHighlight(true)
-			errorlabel:SetText((StreamRadioLib.Addonname or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis tool could not be loaded.")
+			errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis tool could not be loaded.")
 			errorlabel:SizeToContents()
 			CPanel:AddPanel(errorlabel)
 

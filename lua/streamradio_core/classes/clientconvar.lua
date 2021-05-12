@@ -166,6 +166,8 @@ function CLASS:Create()
 	self.userdata = false
 	self.helptext = ""
 	self.type = "string"
+	self.hidden = false
+	self.disabled = false
 	self.options = {}
 
 	self._convar = nil
@@ -232,6 +234,24 @@ end
 
 function CLASS:GetOptions()
 	return self.options or {}
+end
+
+function CLASS:SetHidden(var)
+	if self._convar then return end
+	self.hidden = var or false
+end
+
+function CLASS:GetHidden()
+	return self.hidden or false
+end
+
+function CLASS:SetDisabled(var)
+	if self._convar then return end
+	self.disabled = var or false
+end
+
+function CLASS:GetDisabled()
+	return self.disabled or false
 end
 
 function CLASS:SetPanellabel(var)
@@ -336,7 +356,20 @@ function CLASS:BuildPanel(mainpanel, ...)
 		return nil
 	end
 
-	return panel_function(self, mainpanel, ...)
+	if self:GetHidden() then
+		return nil
+	end
+
+	local panel = panel_function(self, mainpanel, ...)
+	if not IsValid(panel) then
+		return nil
+	end
+
+	if self:GetDisabled() then
+		panel:SetDisabled(true)
+	end
+
+	return panel
 end
 
 function CLASS:Setup()

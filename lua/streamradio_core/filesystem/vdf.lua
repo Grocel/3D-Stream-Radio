@@ -6,30 +6,29 @@ end
 
 RADIOFS.name = "VDF"
 RADIOFS.type = "vdf"
+RADIOFS.extension = "vdf"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("table")
 
 RADIOFS.priority = 1000
 
 function RADIOFS:Read(globalpath, vpath, callback)
-	local f = file.Open(globalpath, "r", "DATA")
+	file.AsyncRead(globalpath, "DATA", function(fileName, gamePath, status, data)
+		if status ~= FSASYNC_OK then
+			callback(false, nil)
+			return
+		end
 
-	if not f then
-		callback(false, nil)
-		return false
-	end
+		local RawPlaylist = string.Trim(data or "")
+		if RawPlaylist == "" then
+			callback(true, {})
+			return
+		end
 
-	local RawPlaylist = string.Trim(f:Read(f:Size()) or "")
-	f:Close()
+		local Playlist = util.KeyValuesToTable(RawPlaylist, false, true) or {}
 
+		callback(true, Playlist)
+	end)
 
-	if RawPlaylist == "" then
-		callback(true, {})
-		return true
-	end
-
-	local Playlist = util.KeyValuesToTable(RawPlaylist, false, true) or {}
-
-	callback(true, Playlist)
 	return true
 end
 

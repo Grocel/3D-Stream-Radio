@@ -82,7 +82,7 @@ else
 
 		function TOOL.BuildCPanel(CPanel)
 			local errorlabel = vgui.Create("DLabel")
-			local err = string.Trim((StreamRadioLib.Addonname or "") .. (StreamRadioLib.ErrorString or "") .. "\n\nThis tool could not be loaded.")
+			local err = string.Trim((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\n\nThis tool could not be loaded.")
 
 			errorlabel:SetDark(false)
 			errorlabel:SetHighlight(true)

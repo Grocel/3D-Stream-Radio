@@ -123,7 +123,7 @@ function CLASS:BuildListInternal()
 		type = self.Path.Type,
 	}
 
-	StreamRadioLib.Filesystem.Read(self.Path.Value, self.Path.Type, function(suggess, data)
+	StreamRadioLib.Filesystem.Read(self.Path.Value, self.Path.Type, function(success, data)
 		if self._read_curdata.path ~= self.Path.Value then
 			return
 		end
@@ -132,7 +132,8 @@ function CLASS:BuildListInternal()
 			return
 		end
 
-		if not suggess then
+		if not success then
+			self.tmperror = true
 			return
 		end
 
@@ -323,7 +324,7 @@ function CLASS:PostDupe(ent, dupedata)
 		type = type,
 	}
 
-	StreamRadioLib.Filesystem.Read(path, type, function(suggess, data)
+	StreamRadioLib.Filesystem.Read(path, type, function(success, data)
 		if self._read_curdata.path ~= path then
 			return
 		end
@@ -332,7 +333,7 @@ function CLASS:PostDupe(ent, dupedata)
 			return
 		end
 
-		if not suggess then
+		if not success then
 			self:SetFile("", type)
 			self:CallHook("OnInvalidDupeFilepath")
 

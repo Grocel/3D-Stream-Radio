@@ -7,7 +7,7 @@ local BASE = CLASS:GetBaseClass()
 
 local function g_encode(value)
 	value = {value or {}}
-	value = util.TableToJSON(value, false) or ""
+	value = StreamRadioLib.JSON.Encode(value, false) or ""
 	value = util.Compress(value) or ""
 
 	return value
@@ -16,7 +16,7 @@ end
 local function g_decode(value)
 	value = value or ""
 	value = util.Decompress(value) or ""
-	value = util.JSONToTable(value) or {}
+	value = StreamRadioLib.JSON.Decode(value) or {}
 	value = value[1] or {}
 
 	return value
