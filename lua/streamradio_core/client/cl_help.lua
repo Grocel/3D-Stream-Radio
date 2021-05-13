@@ -108,9 +108,6 @@ How local or mounted file paths work:
   - Do not enter absolute paths.
   - Only people who also have the same file localed there, will be able to hear the music too.
   - Create folders if they are missing.
-
-YouTube note:
-  YouTube support is done via third party services, which are NOT under my control. So please do not blame me about problems with this.
 ]],
 	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918001392/"
 }
@@ -198,9 +195,6 @@ ErrorHelps[40] = {
 	text = [[
 The connection seems being slow. Just try again in a few minutes.
 If it does not work, the server you are trying to stream from is down.
-
-YouTube note:
-  YouTube support is done via third party services, which are NOT under my control. So please do not blame me about problems with this.
 ]],
 	helpurl = ""
 }
@@ -212,7 +206,6 @@ You are trying to play something that the streaming API of GMod (and so the radi
 These things will NOT work:
   - HTML pages that play sound.
   - Flash players/games/applications that are playing sound.
-  - Videos exept those on YouTube in limited cases. (See below.)
   - Anything that requires any kind of login to access.
   - Anything that is not public.
   - Sound scripts or sound properties.
@@ -229,9 +222,6 @@ These things will work:
 Supported formats:
   MP3, OGG, AAC, WAV, WMA, FLAC
   *.WAV files must be not self-looping ingame as the API does not support these.
-
-YouTube note:
-  YouTube support is done via third party services, which are NOT under my control. So please do not blame me about problems with this.
 ]],
 	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918028290/"
 }

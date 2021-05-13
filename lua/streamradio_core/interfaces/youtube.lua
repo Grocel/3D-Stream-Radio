@@ -14,27 +14,7 @@ local ERROR_DISABLED = 10000
 local ERROR_UNSUPPORTED = 10001
 local ERROR_NO_ID = 10002
 
-local youtube_error_note = [[
-YouTube support is done via third party services, which are NOT under my control.
-So please do not blame me about problems with this.
-]]
-
-RADIOIFACE.youtube_error_note = string.Trim(youtube_error_note)
-youtube_error_note = RADIOIFACE.youtube_error_note
-
-local youtube_error_end = [[
-Notes:
-  - Make sure you enter a YouTube URL of an existing video.
-  - Do not try to play from YouTube playlists or channels. Those are not supported.
-  - Make sure the video is not blocked.
-  - Retry later.
-
-]] .. youtube_error_note
-
-RADIOIFACE.youtube_error_end = string.Trim(youtube_error_end)
-youtube_error_end = RADIOIFACE.youtube_error_end
-
-RADIOIFACE.youtube_help_url = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/1640915206446609230/"
+RADIOIFACE.youtube_help_url = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/4523281307928803506/"
 local youtube_help_url = RADIOIFACE.youtube_help_url
 
 RADIOIFACE.Errorcodes[ERROR_UNSUPPORTED] = {
@@ -59,8 +39,7 @@ An invalid video ID was given.
 Notes:
   - Make sure you enter a YouTube URL of an existing video.
   - Do not try to play from YouTube playlists or channels. Those are not supported.
-
-]] .. youtube_error_note,
+]],
 	url = youtube_help_url,
 }
 
@@ -73,8 +52,7 @@ You can enable it with the tickbox below or in the Stream Radio settings.
 Notes:
   - This is slow and unreliable.
   - Use at your own risk.
-
-]] .. youtube_error_note,
+]],
 	url = youtube_help_url,
 	userdata = {
 		tickbox = {
@@ -83,7 +61,6 @@ Notes:
 		},
 	},
 }
-
 
 
 local YoutubePatterns = {
