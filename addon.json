@@ -7,7 +7,7 @@
 	],
 	"ignore": [
 		"*.git*",
-		"*.vscode",
+		"*.vscode*",
 		"glualint",
 		"glualint.json",
 		"*.svn*",
