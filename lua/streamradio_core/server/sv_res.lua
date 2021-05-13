@@ -1,4 +1,4 @@
-// resource.AddWorkshop( "246756300" ) -- Workshop download
+resource.AddWorkshop( "246756300" ) -- Workshop download
 
 -- Workaround Garry code that disallows shipping *.txt files for the data folder to Workshop.
 local WorkshopDataDirectory = "materials/3dstreamradio/_data"
