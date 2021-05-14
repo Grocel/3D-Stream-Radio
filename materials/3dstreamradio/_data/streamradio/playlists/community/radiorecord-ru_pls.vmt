@@ -1,4 +1,5 @@
 [playlist]
+NumberOfEntries=71
 File1=http://air.radiorecord.ru:8102/1970_320
 Title1=Radiorecord.ru - 1970s
 Length1=-1
@@ -212,5 +213,4 @@ Length70=-1
 File71=http://air.radiorecord.ru:8102/vip_320
 Title71=Radiorecord.ru - Vip House
 Length71=-1
-NumberOfEntries=71
 Version=2
