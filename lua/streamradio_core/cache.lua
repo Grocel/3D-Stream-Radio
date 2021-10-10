@@ -8,9 +8,9 @@ local g_isDedicatedServer = (SERVER and game.IsDedicated())
 local MainDir = (StreamRadioLib.DataDirectory or "") .. "/cache"
 
 local MinFileSize = 2 ^ 16 -- 64 KB
-local MaxFileSize = 2 ^ 26 -- 64 MB
-local MaxCacheSize = 2 ^ 30 -- 1 GB
-local MaxCacheCount = 128
+local MaxFileSize = 2 ^ 28 -- 256 MB
+local MaxCacheSize = 2 ^ 34 -- 16 GB
+local MaxCacheCount = 1024
 
 local function CreateBaseFolder( dir )
 	if not file.IsDir( dir, "DATA" ) then
@@ -77,17 +77,15 @@ end
 local function Hash( var )
 	var = tostring( var or "" )
 
-	local hash = string.format(
-		"%08x%08x%08x",
-		tonumber( util.CRC( var ) ),
-		tonumber( util.CRC( "StreamRadioLib: '" .. var .. "'" )),
-		tonumber( util.CRC( #var ) )
-	)
+	local hash = util.SHA1( "StreamRadioLib: '" .. var .. "'" )
 
 	return hash
 end
 
 local function GetFilenameFromURL( url )
+	url = tostring( url or "" )
+	url = StreamRadioLib.NormalizeURL(url)
+
 	local filename = Hash( url ) or ""
 	if ( filename == "" ) then return end
 

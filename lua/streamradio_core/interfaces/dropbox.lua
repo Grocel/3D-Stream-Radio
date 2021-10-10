@@ -7,19 +7,14 @@ end
 RADIOIFACE.name = "Dropbox"
 RADIOIFACE.subinterfaces_folder = "dropbox"
 RADIOIFACE.download = true
-RADIOIFACE.download_timeout = 20
+RADIOIFACE.download_timeout = 5
 
-local ERROR_NO_PATH = 20002
+local ERROR_NO_PATH = 20000
 
 RADIOIFACE.Errorcodes[ERROR_NO_PATH] = {
-	desc = "YouTube support is not enabled",
+	desc = "Dropbox url has no path",
 	text = [[
-Playback from YouTube is disabled.
-You can enable it with the tickbox below or in the Stream Radio settings.
-
-Notes:
-  - This is slow and unreliable.
-  - Use at your own risk.
+Make sure your Dropbox has a valid path in it.
 ]],
 }
 

@@ -1034,7 +1034,7 @@ function CLASS:PlayStreamInternal(nodownload)
 		if not nodownload and interface.download then
 			local dltimeout = interface.download_timeout or 0
 			local filesize = -1
-			local allowdl = false
+			local allowdl = true
 
 			if data.custom_data.meta then
 				filesize = data.custom_data.meta.filesize or -1
