@@ -140,6 +140,21 @@ function LIB.GetVRAddonButton()
 	return button
 end
 
+function LIB.GetVRAddonPanelButton()
+	local button = vgui.Create("DButton")
+
+	local maintext = "Open VRMod Panel"
+
+	button.DoClick = function(this)
+		RunConsoleCommand("vrmod")
+	end
+
+	button:SetTooltip(maintext)
+	button:SetText(maintext)
+
+	return button
+end
+
 function LIB.GetPlaylistEditorButton()
 	local button = vgui.Create("DButton")
 

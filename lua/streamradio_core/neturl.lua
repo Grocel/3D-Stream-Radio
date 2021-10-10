@@ -55,11 +55,8 @@ local legal = {
 	[";"] = true -- can be used for parameters in path
 }
 
-local function decode(str, path)
-	local str = str
-	if not path then
-		str = str:gsub('+', ' ')
-	end
+local function decode(str)
+	local str = str:gsub('+', ' ')
 	return (str:gsub("%%(%x%x)", function(c)
 			return string.char(tonumber(c, 16))
 	end))
@@ -87,17 +84,12 @@ local function encodeSegment(s)
 	return s:gsub('([^a-zA-Z0-9])', legalEncode)
 end
 
-local function concat(s, u)
-	return s .. u:build()
-end
-
 --- builds the url
 -- @return a string representing the built url
 function M:build()
 	local url = ''
 	if self.path then
 		local path = self.path
-		path = path:gsub("([^/]+)", function (s) return encodeSegment(s) end)
 		url = url .. tostring(path)
 	end
 	if self.query then
@@ -162,7 +154,7 @@ function M.buildQuery(tab, sep, key)
 		if type(value) == 'table' then
 			query[#query+1] = M.buildQuery(value, sep, name)
 		else
-			local value = encodeValue(tostring(value))
+			local value = encodeValue(decode(tostring(value)))
 			if value ~= "" then
 				query[#query+1] = string.format('%s=%s', name, value)
 			else
@@ -279,7 +271,14 @@ function M:setAuthority(authority)
 				self.password = v
 				return ''
 		end)
-		self.user = userinfo
+		if string.find(userinfo, "^[%w%+%.]+$") then
+			self.user = userinfo
+		else
+			-- incorrect userinfo
+			self.userinfo = nil
+			self.user = nil
+			self.password = nil
+		end
 	end
 	return authority
 end
@@ -312,11 +311,11 @@ function M.parse(url)
 		M.setAuthority(comp, v)
 		return ''
 	end)
-	comp.path = decode(url, true)
+
+	comp.path = url:gsub("([^/]+)", function (s) return encodeSegment(decode(s)) end)
 
 	setmetatable(comp, {
 		__index = M,
-		__concat = concat,
 		__tostring = M.build}
 	)
 	return comp
@@ -370,13 +369,14 @@ function M.removeDotSegments(path)
 	return ret
 end
 
-local function absolutePath(base_path, relative_path)
+local function reducePath(base_path, relative_path)
 	if string.sub(relative_path, 1, 1) == "/" then
 		return '/' .. string.gsub(relative_path, '^[%./]+', '')
 	end
 	local path = base_path
+	local startslash = string.sub(path, 1, 1) ~= "/";
 	if relative_path ~= "" then
-		path = '/'..path:gsub("[^/]*$", "")
+		path = (startslash and '' or '/') .. path:gsub("[^/]*$", "")
 	end
 	path = path .. relative_path
 	path = path:gsub("([^/]*%./)", function (s)
@@ -398,7 +398,7 @@ local function absolutePath(base_path, relative_path)
 		reduced = path
 		path = string.gsub(reduced, '^/?%.%./', '')
 	end
-	return '/' .. path
+	return (startslash and '' or '/') .. path
 end
 
 --- builds a new url by using the one given as parameter and resolving paths
@@ -424,7 +424,7 @@ function M:resolve(other)
 					other.query = self.query
 				end
 			else
-				other.path = absolutePath(self.path, other.path)
+				other.path = reducePath(self.path, other.path)
 			end
 		end
 		return other
@@ -440,7 +440,7 @@ function M:normalize()
 	end
 	if self.path then
 		local path = self.path
-		path = absolutePath(path, "")
+		path = reducePath(path, "")
 		-- normalize multiple slashes
 		path = string.gsub(path, "//+", "/")
 		self.path = path

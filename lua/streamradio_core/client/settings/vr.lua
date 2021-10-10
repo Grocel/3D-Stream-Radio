@@ -67,6 +67,7 @@ local function BuildMenuPanel(CPanel)
 	end
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(15))
+	CPanel:AddPanel(StreamRadioLib.Menu.GetVRAddonPanelButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetVRFAQButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetCreditsPanel())
 end
