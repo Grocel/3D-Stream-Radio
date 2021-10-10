@@ -233,8 +233,8 @@ local function saveinclude(lua, force)
 
 	if StreamRadioLib.IsDebug() then
 		-- For easier reloading during development
-		include(lua)
-		return true, true
+		local result = include(lua)
+		return true, result
 	end
 
 	-- Anything below is too ensure that the addon has loaded correctly without errors

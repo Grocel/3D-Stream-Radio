@@ -66,6 +66,14 @@ local retry_errors_non3d = {
 	[-1] = true
 }
 
+local retry_errors_block = {
+	[41] = true,
+	[21] = true,
+	[22] = true,
+	[2] = true,
+	[-1] = true
+}
+
 function CLASS:Create()
 	BASE.Create(self)
 
@@ -1074,7 +1082,7 @@ function CLASS:PlayStreamInternal(nodownload)
 	return self:_PlayStreamInternal(URL, URLtype)
 end
 
-function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
+function CLASS:_PlayStreamInternal(URL, URLtype, no3d, noBlock, retrycount)
 	if not self:StillSearching() then
 		return true
 	end
@@ -1082,6 +1090,10 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 	local URLonline = (URLtype ~= StreamRadioLib.STREAM_URLTYPE_FILE) and (URLtype ~= StreamRadioLib.STREAM_URLTYPE_CACHE)
 	local Play3D = CLIENT and self.WSData and self.WSData.WorldSound and not no3d
 	retrycount = retrycount or 0
+
+	if noBlock == nil then
+		noBlock = true
+	end
 
 	local StreamCallback = function( channel, err )
 		if not IsValid( self ) then
@@ -1125,7 +1137,7 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 						return
 					end
 
-					local loading = self:_PlayStreamInternal( URL, URLtype, no3d, retrycount + 1 )
+					local loading = self:_PlayStreamInternal( URL, URLtype, no3d, noBlock, retrycount + 1 )
 					if not loading then
 						self:AcceptStream( nil, -1 )
 					end
@@ -1142,7 +1154,7 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 					if not IsValid( self ) then return end
 					if not self:StillSearching() then return end
 
-					local loading = self:_PlayStreamInternal( URL, URLtype, true )
+					local loading = self:_PlayStreamInternal( URL, URLtype, true, noBlock )
 					if not loading then
 						self:AcceptStream( nil, -1 )
 					end
@@ -1150,6 +1162,23 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 
 				return
 			end
+		else
+			-- retry in block mode if no-block mode is not working
+			if noBlock and retry_errors_block[err] then
+				if self:CallHook("OnRetry", err, URL, URLtype) then
+					self:TimerOnce("stream", URLonline and 2 or 0, function()
+						if not IsValid( self ) then return end
+						if not self:StillSearching() then return end
+	
+						local loading = self:_PlayStreamInternal( URL, URLtype, true, false )
+						if not loading then
+							self:AcceptStream( nil, -1 )
+						end
+					end)
+	
+					return
+				end
+			end	
 		end
 
 		if not ChannelIsCacheAble(channel) then
@@ -1191,16 +1220,23 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 			safeCallback( nil, 2 )
 			return true
 		end
+	else
+		-- make sure we have a clean online url
+		URL = StreamRadioLib.NormalizeURL(URL)
 	end
 
 	local playfunc = nil
 	local Mode = nil
 
 	if self.State.HasBass then
-		Mode = bit.bor( BASS3.ENUM.MODE_NOBLOCK, BASS3.ENUM.MODE_NOPLAY )
+		Mode = BASS3.ENUM.MODE_NOPLAY
 
 		if Play3D then
 			Mode = bit.bor( Mode, BASS3.ENUM.MODE_3D )
+		end
+
+		if noBlock then
+			Mode = bit.bor( Mode, BASS3.ENUM.MODE_NOBLOCK )
 		end
 
 		playfunc = URLonline and BASS3.PlayURL or BASS3.PlayFile
@@ -1211,10 +1247,14 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, retrycount)
 		return playfunc( URL, Mode, safeCallback )
 	end
 
-	Mode = "noblock noplay "
+	Mode = "noplay "
 
 	if Play3D then
 		Mode = Mode .. "3d "
+	end
+
+	if noBlock then
+		Mode = Mode .. "noblock "
 	end
 
 	playfunc = URLonline and sound.PlayURL or sound.PlayFile

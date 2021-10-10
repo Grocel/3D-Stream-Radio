@@ -399,6 +399,8 @@ end
 
 function LIB.Convert(url, callback)
 	url = url or ""
+	url = tostring(StreamRadioLib.NetURL.normalize(url))
+
 	callback = callback or (function() end)
 
 	if url == "" then

@@ -451,9 +451,11 @@ function CLASS:UpdateFromStream()
 		then
 			self.PlayBar:SetFraction(0)
 			self.PlayBar:SetAllowFractionEdit(false)
+			self.PlayBar:SetDisabled(self:GetSyncMode())
 		else
 			self.PlayBar:SetFraction(time / len)
 			self.PlayBar:SetAllowFractionEdit(not self.StreamOBJ:IsBlockStreamed())
+			self.PlayBar:SetDisabled(self:GetSyncMode() or self.StreamOBJ:IsBlockStreamed())
 		end
 
 		self.PlayBar:UpdateText()

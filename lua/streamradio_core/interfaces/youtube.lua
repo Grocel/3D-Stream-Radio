@@ -6,9 +6,6 @@ end
 
 RADIOIFACE.name = "YouTube"
 RADIOIFACE.subinterfaces_folder = "youtube"
-RADIOIFACE.download = true
-RADIOIFACE.download_timeout = 20
-RADIOIFACE.MaxBitrate = 256
 
 local ERROR_DISABLED = 10000
 local ERROR_UNSUPPORTED = 10001

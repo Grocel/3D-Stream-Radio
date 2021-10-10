@@ -20,8 +20,11 @@ local function callcallbacks(rq, ...)
 	end
 end
 
+
 local function request(url, callback, parameters, method, headers, body, type)
 	url = url or ""
+	url = StreamRadioLib.NormalizeURL(url)
+
 	callback = callback or (function() end)
 	parameters = parameters or {}
 	method = method or ""

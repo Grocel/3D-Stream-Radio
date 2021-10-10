@@ -18,6 +18,9 @@ local CLIENT = CLIENT
 local BASS3 = BASS3 or {}
 local StreamRadioLib = StreamRadioLib
 
+local _, NetURL = StreamRadioLib.LoadSH('streamradio_core/neturl.lua')
+StreamRadioLib.NetURL = NetURL
+
 // Placeholder for Blocked URLs with non-Keyboard chars
 StreamRadioLib.BlockedURLCode = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5)
 
@@ -1007,7 +1010,7 @@ local function NormalizeOfflineFilename( path )
 	path = string.Replace( path, "../", "" )
 	path = string.Replace( path, "//", "/" )
 
-	if(#path > 260) then
+	if #path > 260 then
 		return string.sub(path, 0, 260)
 	end
 
@@ -1020,33 +1023,22 @@ function StreamRadioLib.URIAddParameter(url, parameter)
 	end
 
 	url = tostring(url or "")
-
-	local start = "?"
-
-	if string.find(url, "?", 1, true) then
-		start = "&"
-	end
-
-	local uri = {}
-	uri[#uri + 1] = url
-	uri[#uri + 1] = start
-
-	local first = true
+	url = NetURL.normalize(url)
 
 	for k, v in pairs(parameter) do
-		if not first then
-			uri[#uri + 1] = "&"
-		end
-
-		first = false
-
-		uri[#uri + 1] = URLEncode(k)
-		uri[#uri + 1] = "="
-		uri[#uri + 1] = URLEncode(v)
+		url.query[k] = v
 	end
 
-	uri = table.concat(uri)
-	return uri
+	url = tostring(url)
+	return url
+end
+
+function StreamRadioLib.NormalizeURL(url)
+	url = tostring(url or "")
+	url = NetURL.normalize(url)
+	url = tostring(url)
+
+	return url
 end
 
 function StreamRadioLib.IsBlockedURLCode( url )
@@ -1103,22 +1095,18 @@ end
 
 function StreamRadioLib.DeleteFolder(path)
 	if not StreamRadioLib.DataDirectory then
-		print("1")
 		return false
 	end
 
 	if StreamRadioLib.DataDirectory == "" then
-		print("2")
 		return false
 	end
 
 	if path == "" then
-		print("3")
 		return false
 	end
 
 	if not string.StartWith(path, StreamRadioLib.DataDirectory) then
-		print("4")
 		return false
 	end
 
@@ -1135,12 +1123,10 @@ function StreamRadioLib.DeleteFolder(path)
 	file.Delete(path)
 
 	if file.Exists(path, "DATA") then
-		print("5", path)
 		return false
 	end
 
 	if file.IsDir(path, "DATA") then
-		print("6")
 		return false
 	end
 
