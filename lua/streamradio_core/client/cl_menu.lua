@@ -17,7 +17,7 @@ function LIB.GetLinkButton(text, urlStr)
 			return
 		end
 
-		button:SetTooltip(text .. "\n\nURL: " .. url)
+		button:SetTooltip(text .. "\n\nURL: " .. url .. "\n\nRight click to copy the URL to clipboard.")
 	end
 
 	button.GetURL = function(this)
@@ -37,6 +37,16 @@ function LIB.GetLinkButton(text, urlStr)
 		this._infoWasPressed = true
 
 		gui.OpenURL(url)
+	end
+
+	button.DoRightClick = function(this)
+		local url = this:GetURL()
+
+		if url == "" then
+			return
+		end
+
+		SetClipboardText(url)
 	end
 
 	local oldThink = button.Think
@@ -113,11 +123,10 @@ function LIB.GetSpacer(height)
 	spacer:SetMouseInputEnabled(false)
 	spacer:SetPaintBackgroundEnabled(false)
 	spacer:SetPaintBorderEnabled(false)
+	spacer:SetPaintBackground(false)
 
 	spacer:DockMargin(0, 0, 0, 0)
 	spacer:DockPadding(0, 0, 0, 0)
-	spacer:SetPaintBackground(0, 0, 0, 0)
-	spacer:SetPaintBackground(0, 0, 0, 0)
 
 	spacer:SetHeight(height)
 

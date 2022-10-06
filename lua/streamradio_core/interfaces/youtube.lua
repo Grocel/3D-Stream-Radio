@@ -119,8 +119,11 @@ function RADIOIFACE:ParseURL(url)
 end
 
 function RADIOIFACE:CheckConvertCondition(url, callback)
+
 	if CLIENT and not StreamRadioLib.HasYoutubeSupport() then
-		callback(self, false, nil, ERROR_DISABLED)
+		-- Youtube support is dropped anyways
+		-- callback(self, false, nil, ERROR_DISABLED)
+		callback(self, false, nil, ERROR_UNSUPPORTED)
 		return false
 	end
 

@@ -367,3 +367,6 @@ function ENT:OnSetupModelSetup()
 	self.AnimStopped = nil
 	self:StreamStopAnimModel()
 end
+
+function ENT:OnRemoveShared()
+end

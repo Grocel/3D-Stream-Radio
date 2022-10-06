@@ -67,15 +67,6 @@ function RADIOIFACE:ParseURL(url)
 	return nil
 end
 
-function RADIOIFACE:CheckConvertCondition(url, callback)
-	if CLIENT and not StreamRadioLib.HasYoutubeSupport() then
-		callback(self, false, nil, ERROR_DISABLED)
-		return false
-	end
-
-	return true
-end
-
 local g_dropbox_content_url = "https://www.dl.dropboxusercontent.com/s/";
 
 function RADIOIFACE:Convert(url, callback)

@@ -97,13 +97,12 @@ end
 
 
 function TOOL:BuildToolPanel(CPanel)
-	CPanel:AddControl( "PropSelect", {
-		Label = StreamRadioLib.Tool.GetLocale(self, "model"),
-		ConVar = self.Mode .. "_model",
-		Category = self.Mode,
-		Models = StreamRadioLib.Model.RegisteredModels(),
-		Height = 4,
-	} )
+	CPanel:PropSelect(
+		StreamRadioLib.Tool.GetLocale(self, "model"),
+		self.Mode .. "_model",
+		StreamRadioLib.Model.RegisteredModels(),
+		4
+	)
 
 	local ModelinfoLabel = self:AddLabel( CPanel, "modelinfo", true )
 	ModelinfoLabel:SetDark( false )

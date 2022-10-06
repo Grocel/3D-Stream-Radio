@@ -1151,8 +1151,15 @@ hook.Add("Think", "Streamradio_Entity_Think", function()
 	StreamRadioLib.SpawnedRadios = StreamRadioLib.SpawnedRadios or {}
 
 	for ent, _ in pairs(StreamRadioLib.SpawnedRadios) do
-		if not IsValid(ent) then continue end
-		if not ent.__IsRadio then continue end
+		if not IsValid(ent) then
+			StreamRadioLib.SpawnedRadios[ent] = nil
+			continue
+		end
+
+		if not ent.__IsRadio then
+			StreamRadioLib.SpawnedRadios[ent] = nil
+			continue
+		end
 
 		if ent.FastThink then
 			ent:FastThink()

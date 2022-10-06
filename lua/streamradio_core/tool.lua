@@ -386,7 +386,7 @@ function LIB.Setup(toolobj)
 
 			this:BuildToolPanel(CPanel)
 
-			CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(15))
+			CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 			CPanel:AddPanel(StreamRadioLib.Menu.GetFAQButton())
 			CPanel:AddPanel(StreamRadioLib.Menu.GetCreditsPanel())
 

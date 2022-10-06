@@ -367,6 +367,8 @@ end
 
 function ENT:OnRemove()
 	local Stream = self.StreamObj
+
+	-- We run it in a timer to ensure the entity is actually gone
 	timer.Simple( 0.05, function()
 		if IsValid(self) then
 			self:PostFakeRemove()

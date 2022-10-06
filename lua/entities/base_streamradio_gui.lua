@@ -426,13 +426,20 @@ function ENT:Initialize()
 end
 
 function ENT:OnRemove()
+	local GUI_Main = self.GUI_Main
 	local GUI = self.GUI
 
 	self:CallModelFunction("OnRemove", model)
 
+	-- We run it in a timer to ensure the entity is actually gone
 	timer.Simple(0.05, function()
 		if IsValid(self) then
 			return
+		end
+
+		if IsValid(GUI_Main) then
+			GUI_Main:Remove()
+			GUI_Main = nil
 		end
 
 		if IsValid(GUI) then

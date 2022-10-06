@@ -409,13 +409,15 @@ function ENT:OnMasterradioChange(masterradio, oldmasterradio)
 	end
 end
 
-function ENT:OnRemove( )
+function ENT:OnRemove()
 	if self.__IsLibLoaded then
 		StreamRadioLib._AllowSpectrumCountCache = nil
 	end
 
 	self:_StopInternal()
-	BaseClass.OnRemove( self )
+
+	self:OnRemoveShared()
+	BaseClass.OnRemove(self)
 end
 
 function ENT:OnPreEntityCopy()

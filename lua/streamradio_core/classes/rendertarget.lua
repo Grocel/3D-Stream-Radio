@@ -381,7 +381,6 @@ function CLASS:Render()
 
 	local rt = self._RT
 	local mat = rt.mat
-	local tex = rt.tex
 
 	local x, y = self:GetPos()
 	local w, h = self:GetSize()
@@ -501,13 +500,6 @@ function CLASS:SetFramerate(rate)
 	if not self.Settings then return end
 	self.Settings.Framerate = rate or 0
 end
-
-function CLASS:Flush()
-	EntRenderTargets = {}
-	collectgarbage( "collect" )
-end
-
-CLASS:Flush()
 
 function CLASS:__tostring()
 	local name = self:GetRendertargetName() or "no rendertarget"

@@ -16,10 +16,10 @@ local g_types = {
 		end,
 
 		panel_function = function(this, mainpanel, ...)
-			return mainpanel:AddControl("textbox", {
-				label = this:GetPanellabel(),
-				command = this:GetCMD(),
-			})
+			return mainpanel:TextEntry(
+				this:GetPanellabel(),
+				this:GetCMD()
+			)
 		end,
 	},
 
@@ -39,13 +39,13 @@ local g_types = {
 		end,
 
 		panel_function = function(this, mainpanel, ...)
-			return mainpanel:AddControl("slider", {
-				type = "float",
-				label = this:GetPanellabel(),
-				command = this:GetCMD(),
-				min = this:GetMin(),
-				max = this:GetMax(),
-			})
+			return mainpanel:NumSlider(
+				this:GetPanellabel(),
+				this:GetCMD(),
+				this:GetMin(),
+				this:GetMax(),
+				3
+			)
 		end,
 	},
 
@@ -65,12 +65,13 @@ local g_types = {
 		end,
 
 		panel_function = function(this, mainpanel, ...)
-			return mainpanel:AddControl("slider", {
-				label = this:GetPanellabel(),
-				command = this:GetCMD(),
-				min = this:GetMin(),
-				max = this:GetMax(),
-			})
+			return mainpanel:NumSlider(
+				this:GetPanellabel(),
+				this:GetCMD(),
+				this:GetMin(),
+				this:GetMax(),
+				0
+			)
 		end,
 	},
 
@@ -84,10 +85,10 @@ local g_types = {
 		end,
 
 		panel_function = function(this, mainpanel, ...)
-			return mainpanel:AddControl("checkbox", {
-				label = this:GetPanellabel(),
-				command = this:GetCMD(),
-			})
+			return mainpanel:CheckBox(
+				this:GetPanellabel(),
+				this:GetCMD()
+			)
 		end,
 	},
 
@@ -107,52 +108,12 @@ local g_types = {
 		end,
 
 		panel_function = function(this, mainpanel, ...)
-			return mainpanel:AddControl("Numpad", {
-				label = this:GetPanellabel(),
-				command = this:GetCMD(),
-			})
-		end,
-	},
+			local ctrlNumPad = vgui.Create("CtrlNumPad", mainpanel)
+			ctrlNumPad:SetConVar1(this:GetCMD())
+			ctrlNumPad:SetLabel1(this:GetPanellabel())
 
-	["dropdown"] = {
-		get = function(this, cv)
-			local options = this:GetOptions()
-			local value = cv:GetString()
-
-			if not options[value] then
-				return ""
-			end
-
-			return value
-		end,
-
-		set = function(this, cv, val)
-			local options = this:GetOptions()
-			local val = tostring(val or "")
-
-			if not options[val] then
-				val = ""
-			end
-
-			cv:SetString(value)
-		end,
-
-		panel_function = function(this, mainpanel, ...)
-			local tmp = {}
-			local options = this:GetOptions()
-			local cmd = this:GetCMD()
-
-			local count = 0
-			for k,v in pairs(options) do
-				tmp[v] = {[cmd] = k}
-				count = count + 1
-			end
-
-			return mainpanel:AddControl("ListBox", {
-				label = this:GetPanellabel(),
-				options = tmp,
-				height = math.min(count * 20 + 1, 225)
-			})
+			mainpanel:AddPanel(ctrlNumPad)
+			return ctrlNumPad
 		end,
 	},
 }

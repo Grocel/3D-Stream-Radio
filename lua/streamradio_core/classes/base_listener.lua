@@ -11,9 +11,6 @@ CLASS:SetGlobalVar("base_listener_listeners", g_listeners)
 local g_super_listeners = CLASS:GetGlobalVar("base_listener_super_listeners", {})
 CLASS:SetGlobalVar("base_listener_super_listeners", g_super_listeners)
 
-local g_nw_register = CLASS:GetGlobalVar("base_listener_nw_register", {})
-CLASS:SetGlobalVar("base_listener_nw_register", g_nw_register)
-
 local g_hookname = "3dstreamradio_classsystem_listen"
 local g_super_hookname = g_hookname .. "_fast"
 local g_networkhookname = "3dstreamradio_classsystem_listen"
@@ -21,7 +18,6 @@ local g_listengroups = SERVER and 6 or 4
 local g_lastgroup = 1
 local g_hookruns = false
 local g_superhooksruns = false
-local g_hooktimeout = nil
 
 for i = 1, g_listengroups do
 	g_listeners[i] = g_listeners[i] or {}
@@ -72,6 +68,7 @@ local function listentogroup()
 		g_lastgroup = thisgroup
 		g_lastgroup = g_lastgroup % g_listengroups
 
+		-- only run the next group if this one was empty (found = nil)
 		if found then
 			return found
 		end
@@ -90,28 +87,6 @@ local function g_listenfunc()
 	if found then
 		found:SetGlobalVar("base_listener_thinktime", SysTime() - starttime)
 	end
-
-	// Disabled auto hook remove as it causes the addon to break sometimes
-	/*
-	g_hookruns = true
-	g_hooktimeout = g_hooktimeout or 100
-
-	if found then
-		found:SetGlobalVar("base_listener_thinktime", SysTime() - starttime)
-		g_hooktimeout = 100
-	else
-		g_hooktimeout = g_hooktimeout - 1
-	end
-
-	if g_hooktimeout > 0 then
-		return
-	end
-
-	hook.Remove("Think", g_hookname)
-	g_hookruns = false
-	g_hooktimeout = nil
-	*/
-
 end
 
 local function g_superlistenfunc()
@@ -137,12 +112,13 @@ local function g_superlistenfunc()
 			continue
 		end
 
-		if not listener.Created then continue end
+		if not listener.Created then
+			continue
+		end
 
 		listener:SuperThink()
 		found = listener
 	end
-
 
 	if found then
 		found:SetGlobalVar("base_listener_superthinktime", SysTime() - starttime)
@@ -154,7 +130,9 @@ if SERVER then
 end
 
 net.Receive(g_networkhookname, function(len, ply)
-	if SERVER and not IsValid(ply) then return end
+	if SERVER and not IsValid(ply) then
+		return
+	end
 
 	local nwent = net.ReadEntity()
 	local name = StreamRadioLib.Net.ReceiveStringHash()
@@ -162,23 +140,38 @@ net.Receive(g_networkhookname, function(len, ply)
 
 	if not IsValid(nwent) then return end
 	if not name then return end
+	if id == "" then return end
 
-	if not g_nw_register[nwent] then return end
+	if not nwent._3dstraemradio_classobjs_nw_register then return end
 
-	local this = g_nw_register[nwent][name]
-	if not IsValid(this) then return end
+	local this = nwent._3dstraemradio_classobjs_nw_register[name]
+	if not IsValid(this) then
+		if this then
+			nwent._3dstraemradio_classobjs_nw_register[name] = nil
+		end
+
+		return
+	end
+
+	if not this._netreceivefuncs then
+		nwent._3dstraemradio_classobjs_nw_register[name] = nil
+		return
+	end
 
 	local thisnwent = this:GetEntity()
-	if nwent ~= thisnwent then return end
+	if nwent ~= thisnwent then
+		return
+	end
 
 	local thisname = this:GetName()
-	if name ~= thisname then return end
-
-	if id == "" then return end
-	if not this._netreceivefuncs then return end
+	if name ~= thisname then
+		return
+	end
 
 	local func = this:GetFunction(this._netreceivefuncs[id])
-	if not func then return end
+	if not func then
+		return
+	end
 
 	func(this, id, len, ply)
 end)
@@ -522,8 +515,6 @@ function CLASS:StartListen()
 	g_listeners[listengroupid] = g_listeners[listengroupid] or {}
 	g_listeners[listengroupid][id] = self
 
-	g_hooktimeout = nil
-
 	if g_hookruns then return end
 
 	hook.Add("Think", g_hookname, g_listenfunc)
@@ -683,8 +674,14 @@ function CLASS:SetName(name)
 	local ent = self:GetEntity()
 	local oldname = self:GetName()
 
-	if IsValid(ent) and ent._3dstreamradio_classobjs then
-		ent._3dstreamradio_classobjs[oldname] = nil
+	if IsValid(ent) then
+		if ent._3dstreamradio_classobjs then
+			ent._3dstreamradio_classobjs[oldname] = nil
+		end
+
+		if ent._3dstraemradio_classobjs_nw_register then
+			ent._3dstraemradio_classobjs_nw_register[oldname] = nil
+		end
 	end
 
 	self.Name = name
@@ -696,8 +693,14 @@ function CLASS:SetEntity(ent)
 	local oldent = self:GetEntity()
 	local name = self:GetName()
 
-	if IsValid(oldent) and oldent._3dstreamradio_classobjs then
-		oldent._3dstreamradio_classobjs[name] = nil
+	if IsValid(oldent) then
+		if oldent._3dstreamradio_classobjs then
+			oldent._3dstreamradio_classobjs[name] = nil
+		end
+
+		if oldent._3dstraemradio_classobjs_nw_register then
+			oldent._3dstraemradio_classobjs_nw_register[name] = nil
+		end
 	end
 
 	self.Entity = ent
@@ -860,9 +863,12 @@ function CLASS:ActivateNetworkedMode()
 	local ent = self:GetEntity()
 	StreamRadioLib.Net.ToHash(name)
 
-	if not IsValid(ent) then return end
-	g_nw_register[ent] = g_nw_register[ent] or {}
-	g_nw_register[ent][name] = self
+	if not IsValid(ent) then
+		return
+	end
+
+	ent._3dstraemradio_classobjs_nw_register = ent._3dstraemradio_classobjs_nw_register or {}
+	ent._3dstraemradio_classobjs_nw_register[name] = self
 end
 
 function CLASS:DeactivateNetworkedMode()
@@ -872,9 +878,15 @@ function CLASS:DeactivateNetworkedMode()
 	local ent = self:GetEntity()
 	StreamRadioLib.Net.ToHash(name)
 
-	if not IsValid(ent) then return end
-	g_nw_register[ent] = g_nw_register[ent] or {}
-	g_nw_register[ent][name] = nil
+	if not IsValid(ent) then
+		return
+	end
+
+	if not ent._3dstraemradio_classobjs_nw_register then
+		return
+	end
+
+	ent._3dstraemradio_classobjs_nw_register[name] = nil
 end
 
 function CLASS:PostDupeInternal(ent, name, data)

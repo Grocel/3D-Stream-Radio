@@ -435,6 +435,24 @@ function CLASS:NetworkClientState()
 	end)
 end
 
+function CLASS:CleanUpClientStateList()
+	if not self.ClientStateList then
+		return
+	end
+
+	for pId, state in pairs(self.ClientStateList) do
+		if pId == "SERVER" then
+			continue
+		end
+
+		if StreamRadioLib.IsPlayerNetworkable(pId) then
+			continue
+		end
+
+		self.ClientStateList[pId] = nil
+	end
+end
+
 function CLASS:SetClientState(ply, key, value)
 	if CLIENT then return end
 	if not self.Network.Active then return end
@@ -444,6 +462,8 @@ function CLASS:SetClientState(ply, key, value)
 
 	local key_index = self.StateTable_r[key]
 	if not key_index then return end
+
+	local pId = nil
 
 	if ply == "SERVER" then
 		pId = ply
@@ -515,7 +535,7 @@ function CLASS:GetClientStates(plyOrPId)
 	end
 
 	if not StreamRadioLib.IsPlayerNetworkable(plyOrPId) then
-		self.ClientStateList[plyOrPId] = nil
+		self:CleanUpClientStateList()
 		return nil
 	end
 
@@ -531,7 +551,7 @@ function CLASS:GetClientStates(plyOrPId)
 end
 
 function CLASS:IsValidTimeMaster(plyOrPId)
-	if CLIENT then return end
+	if CLIENT then return false end
 
 	local state = self:GetClientStates(plyOrPId)
 	if not state then return false end
@@ -946,6 +966,8 @@ function CLASS:AcceptStream( channel, err )
 	end
 
 	ChannelStop(self.Channel)
+
+	self:CleanUpClientStateList()
 
 	if err == 0 then
 		self.Channel = channel

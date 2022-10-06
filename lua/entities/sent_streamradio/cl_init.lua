@@ -516,6 +516,9 @@ function ENT:PostFakeRemove()
 end
 
 function ENT:OnRemove()
+	self:OnRemoveShared()
+
 	BaseClass.OnRemove(self)
+
 	self:StopTuneSound()
 end
