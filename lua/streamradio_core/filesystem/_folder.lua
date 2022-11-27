@@ -54,8 +54,6 @@ function RADIOFS:Exists(globalpath, vpath)
 end
 
 function RADIOFS:Delete(globalpath, vpath, callback)
-	globalpath = LIB.NormalizeSlashes(globalpath)
-
 	local deleted = StreamRadioLib.DeleteFolder(globalpath)
 	callback(deleted)
 

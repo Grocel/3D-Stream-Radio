@@ -866,11 +866,6 @@ function LIB.Delete(vpath, filetype, callback)
 		return false
 	end
 
-	if not LIB.IsValidFilepath(vpath) then
-		callback(false)
-		return false
-	end
-
 	local globalpath = VirtualPathToGlobal(vpath, LIB.IsFolder(filetype))
 
 	local fs = getFS(filetype)
@@ -901,10 +896,6 @@ function LIB.Exists(vpath, filetype)
 
 	if not LIB.IsValidFilepath(vpath) then
 		callback(false, nil)
-		return false
-	end
-
-	if not LIB.IsValidFilepath(vpath) then
 		return false
 	end
 

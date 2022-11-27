@@ -12,6 +12,9 @@ function LIB.GetTool(ply)
 	local tool = ply:GetWeapon("gmod_tool")
 	if not IsValid(tool) then return end
 
+	if not tool.GetToolObject then return end
+	if not tool.GetMode then return end
+
 	local toolobj = tool:GetToolObject()
 	if not toolobj then return end
 	if toolobj.Mode ~= tool:GetMode() then return end
