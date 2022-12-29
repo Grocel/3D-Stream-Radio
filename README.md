@@ -14,14 +14,20 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 ## Recommended addons
 1. [Wiremod][] for Wiremod functionalities.
 2. [GM_BASS3][] for loader sound and Wiremod spectrum output (Advanced Outputs).
-2. [\[NM\] Prop Pack][NM Prop Pack] for additional speaker Models.
+2. [\[NM\] Prop Pack][NM Prop Pack] for additional speaker models.
 
 # Features
 - Serverside playlists
 - Playlist browser built into the entity
 - Playlist support for *.pls, *.m3u, *.json and *.vdf
-- Playlist support for these addons: [MX Radio][], [Web Radio][]
-- Model support for these addons: [\[NM\] Prop Pack][NM Prop Pack], [Fallout 3 Jukebox Model][], [Minecraft SWEP][]
+- Playlist support for these addons:
+  - [Web Radio][]
+- Model support for these addons:
+  - [\[NM\] Prop Pack][NM Prop Pack]
+  - [Fallout 3 Jukebox Model][]
+  - [Minecraft SWEP][]
+  - [KanKan Radio II & Kresopolski Radio][]
+  - [ZENITH Trans-Oceanic H500][]
 - Build-in playlist editor
 - [Wiremod][] support (inputs and outputs, advanced wiremod support when the optional [gm_bass3][GM_BASS3] is installed on the server.)
 - 3D world sound, which can be turned off
@@ -46,10 +52,12 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 [GM_BASS3]: <https://gmod.facepunch.com/f/gmodaddon/jina/gm-bass3-A-cross-plattform-shared-Lua-API-to-BASS/1/>
 [workshop]: <https://steamcommunity.com/sharedfiles/filedetails/?id=246756300>
 
-[MX Radio]: <https://steamcommunity.com/sharedfiles/filedetails/?id=649771207>
 [Web Radio]: <https://steamcommunity.com/sharedfiles/filedetails/?id=314470705>
+
 [NM Prop Pack]: <https://steamcommunity.com/sharedfiles/filedetails/?id=605223544>
 [Fallout 3 Jukebox Model]: <https://steamcommunity.com/sharedfiles/filedetails/?id=529954000>
 [Minecraft SWEP]: <https://steamcommunity.com/sharedfiles/filedetails/?id=116592647>
+[KanKan Radio II & Kresopolski Radio]: <https://steamcommunity.com/sharedfiles/filedetails/?id=246756300>
+[ZENITH Trans-Oceanic H500]: <https://steamcommunity.com/sharedfiles/filedetails/?id=1652510511>
 
 [CPPI]: <http://ulyssesmod.net/archive/CPPI_v1-3.pdf>
