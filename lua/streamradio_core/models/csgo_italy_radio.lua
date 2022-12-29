@@ -8,7 +8,7 @@ end
 RADIOMDL.model = "models/props/cs_italy/radio_wooden.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(4.3, 0, 10.6)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 

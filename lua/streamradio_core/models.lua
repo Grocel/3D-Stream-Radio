@@ -8,23 +8,41 @@ local LuaModelDirectory = "streamradio_core/models"
 local function AddCommonFunctions()
 	if not RADIOMDL then return end
 
-	function RADIOMDL:GetDisplaySize(vecTL, vecBR)
+	RADIOMDL.DISPLAY_POS_TOP = 1;
+	RADIOMDL.DISPLAY_POS_RIGHT = 2;
+	RADIOMDL.DISPLAY_POS_FRONT = 3;
+
+	function RADIOMDL:GetDisplaySize(vecTL, vecBR, displayPosMode)
+		displayPosMode = displayPosMode or self.DISPLAY_POS_FRONT
+
 		local def = vecTL - vecBR
-		local x = math.abs(def.y)
-		local y = math.abs(def.z)
+
+		local x = 0
+		local y = 0
+
+		if displayPosMode == self.DISPLAY_POS_TOP then
+			x = math.abs(def.y)
+			y = math.abs(def.x)
+		elseif displayPosMode == self.DISPLAY_POS_RIGHT then
+			x = math.abs(def.x)
+			y = math.abs(def.z)
+		elseif displayPosMode == self.DISPLAY_POS_FRONT then
+			x = math.abs(def.y)
+			y = math.abs(def.z)
+		end
 
 		return x, y
 	end
 
-	function RADIOMDL:GetDisplayHeight(vecTL, vecBR, w)
-		local dx, dy = self:GetDisplaySize(vecTL, vecBR)
+	function RADIOMDL:GetDisplayHeight(vecTL, vecBR, w, displayPosMode)
+		local dx, dy = self:GetDisplaySize(vecTL, vecBR, displayPosMode)
 		local h = w * (dy / dx)
 
 		return h, dx / w
 	end
 
-	function RADIOMDL:GetDisplayWidth(vecTL, vecBR, h)
-		local dx, dy = self:GetDisplaySize(vecTL, vecBR)
+	function RADIOMDL:GetDisplayWidth(vecTL, vecBR, h, displayPosMode)
+		local dx, dy = self:GetDisplaySize(vecTL, vecBR, displayPosMode)
 		local w = h * (dx / dy)
 
 		return w, dy / h

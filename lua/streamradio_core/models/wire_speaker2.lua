@@ -5,9 +5,10 @@ if not istable( RADIOMDL ) then
 end
 
 -- Wire Speaker 2
+-- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=160250458
 RADIOMDL.model = "models/killa-x/speakers/speaker_medium.mdl"
 
 RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( 0, 0, 0 )
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnFlatOnWall = false
 

@@ -158,7 +158,10 @@ local function BuildMenuPanel(CPanel)
 	end
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
+	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenToolButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetPlaylistEditorButton())
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
 
 	CPanel:Button(
 		"Clear Client Stream Cache",

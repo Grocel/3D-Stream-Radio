@@ -9,7 +9,7 @@ RADIOMDL.model = "models/props/turret_01.mdl"
 
 RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( 0, 0, 0 )
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnFlatOnWall = false
 RADIOMDL.SoundPosOffset = Vector( 5, 0, 37 )
 RADIOMDL.SoundAngOffset = Angle( 0, 0, 0 )
 

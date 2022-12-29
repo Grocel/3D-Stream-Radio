@@ -4,11 +4,11 @@ if not istable( RADIOMDL ) then
 	return
 end
 
--- SligWolf's Jukebox
+-- SligWolf's Gramophone
 RADIOMDL.model = "models/sligwolf/grocel/radio/gramophone.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnFlatOnWall = false
 RADIOMDL.SoundPosOffset = Vector(-8, 0, 13.5)
 RADIOMDL.SoundAngOffset = Angle(-10, 0, 0)
 

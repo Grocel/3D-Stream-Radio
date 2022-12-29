@@ -8,7 +8,7 @@ end
 RADIOMDL.model = "models/sligwolf/grocel/radio/jukebox.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(10, 0, 25)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 

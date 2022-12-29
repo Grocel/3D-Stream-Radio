@@ -5,9 +5,10 @@ if not istable( RADIOMDL ) then
 end
 
 -- Wire Subwoofer, Big
+-- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=160250458
 RADIOMDL.model = "models/bull/various/speaker.mdl"
 
 RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( 0, 0, 0 )
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 

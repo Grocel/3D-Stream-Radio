@@ -4,36 +4,35 @@ if not istable( RADIOMDL ) then
 	return
 end
 
--- Minecraft Jukebox
--- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=116592647
-RADIOMDL.model = "models/mcmodelpack/blocks/jukebox.mdl"
+-- Unitra DIORA - Radiowerk Dzierzoniow: KanKan Radio II
+-- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=2891337724
+RADIOMDL.model = "models/radio/kankan/kankan.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 90, 0)
 RADIOMDL.SpawnFlatOnWall = true
-RADIOMDL.SoundPosOffset = Vector(0, 0, 18)
-RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
+RADIOMDL.SoundPosOffset = Vector(-8.55, -3, 7.80)
+RADIOMDL.SoundAngOffset = Angle(0, -90, 0)
 
-RADIOMDL.DisplayAngles = Angle(0, 0, 90)
+RADIOMDL.DisplayAngles = Angle(0, 0, 82.0)
 
-                              --        F,      R,     U
-RADIOMDL.DisplayOffset    = Vector(-15.50, -18.50, 33.75) -- Top Left
-RADIOMDL.DisplayOffsetEnd = Vector(-18.50, 12.45, 2.75) -- Bottom Right
+                              --      F,     R,    U
+RADIOMDL.DisplayOffset    = Vector(-3, -5.00, 10.65) -- Top Left
+RADIOMDL.DisplayOffsetEnd = Vector(-19.00,  -5.00, 5.50) -- Bottom Right
 
-RADIOMDL.DisplayWidth = 700
-RADIOMDL.DisplayHeight, RADIOMDL.DisplayScale = RADIOMDL:GetDisplayHeight(RADIOMDL.DisplayOffset, RADIOMDL.DisplayOffsetEnd, RADIOMDL.DisplayWidth)
-
-
-local fontoptions = {
-	antialias = false,
-}
+RADIOMDL.DisplayWidth = 1024
+RADIOMDL.DisplayHeight, RADIOMDL.DisplayScale = RADIOMDL:GetDisplayHeight(
+	RADIOMDL.DisplayOffset,
+	RADIOMDL.DisplayOffsetEnd,
+	RADIOMDL.DisplayWidth,
+	RADIOMDL.DISPLAY_POS_RIGHT
+)
 
 RADIOMDL.FontSizes = {
---  Name 	= Size,	Weight, Parentname, Options
-	Header	= {22,	1000, "Terminal", fontoptions},
-	Small	= {18,	700,  "Terminal", fontoptions},
-	Default	= {20,	700,  "Terminal", fontoptions},
-	Tooltip	= {20,	800,  "Terminal", fontoptions},
-	Big		= {25,	700,  "Terminal", fontoptions},
+--  Name 	= Size,	Weight, Parentname
+	Header	= {21,	1000},
+	Default	= {20,	700},
+	Tooltip	= {18,	800},
+	Big		= {22,	700},
 }
 
 function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
@@ -50,7 +49,7 @@ function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
 		StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlistview/button", "font", self.Fonts.Default)
 
 		StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/header", "font", self.Fonts.Header)
-		StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/controls/progressbar/label", "font", self.Fonts.Small)
+		StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/controls/progressbar/label", "font", self.Fonts.Default)
 		StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/button", "font", self.Fonts.Big)
 
 		StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/volume/progressbar/label", "font", self.Fonts.Default)
@@ -66,8 +65,8 @@ function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/header", "sizeh", 40)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/header", "sizeh", 40)
 
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlists", "gridsize", {x = 2, y = 10})
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlistview", "gridsize", {x = 1, y = 10})
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlists", "gridsize", {x = 2, y = 6})
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlistview", "gridsize", {x = 2, y = 6})
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlists/scrollbar", "sizew", 30)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlistview/scrollbar", "sizew", 30)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/sidebutton", "sizew", 50)
@@ -76,13 +75,13 @@ function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/textbox/scrollbar", "sizew", 30)
 
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/button", "sizeh", 45)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/button", "sizeh", 40)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/button", "sizeh", 40)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/button", "sizeh", 35)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/button", "sizeh", 35)
 
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "cornersize", 0)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "borderwidth", 10)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "cornersize", 16)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "borderwidth", 16)
 
-	local shadow = 0
+	local shadow = 5
 	local padding = 5
 	local margin = 5
 

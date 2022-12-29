@@ -231,3 +231,33 @@ function LIB.GetPlaylistEditorButton()
 
 	return button
 end
+
+function LIB.GetOpenToolButton()
+	local button = vgui.Create("DButton")
+
+	local maintext = "Open Stream Radio Tool"
+
+	button.DoClick = function(this)
+		spawnmenu.ActivateTool("streamradio", false)
+	end
+
+	button:SetTooltip(maintext)
+	button:SetText(maintext)
+
+	return button
+end
+
+function LIB.GetOpenSettingsButton()
+	local button = vgui.Create("DButton")
+
+	local maintext = "Open Settings"
+
+	button.DoClick = function(this)
+		spawnmenu.ActivateTool("StreamRadioSettingsPanel_general", true)
+	end
+
+	button:SetTooltip(maintext)
+	button:SetText(maintext)
+
+	return button
+end

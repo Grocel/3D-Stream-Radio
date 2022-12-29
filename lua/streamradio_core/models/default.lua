@@ -9,6 +9,6 @@ RADIOMDL.model = "default"
 
 RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( 0, 0, 0 )
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnFlatOnWall = false
 RADIOMDL.HiddenInTool = true
 

@@ -5,10 +5,11 @@ if not istable( RADIOMDL ) then
 end
 
 -- Fallout 3 Jukebox
+-- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=529954000
 RADIOMDL.model = "models/fallout3/jukebox.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(5, 18.25, -7.75)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 

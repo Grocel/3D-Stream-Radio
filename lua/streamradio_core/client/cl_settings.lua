@@ -83,7 +83,6 @@ function LIB.AddBuildMenuPanelHook(namespace, title, buildFunction)
 	title = tostring(title or "")
 
 	hook.Add("PopulateToolMenu", "AddStreamRadioSettingsPanel_" .. namespace, function()
-		spawnmenu.AddToolMenuOption( "Utilities", "Stream Radio", "StreamRadioSettingsPanel" .. namespace, title, "", "", buildFunction, {} )
+		spawnmenu.AddToolMenuOption( "Utilities", "Stream Radio", "StreamRadioSettingsPanel_" .. namespace, title, "", "", buildFunction, {} )
 	end)
 end
-

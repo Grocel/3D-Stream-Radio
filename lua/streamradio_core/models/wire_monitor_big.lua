@@ -5,10 +5,11 @@ if not istable( RADIOMDL ) then
 end
 
 -- Wire Monitor, Big
+-- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=160250458
 RADIOMDL.model = "models/kobilica/wiremonitorbig.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(0.25, 0, 11.75)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 

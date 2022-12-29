@@ -9,7 +9,7 @@ RADIOMDL.model = "models/props/sphere.mdl"
 
 RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( 0, 0, 0 )
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnFlatOnWall = false
 
 function RADIOMDL:SoundLevel(ent, soundlevel)
 	if SERVER then return end

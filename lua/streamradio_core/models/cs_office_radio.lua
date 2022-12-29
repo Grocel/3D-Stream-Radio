@@ -8,7 +8,7 @@ end
 RADIOMDL.model = "models/props/cs_office/radio.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(0, -3.75, 3.5)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 

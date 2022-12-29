@@ -5,9 +5,11 @@ if not istable( RADIOMDL ) then
 end
 
 -- All NM Speakers
+-- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=605223544
 RADIOMDL.NoDisplay = true
-RADIOMDL.SpawnAng = Angle( 90, -90, 0 )
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnAng = Angle( 0, 0, 90 )
+RADIOMDL.SpawnFlatOnWall = false
+RADIOMDL.SpawnAtOrigin = false
 
 local SpeakerSize = string.StripExtension(RADIOMDL.modelname or "")
 SpeakerSize = string.Explode("_", SpeakerSize, false) or {}
@@ -32,7 +34,7 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 	local soundlevel = 0
 
 	if IsValid(ent.StreamObj) then
-		soundlevel = math.sqrt(ent.StreamObj:GetAverageLevel())
+		soundlevel = ent.StreamObj:GetAverageLevel() ^ 0.25
 	end
 
 	local vol = ent:GetVolume()

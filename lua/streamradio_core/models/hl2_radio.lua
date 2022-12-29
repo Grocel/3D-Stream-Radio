@@ -8,7 +8,7 @@ end
 RADIOMDL.model = "models/props_lab/citizenradio.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(8.6, 0, 7.4)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 
@@ -19,7 +19,12 @@ RADIOMDL.DisplayOffset    = Vector(8.60, -5.65, 15.25) -- Top Left
 RADIOMDL.DisplayOffsetEnd = Vector(8.60, 11.15, 11.82) -- Bottom Right
 
 RADIOMDL.DisplayWidth = 1337
-RADIOMDL.DisplayHeight, RADIOMDL.DisplayScale = RADIOMDL:GetDisplayHeight(RADIOMDL.DisplayOffset, RADIOMDL.DisplayOffsetEnd, RADIOMDL.DisplayWidth)
+RADIOMDL.DisplayHeight, RADIOMDL.DisplayScale = RADIOMDL:GetDisplayHeight(
+	RADIOMDL.DisplayOffset,
+	RADIOMDL.DisplayOffsetEnd,
+	RADIOMDL.DisplayWidth,
+	RADIOMDL.DISPLAY_POS_FRONT
+)
 
 
 RADIOMDL.FontSizes = {

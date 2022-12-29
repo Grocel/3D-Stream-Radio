@@ -11,7 +11,7 @@ local skins = {0,  1,  3,  2}
 
 RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( 0, 0, 0 )
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnFlatOnWall = false
 
 function RADIOMDL:SoundLevel(ent, soundlevel)
 	if SERVER then return end

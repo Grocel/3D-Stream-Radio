@@ -9,5 +9,6 @@ RADIOMDL.model = "models/props_wasteland/speakercluster01a.mdl"
 
 RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( -90, 0, 0 )
-RADIOMDL.FlatOnWall = false
+RADIOMDL.SpawnFlatOnWall = false
+RADIOMDL.SpawnAtOrigin = false
 

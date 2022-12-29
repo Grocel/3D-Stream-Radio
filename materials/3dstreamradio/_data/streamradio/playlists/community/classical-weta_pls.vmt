@@ -1,6 +1,6 @@
 [playlist]
 NumberOfEntries=1
-File1=https://16903.live.streamtheworld.com/WETAFM.mp3
+File1=https://playerservices.streamtheworld.com/api/livestream-redirect/WETAFM.mp3?nocache=WBlVUpoY
 Title1=Classical WETA
 Length1=-1
 Version=2

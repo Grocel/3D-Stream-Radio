@@ -44,8 +44,10 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "Cleaned_", "Cleaned up all Stream Radios")
 
 	StreamRadioLib.Tool.AddLocale(TOOL, "model", "Model:")
-	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo", "Keep in mind that some models don't have a display\nand have to be controlled via Wiremod or with this tool.")
-	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo.desc", "Keep in mind that some models don't have a display\nand have to be controlled via Wiremod or with this tool.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo", "Some models (usually speakers) don't have a display.\nUse this tool or Wiremod to control those.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo.desc", "Some models (usually speakers) don't have a display.\nUse this tool or Wiremod to control those.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp.desc", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "play", "Play on spawn or set")
 	StreamRadioLib.Tool.AddLocale(TOOL, "play.desc", "If set, the radio will try to play a given URL on spawn or apply.\nThe URL can be set by this Tools or via Wiremod.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "nodisplay", "Disable display")
@@ -105,8 +107,14 @@ function TOOL:BuildToolPanel(CPanel)
 	)
 
 	local ModelinfoLabel = self:AddLabel( CPanel, "modelinfo", true )
-	ModelinfoLabel:SetDark( false )
-	ModelinfoLabel:SetHighlight( true )
+	ModelinfoLabel:SetDark( true )
+	ModelinfoLabel:SetHighlight( false )
+
+	if not game.SinglePlayer() or game.IsDedicated() then
+		local ModelinfoMPLabel = self:AddLabel( CPanel, "modelinfo_mp", true )
+		ModelinfoMPLabel:SetDark( true )
+		ModelinfoMPLabel:SetHighlight( false )
+	end
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
@@ -165,6 +173,7 @@ function TOOL:BuildToolPanel(CPanel)
 	end
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenSettingsButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetPlaylistEditorButton())
 end
 
@@ -173,52 +182,71 @@ local function CalcSpawnAngle( normal, ply_ang, model )
 	local normalz = math.Round( normal.z, 4 )
 	local IsWall = false
 	local modelsettings = StreamRadioLib.Model.GetModelSettings( model ) or {}
-	local angoffset = modelsettings.SpawnAng or Angle( 0, 0, 0 )
-	local FlatOnWall = modelsettings.FlatOnWall
+	local angoffset = modelsettings.SpawnAng or Angle()
+	local spawnFlatOnWall = modelsettings.SpawnFlatOnWall
 	Ang.p = ( Ang.p + 90 ) % 360
 
-	if ( FlatOnWall and normalz == 0 ) then
+	if spawnFlatOnWall and normalz == 0 then
 		IsWall = true
 	end
 
-	if ( normalz == 1 ) then
+	if normalz == 1 then
 		Ang.y = ( ply_ang.y + 180 ) % 360
 		IsWall = false
-	elseif ( normalz == -1 ) then
+	elseif normalz == -1 then
 		Ang.y = ply_ang.y
 		IsWall = false
 	end
 
-	if ( IsWall ) then
+	if IsWall then
 		Ang.p = 0
 	end
 
 	Ang:Normalize( )
-	Ang = Ang + angoffset
+
+	local _, Ang = LocalToWorld(Vector(), angoffset, Vector(), Ang)
+
 	Ang:Normalize( )
 
 	return Ang, IsWall
 end
 
-local function CalcSpawnPos( ent, IsWall, hitpos, normal )
-	local min = ent:OBBMins( )
-	local max = ent:OBBMaxs( )
+local function CalcSpawnPos( ent, IsWall, hitpos, normal, model )
+	local modelsettings = StreamRadioLib.Model.GetModelSettings( model ) or {}
+	local spawnAtOrigin = modelsettings.SpawnAtOrigin or false
+
+	if spawnAtOrigin then
+		return hitpos
+	end
+
+	local angoffset = modelsettings.SpawnAng or Angle()
+
+	local min = ent:OBBMins()
+	local max = ent:OBBMaxs()
+
 	local rmin, rmax = ent:GetRotatedAABB( min, max )
 
+	min:Rotate(angoffset)
+	max:Rotate(angoffset)
+
 	local size = Vector(
-		math.abs( min.x ) + math.abs( max.x ),
-		math.abs( min.y ) + math.abs( max.y ),
-		math.abs( min.z ) + math.abs( max.z )
+		math.abs( max.x - min.x ),
+		math.abs( max.y - min.y ),
+		math.abs( max.z - min.z )
 	)
 
 	local center = ( rmin + rmax ) / 2
-	local Pos = hitpos - center
 
-	if ( IsWall ) then
-		Pos = Pos + ( size.x / 2 ) * normal
+	local Pos = hitpos - center
+	local edge
+
+	if IsWall then
+		edge = size.x / 2
 	else
-		Pos = Pos + ( size.z / 2 ) * normal
+		edge = size.z / 2
 	end
+
+	Pos = Pos + edge * normal
 
 	return Pos
 end
@@ -328,7 +356,7 @@ function TOOL:LeftClick(trace)
 	local ent = MakeStreamRadio(ply, trace.HitPos, ang, model, nocollide, settings)
 	if not IsValid(ent) then return false end
 
-	local pos = CalcSpawnPos(ent, IsWall, trace.HitPos, trace.HitNormal)
+	local pos = CalcSpawnPos(ent, IsWall, trace.HitPos, trace.HitNormal, model)
 	ent:SetPos(pos)
 
 	ent:SetToolURL(self:GetClientInfo("streamurl"), self:GetClientBool("play"))
@@ -416,7 +444,7 @@ function TOOL:UpdateGhostStreamRadio( ent, ply, model )
 	local Ang, IsWall = CalcSpawnAngle(trace.HitNormal, ply:GetAngles(), model)
 	ent:SetAngles(Ang)
 
-	local Pos = CalcSpawnPos(ent, IsWall, trace.HitPos, trace.HitNormal)
+	local Pos = CalcSpawnPos(ent, IsWall, trace.HitPos, trace.HitNormal, model)
 	ent:SetPos(Pos)
 end
 
@@ -428,7 +456,7 @@ function TOOL:Think( )
 		self:MakeGhostEntity(
 			Model(model),
 			Vector(),
-			Angle(1, 0, 0)
+			Angle(0, 0, 0)
 		)
 		return
 	end

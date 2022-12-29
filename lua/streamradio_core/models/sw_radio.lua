@@ -8,7 +8,7 @@ end
 RADIOMDL.model = "models/sligwolf/grocel/radio/radio.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 180, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(0, -3.1, 3.45)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 
@@ -147,7 +147,7 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 	local soundlevel = 0
 
 	if IsValid(ent.StreamObj) then
-		soundlevel = math.sqrt(ent.StreamObj:GetAverageLevel())
+		soundlevel = ent.StreamObj:GetAverageLevel() ^ 0.25
 	end
 
 	local vol = ent:GetVolume()

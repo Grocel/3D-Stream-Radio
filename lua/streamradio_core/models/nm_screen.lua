@@ -5,10 +5,11 @@ if not istable( RADIOMDL ) then
 end
 
 -- NM Screen
+-- Addon: https://steamcommunity.com/sharedfiles/filedetails/?id=605223544
 RADIOMDL.model = "models/nickmaps/monitors/nm_monitor_ultraslim.mdl"
 
 RADIOMDL.SpawnAng = Angle(0, 0, 0)
-RADIOMDL.FlatOnWall = true
+RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(0, 0, 0)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 
