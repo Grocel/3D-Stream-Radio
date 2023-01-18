@@ -76,7 +76,7 @@ function StreamRadioLib.IsBlockedCustomURL(url)
 end
 
 function StreamRadioLib.FilterCustomURL(url)
-	if StreamRadioLib.IsBlockedCustomURL() then
+	if StreamRadioLib.IsBlockedCustomURL(url) then
 		return StreamRadioLib.BlockedURLCode
 	end
 

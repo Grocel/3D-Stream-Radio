@@ -270,6 +270,13 @@ function CLASS:UpdateFromStream()
 	local name = self.StreamOBJ:GetStreamName()
 	local isOnline = self.StreamOBJ:IsOnline()
 	local isCached = self.StreamOBJ:IsCached()
+	local url = self.StreamOBJ:GetURL()
+
+	if StreamRadioLib.IsBlockedURLCode(url) then
+		url = "(Blocked URL)"
+		isCached = false
+		isOnline = true
+	end
 
 	local urlprefix = "URL: "
 	local urlpostfix = ""
@@ -286,7 +293,7 @@ function CLASS:UpdateFromStream()
 		textlist[#textlist + 1] = name
 	end
 
-	textlist[#textlist + 1] = urlprefix .. self.StreamOBJ:GetURL() .. urlpostfix
+	textlist[#textlist + 1] = urlprefix .. url .. urlpostfix
 
 	local metaname = ""
 	local meta = self.StreamOBJ:GetMetadata()

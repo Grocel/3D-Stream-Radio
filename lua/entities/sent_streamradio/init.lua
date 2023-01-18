@@ -295,9 +295,14 @@ function ENT:Think( )
 
 			if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName then
 				local name = self.ActivateExtraName
+				local urlForDisplay = self.ActivateExtraURL
 
-				if self.ActivateExtraURL ~= "" then
-					name = name .. ": " .. self.ActivateExtraURL
+				if StreamRadioLib.IsBlockedURLCode(urlForDisplay) then
+					urlForDisplay = "(Blocked URL)"
+				end
+
+				if urlForDisplay ~= "" then
+					name = name .. ": " .. urlForDisplay
 				end
 
 				self:OnExtraURL(name, self.ActivateExtraURL)

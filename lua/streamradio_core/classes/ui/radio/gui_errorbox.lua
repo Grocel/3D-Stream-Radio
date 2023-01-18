@@ -63,10 +63,20 @@ end
 function CLASS:SetPlaylistError(url)
 	url = tostring(url or "")
 
+	if StreamRadioLib.IsBlockedURLCode(url) then
+		url = ""
+	end
+
 	self.Error = "playlist"
 	self.URL = url
 
-	local text = string.format("Error: Could not open playlist:\n%s\n\nMake sure the file is valid and not Empty\n\nClick help for more details.", url)
+	local text
+
+	if url != "" then
+		text = string.format("Error: Could not open playlist:\n%s\n\nMake sure the file is valid and not Empty\n\nClick help for more details.", url)
+	else
+		text = "Error: Could not open playlist!\n\nMake sure the file is valid and not Empty\n\nClick help for more details."
+	end
 
 	if IsValid(self.BodyPanelText) then
 		self.BodyPanelText:SetText(text)
@@ -79,11 +89,21 @@ function CLASS:SetErrorCode(err, url)
 	err = tonumber(err or 0) or 0
 	url = tostring(url or "")
 
+	if StreamRadioLib.IsBlockedURLCode(url) then
+		url = ""
+	end
+
 	self.Error = err
 	self.URL = url
 
 	local errordesc = StreamRadioLib.DecodeErrorCode(err)
-	local text = string.format("Error: %i\n\nCould not play stream:\n%s\n\n%s\n\nClick help for more details.", err, url, errordesc)
+	local text
+
+	if url != "" then
+		text = string.format("Error: %i\n\nCould not play stream:\n%s\n\n%s\n\nClick help for more details.", err, url, errordesc)
+	else
+		text = string.format("Error: %i\n\nCould not play stream!\n\n%s\n\nClick help for more details.", err, errordesc)
+	end
 
 	if IsValid(self.BodyPanelText) then
 		self.BodyPanelText:SetText(text)

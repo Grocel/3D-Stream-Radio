@@ -22,7 +22,7 @@ local _, NetURL = StreamRadioLib.LoadSH('streamradio_core/neturl.lua')
 StreamRadioLib.NetURL = NetURL
 
 // Placeholder for Blocked URLs with non-Keyboard chars
-StreamRadioLib.BlockedURLCode = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5)
+StreamRadioLib.BlockedURLCode = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5) .. "___blocked_url"
 
 StreamRadioLib.EDITOR_ERROR_OK = 0
 StreamRadioLib.EDITOR_ERROR_WRITE_OK = 1
@@ -1045,8 +1045,8 @@ function StreamRadioLib.IsBlockedURLCode( url )
 	if ( not StreamRadioLib.BlockedURLCode ) then return false end
 	if ( StreamRadioLib.BlockedURLCode == "" ) then return false end
 
-	url = string.Trim( url or "" )
-	local blocked = string.Trim( StreamRadioLib.BlockedURLCode )
+	url = url or ""
+	local blocked = StreamRadioLib.BlockedURLCode
 
 	return url == blocked
 end
