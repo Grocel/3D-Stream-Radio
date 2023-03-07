@@ -1,74 +1,14 @@
 local StreamRadioLib = StreamRadioLib or {}
-local StreamRadioLibDraw = StreamRadioLib.Surface
-local RadioAddon = StreamRadioLibDraw and StreamRadioLib.Loaded and StreamRadioLib.GetDefaultColors and true
-
-local surface = surface
-local draw = draw
-local vgui = vgui
-local string = string
-local math = math
-
-local Color = Color
-local CurTime = CurTime
-local pairs = pairs
-local RunConsoleCommand = RunConsoleCommand
 
 local PANEL = {}
 AccessorFunc( PANEL, "m_strValue", "Value" )
 AccessorFunc( PANEL, "m_strValue", "Text" )
 
+local STATE_FOUND = 2
+local STATE_ERROR = 1
+local STATE_IDLE = 0
+
 function PANEL:Init( )
-	self.Stream = StreamRadioLib.CreateStream()
-	self.Stream:Set3D(false)
-	self.Stream:SetLoop(false)
-	self.Stream:SetVolume(0)
-
-	self.Stream.OnConnect = function( stream, channel )
-		stream:Stop()
-
-		self.Error = nil
-
-		if not IsValid(self) then
-			return
-		end
-
-		self:UpdateURLState(true)
-	end
-
-	self.Stream.OnError = function( stream, err )
-		stream:Stop()
-
-		self.Error = err
-
-		if not IsValid(self) then
-			return
-		end
-
-		self:UpdateURLState(false)
-	end
-
-	self.Stream.OnRetry = function( stream, err )
-		if not IsValid(self) then
-			return false
-		end
-
-		self:UpdateURLState()
-		return true
-	end
-
-	self.Stream.OnSearch = function( stream, err )
-		if not IsValid( self ) then
-			return false
-		end
-
-		self:UpdateURLState()
-		return true
-	end
-
-	self.Stream.OnDownload = function( stream, url, interface )
-		return false
-	end
-
 	self:SetPaintBackground( false )
 	self.URLIcon = self:Add( "DImageButton" )
 	self.URLIcon:SetImage( "icon16/arrow_refresh.png" )
@@ -90,12 +30,13 @@ function PANEL:Init( )
 			return
 		end
 
-		if not IsValid(self.Stream) then
+		local stream = self.Stream
+		if not IsValid(stream) then
 			return
 		end
 
 		local err = self.Error
-		local url = self.Stream:GetURL()
+		local url = stream:GetURL()
 
 		if not err then
 			return
@@ -178,6 +119,82 @@ You can enter this:
 	self:SetValue("")
 end
 
+function PANEL:GetOrCreateStream()
+	if not StreamRadioLib and StreamRadioLib.Loaded then
+		if IsValid(self.Stream) then
+			self.Stream:Remove()
+		end
+
+		self.Stream = nil
+		self.Error = nil
+
+		return nil
+	end
+
+	if IsValid(self.Stream) then
+		return self.Stream
+	end
+
+	local stream = StreamRadioLib.CreateOBJ("stream")
+	if not IsValid( stream ) then
+		self.Stream = nil
+		self.Error = nil
+
+		return nil
+	end
+
+	stream:Set3D(false)
+	stream:SetLoop(false)
+	stream:SetVolume(0)
+
+	stream.OnConnect = function( thisStream, channel )
+		thisStream:Stop()
+
+		if not IsValid(self) then
+			return
+		end
+
+		self.Error = nil
+		self:UpdateURLState(STATE_FOUND)
+	end
+
+	stream.OnError = function( thisStream, err )
+		thisStream:Stop()
+
+		if not IsValid(self) then
+			return
+		end
+
+		self.Error = err
+		self:UpdateURLState(STATE_ERROR)
+	end
+
+	stream.OnRetry = function( thisStream, err )
+		if not IsValid(self) then
+			return false
+		end
+
+		self:UpdateURLState(STATE_IDLE)
+		return true
+	end
+
+	stream.OnSearch = function( thisStream, err )
+		if not IsValid( self ) then
+			return false
+		end
+
+		self:UpdateURLState(STATE_IDLE)
+		return true
+	end
+
+	stream.OnDownload = function( thisStream, url, interface )
+		return false
+	end
+
+	self.Stream = stream
+	return stream
+end
+
 function PANEL:SetValue(value)
 	self.m_strValue = tostring(value or "")
 	self.URLText:SetValue(self.m_strValue)
@@ -198,8 +215,8 @@ function PANEL:SetConVar(convar)
 	self.URLText:SetConVar(convar)
 end
 
-function PANEL:UpdateURLState(bool)
-	if bool == nil then
+function PANEL:UpdateURLState(state)
+	if state == STATE_IDLE then
 		self.URLIcon:SetImage("icon16/arrow_refresh.png")
 		self.URLIcon:SetTooltip("Checking URL...")
 		self.URLText:SetTooltip(self.URLTooltip .. "\n\nChecking URL...")
@@ -216,7 +233,7 @@ function PANEL:UpdateURLState(bool)
 		url = self.Stream:GetURL()
 	end
 
-	if bool == false then
+	if state == STATE_ERROR then
 
 		local tooltipbase = "The URL is not valid!"
 		local tooltip = ""
@@ -247,7 +264,7 @@ function PANEL:UpdateURLState(bool)
 		return
 	end
 
-	if bool == true then
+	if state == STATE_FOUND then
 		self.URLIcon:SetImage("icon16/accept.png")
 		self.URLIcon:SetTooltip("The URL is valid!")
 		self.URLText:SetTooltip(self.URLTooltip)
@@ -262,20 +279,23 @@ function PANEL:UpdateURLState(bool)
 end
 
 function PANEL:CheckURL()
-	self.Stream:TimerRemove("gui_url_checker")
-	self:UpdateURLState()
+	local stream = self:GetOrCreateStream()
 
-	local stream = self.Stream
+	if IsValid(stream) then
+		stream:TimerRemove("gui_url_checker")
+	end
+
+	self:UpdateURLState(STATE_IDLE)
 
 	if not IsValid(stream) then
 		self.Error = nil
-		self:UpdateURLState(false)
+		self:UpdateURLState(STATE_ERROR)
 		return
 	end
 
 	if not self.m_strValue then
 		self.Error = nil
-		self:UpdateURLState(false)
+		self:UpdateURLState(STATE_ERROR)
 		stream:SetURL("")
 		stream:Stop()
 
@@ -284,14 +304,14 @@ function PANEL:CheckURL()
 
 	if self.m_strValue == "" then
 		self.Error = nil
-		self:UpdateURLState(false)
+		self:UpdateURLState(STATE_ERROR)
 		stream:SetURL("")
 		stream:Stop()
 
 		return false
 	end
 
-	self.Stream:TimerOnce("gui_url_checker", 1, function()
+	stream:TimerOnce("gui_url_checker", 1, function()
 		if not IsValid(stream) then
 			return
 		end
@@ -300,7 +320,7 @@ function PANEL:CheckURL()
 			return
 		end
 
-		self:UpdateURLState()
+		self:UpdateURLState(STATE_IDLE)
 		stream:SetURL(self.m_strValue)
 		stream:Play()
 	end)

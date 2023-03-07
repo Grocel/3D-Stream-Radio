@@ -99,7 +99,7 @@ function ENT:SetDupePoses( PoseParameter )
 	end
 end
 
-function ENT:CreateStream()
+function ENT:GetOrCreateStream()
 	if not self.__IsLibLoaded then
 		if IsValid(self.StreamObj) then
 			self.StreamObj:Remove()
@@ -113,8 +113,8 @@ function ENT:CreateStream()
 		return self.StreamObj
 	end
 
-	self.StreamObj = StreamRadioLib.CreateOBJ("stream")
-	if not IsValid( self.StreamObj ) then
+	local stream = StreamRadioLib.CreateOBJ("stream")
+	if not IsValid( stream ) then
 		self.StreamObj = nil
 		return nil
 	end
@@ -133,39 +133,41 @@ function ENT:CreateStream()
 		return func(self, ...)
 	end
 
-	self.StreamObj.OnConnect = function( ... )
+	stream.OnConnect = function( ... )
 		return call("StreamOnConnect", ...)
 	end
 
-	self.StreamObj.OnError = function( ... )
+	stream.OnError = function( ... )
 		return call("StreamOnError", ...)
 	end
 
-	self.StreamObj.OnClose = function( ... )
+	stream.OnClose = function( ... )
 		return call("StreamOnClose", ...)
 	end
 
-	self.StreamObj.OnRetry = function( ... )
+	stream.OnRetry = function( ... )
 		return call("StreamOnRetry", ...)
 	end
 
-	self.StreamObj.OnSearch = function( ... )
+	stream.OnSearch = function( ... )
 		return call("StreamOnSearch", ...)
 	end
 
-	self.StreamObj.OnMute = function( ... )
+	stream.OnMute = function( ... )
 		return call("StreamOnMute", ...)
 	end
 
-	self.StreamObj:SetEvent("OnPlayModeChange", tostring(self) .. "_base", function(...)
+	stream:SetEvent("OnPlayModeChange", tostring(self) .. "_base", function(...)
 		return call("StreamOnPlayModeChange", ...)
 	end)
 
-	self.StreamObj:SetName("stream")
-	self.StreamObj:SetEntity(self)
-	self.StreamObj:ActivateNetworkedMode()
-	self.StreamObj:OnClose()
-	return self.StreamObj
+	stream:SetName("stream")
+	stream:SetEntity(self)
+	stream:ActivateNetworkedMode()
+	stream:OnClose()
+
+	self.StreamObj = stream
+	return stream
 end
 
 function ENT:StreamOnConnect()
@@ -284,7 +286,7 @@ function ENT:Initialize()
 		self._WireOutputCache = {}
 	end
 
-	self:CreateStream()
+	self:GetOrCreateStream()
 
 	self:CheckTransmitState()
 end
@@ -459,7 +461,6 @@ end
 if SERVER then
 	function ENT:SetStreamURL(...)
 		if not IsValid(self.StreamObj) then return end
-
 		self.StreamObj:SetURL(...)
 	end
 

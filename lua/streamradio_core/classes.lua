@@ -228,17 +228,11 @@ function StreamRadioLib.CreateOBJ(name, ...)
 	name = normalize_classname(name)
 
 	local class = StreamRadioLib.Classes[name]
-	assert(class, "Class '" .. name .. "' does not exist!")
-
-	if not class.new then
-		return nil
-	end
+	assert(istable(class), "Class '" .. name .. "' does not exist!")
+	assert(class.new, "Bad class table '" .. name .. "' detected!")
 
 	local obj = class:new()
-
-	if not obj then
-		return nil
-	end
+	assert(istable(obj), "Object from class '" .. name .. "' could not be created!")
 
 	if obj.Create then
 		obj:Create(...)

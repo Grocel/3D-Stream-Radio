@@ -237,7 +237,9 @@ local function saveinclude(lua, force)
 		return true, result
 	end
 
-	-- Anything below is too ensure that the addon has loaded correctly without errors
+	-- Anything below is advanced error handling.
+	-- It is to ensure that the addon has loaded correctly and completely without errors.
+	-- CompileFile gives your control in this regard
 
 	if force then
 		g_loaded[lua] = nil

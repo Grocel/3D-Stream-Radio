@@ -261,7 +261,12 @@ if ( StreamRadioLib.TestChannel ) then
 end
 
 local function testchannel( args )
-	local TestChannel = StreamRadioLib.TestChannel or StreamRadioLib.CreateStream()
+	local TestChannel = StreamRadioLib.TestChannel or StreamRadioLib.CreateOBJ("stream")
+
+	if not IsValid(TestChannel) then
+		ErrorNoHaltWithStack("Could not create the TestChannel!\n")
+		return
+	end
 
 	TestChannel:SetVolume( tonumber( args[2] ) )
 	TestChannel:Play()

@@ -1133,10 +1133,6 @@ function StreamRadioLib.DeleteFolder(path)
 	return true
 end
 
-function StreamRadioLib.CreateStream()
-	return StreamRadioLib.CreateOBJ("stream", false)
-end
-
 StreamRadioLib.SpawnedRadios = {}
 local LastThink = RealTime()
 

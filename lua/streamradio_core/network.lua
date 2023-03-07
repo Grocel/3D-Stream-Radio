@@ -313,9 +313,14 @@ function LIB.SetupDataTables(ent)
 	NW.Setup = true
 	NW.Names = NW.Names or {}
 
-	for name, data in pairs(NW.Names) do
-		if not data.datatype then continue end
+	local loopThis = function(name, data)
+		if not data.datatype then return end
+
 		LIB.AddDTNetworkVar(ent, data.datatype, name, unpack(data.args or {}))
+	end
+
+	for name, data in pairs(NW.Names) do
+		loopThis(name, data)
 	end
 end
 
@@ -325,19 +330,23 @@ function LIB.Pull(ent)
 	if not NW.Names then return end
 	if not NW.Setup then return end
 
-	for name, data in pairs(NW.Names) do
-		if not data.callback then continue end
-		if not data.callbackname then continue end
-		if not data.datatype then continue end
-		if not DTNetworkVarExists(ent, name) then continue end
+	local loopThis = function(name, data)
+		if not data.callback then return end
+		if not data.callbackname then return end
+		if not data.datatype then return end
+		if not DTNetworkVarExists(ent, name) then return end
 
 		local oldvalue = data.oldvalue
 		local newvalue = LIB.GetDTNetworkVar(ent, name)
 
-		if oldvalue == newvalue then continue end
+		if oldvalue == newvalue then return end
 		data.callback(ent, data.callbackname, oldvalue, newvalue)
 
 		NW.Names[name].oldvalue = newvalue
+	end
+
+	for name, data in pairs(NW.Names) do
+		loopThis(name, data)
 	end
 end
 
