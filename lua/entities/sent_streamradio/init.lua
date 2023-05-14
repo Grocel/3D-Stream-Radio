@@ -258,7 +258,7 @@ function ENT:WiremodThink( )
 	self:TriggerWireOutput("Playing", self.StreamObj:IsPlaying())
 	self:TriggerWireOutput("Loading", self.StreamObj:IsLoading() or self.StreamObj:IsBuffering() or self.StreamObj:IsSeeking())
 
-	self:TriggerWireOutput("Tag", {}) // todo
+	self:TriggerWireOutput("Tag", {}) -- todo
 	self:TriggerWireOutput("Codec", self._codec)
 	self:TriggerWireOutput("Spectrum", self._spectrum)
 	self:TriggerWireOutput("Sound Level", self.StreamObj:GetAverageLevel())

@@ -358,9 +358,9 @@ function LIB.AddDTNetworkVar(ent, datatype, name, ...)
 	assert(name ~= "", "argument #2 is an invalid name!")
 
 
-	//local exists = DTNetworkVarExists(ent, name)
+	-- local exists = DTNetworkVarExists(ent, name)
 
-	//if DTNetworkVarExists(ent, name) then return true end
+	-- if DTNetworkVarExists(ent, name) then return true end
 	if not CanAddDTNetworkVar(ent, datatype, name) then return false end
 
 	ent.StreamRadioDT = ent.StreamRadioDT or {}

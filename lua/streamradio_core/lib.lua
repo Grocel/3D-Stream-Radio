@@ -21,7 +21,7 @@ local StreamRadioLib = StreamRadioLib
 local _, NetURL = StreamRadioLib.LoadSH('streamradio_core/neturl.lua')
 StreamRadioLib.NetURL = NetURL
 
-// Placeholder for Blocked URLs with non-Keyboard chars
+-- Placeholder for Blocked URLs with non-Keyboard chars
 StreamRadioLib.BlockedURLCode = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5) .. "___blocked_url"
 
 StreamRadioLib.EDITOR_ERROR_OK = 0
@@ -245,8 +245,8 @@ function StreamRadioLib.Hash( str )
 	local rstr = string.reverse(str)
 	local rsalt = string.reverse(salt)
 
-	// There is no other 'hash' than CRC in GMod,
-	// so inflate it a bit to avoid collisions.
+	-- There is no other 'hash' than CRC in GMod,
+	-- so inflate it a bit to avoid collisions.
 
 	hash[1] = CRCfloat32(salt)
 	hash[2] = CRCfloat32("wdwer" .. rstr .. "jakwd")

@@ -72,7 +72,7 @@ function CLASS:SetPlaylistError(url)
 
 	local text
 
-	if url != "" then
+	if url ~= "" then
 		text = string.format("Error: Could not open playlist:\n%s\n\nMake sure the file is valid and not Empty\n\nClick help for more details.", url)
 	else
 		text = "Error: Could not open playlist!\n\nMake sure the file is valid and not Empty\n\nClick help for more details."
@@ -99,7 +99,7 @@ function CLASS:SetErrorCode(err, url)
 	local errordesc = StreamRadioLib.DecodeErrorCode(err)
 	local text
 
-	if url != "" then
+	if url ~= "" then
 		text = string.format("Error: %i\n\nCould not play stream:\n%s\n\n%s\n\nClick help for more details.", err, url, errordesc)
 	else
 		text = string.format("Error: %i\n\nCould not play stream!\n\n%s\n\nClick help for more details.", err, errordesc)

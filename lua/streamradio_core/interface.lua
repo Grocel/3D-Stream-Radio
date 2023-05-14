@@ -210,7 +210,7 @@ local function AddCommonFunctions(interface)
 
 			nerr.interface = self
 
-			if this != self then
+			if this ~= self then
 				nerr.subinterface = this
 			end
 

@@ -453,9 +453,9 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 
 		--Copy/Paste (Todo)
 		--[[
-			if (filetype ~= StreamRadioLib.TYPE_FOLDER and !newfile) then
+			if (filetype ~= StreamRadioLib.TYPE_FOLDER and not newfile) then
 				MenuItem = Menu:AddOption("Copy", function()
-					if ( !IsValid( self ) ) then return end
+					if ( not IsValid( self ) ) then return end
 					if ( self:IsLoading() ) then return end
 
 					self.Clipboard = path
@@ -463,26 +463,26 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 				MenuItem:SetImage("icon16/page_paste.png")
 
 				MenuItem = Menu:AddOption("Paste", function()
-					if ( !IsValid( self ) ) then return end
+					if ( not IsValid( self ) ) then return end
 					if ( self:IsLoading() ) then return end
 
 					StreamRadioLib.Editor.Copy( self.Clipboard, path )
 				end)
 				MenuItem:SetImage("icon16/page_paste.png")
-				if ( !self.Clipboard or self.Clipboard == "" ) then
+				if ( not self.Clipboard or self.Clipboard == "" ) then
 					MenuItem:SetTextColor( Disabled_Gray ) -- custom disabling
 					MenuItem.DoClick = function() end
 				end
 
 				MenuItem = Menu:AddOption("Cut", function()
-					if ( !IsValid( self ) ) then return end
+					if ( not IsValid( self ) ) then return end
 					if ( self:IsLoading() ) then return end
 
 					StreamRadioLib.Editor.Rename( self.Clipboard, path )
 					self.Clipboard = nil
 				end)
 				MenuItem:SetImage("icon16/page_paste.png")
-				if ( !self.Clipboard or self.Clipboard == "" ) then
+				if ( not self.Clipboard or self.Clipboard == "" ) then
 					MenuItem:SetTextColor( Disabled_Gray ) -- custom disabling
 					MenuItem.DoClick = function() end
 				end

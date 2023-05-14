@@ -621,8 +621,8 @@ else
 	function ENT:OnEntityCopyTableFinish(data)
 		local done = {}
 
-		// Filter out all variables/members with an storable values
-		// to avoid any abnormal, invalid or unexpectedly shared entity stats on duping (especially for Garry-Dupe)
+		-- Filter out all variables/members with an storable values
+		-- to avoid any abnormal, invalid or unexpectedly shared entity stats on duping (especially for Garry-Dupe)
 		local function recursive_filter(tab, newtable)
 			if done[tab] then return tab end
 			done[tab] = true
@@ -700,8 +700,8 @@ else
 			self:OnSetupCopyData(data)
 		end
 
-		// Filter out all variables/members with an underscore in the beginning
-		// to avoid any abnormal, invalid or unexpectedly shared entity stats on duping (especially for Garry-Dupe)
+		-- Filter out all variables/members with an underscore in the beginning
+		-- to avoid any abnormal, invalid or unexpectedly shared entity stats on duping (especially for Garry-Dupe)
 		for k, v in pairs(data) do
 			if isstring(k) and #k > 0 and k[1] == "_" then
 				data[k] = nil

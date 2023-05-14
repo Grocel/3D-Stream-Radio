@@ -212,7 +212,7 @@ function CLASS:SetStream(stream)
 			if not self.State then return end
 			if not IsValid(self.Errorbox) then return end
 
-			//self.State.Error = 0
+			-- self.State.Error = 0
 		end)
 
 		self.StreamOBJ:SetEvent("OnConnect", self:GetID(), function()

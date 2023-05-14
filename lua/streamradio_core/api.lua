@@ -32,10 +32,10 @@
         DisableAdvancedOutputs  boolean     true            True disables the Advanced Wire Outputs.
 */
 
-// ======================================================================
-// === Don't edit anything below, unless you know what you are doing. ===
-// === Really, you don't need to. Report it to me if you find a bug.  ===
-// ======================================================================
+-- ======================================================================
+-- === Don't edit anything below, unless you know what you are doing. ===
+-- === Really, you don't need to. Report it to me if you find a bug.  ===
+-- ======================================================================
 
 local ValidTypes = {
 	StreamName = "string",

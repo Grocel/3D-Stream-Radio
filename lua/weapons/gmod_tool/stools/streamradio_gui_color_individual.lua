@@ -224,8 +224,8 @@ function TOOL:AddModeList( panel )
 			local color = data[varname]
 			if not color then continue end
 
-			//local checked = activecheckbox:GetChecked()
-			//line:SetSortValue(line._activeindex, checked and 1 or 0)
+			-- local checked = activecheckbox:GetChecked()
+			-- line:SetSortValue(line._activeindex, checked and 1 or 0)
 
 			local oldcolor = colortile:GetColor()
 			if color == oldcolor then continue end

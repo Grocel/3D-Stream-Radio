@@ -70,7 +70,7 @@ local function RenderSpectrumBar(index, level, bars, soundlevel, x, y, w, h, col
 	local BarX = math.Round(x + (index - 1) * barwide)
 	local NextBarX = math.Round(x + index * barwide)
 
-	// close the bar gaps
+	-- close the bar gaps
 	barwide = NextBarX - BarX
 
 	local BarY = h + y

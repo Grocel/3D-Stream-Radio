@@ -1131,7 +1131,7 @@ function LIB.GenreExists(hierarchy)
 end
 
 local g_format_blacklist = {
-	//["audio/mpeg"] = true,
+	-- ["audio/mpeg"] = true,
 }
 
 function LIB.IsValidFormat(format)
