@@ -7,7 +7,7 @@ end
 RADIOFS.name = "PLS"
 RADIOFS.type = "pls"
 RADIOFS.extension = "pls"
-RADIOFS.icon = StreamRadioLib.GetPNGIcon("format_pls", true)
+RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = 9000
 

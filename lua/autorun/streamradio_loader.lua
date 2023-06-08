@@ -239,31 +239,26 @@ local function saveinclude(lua, force)
 
 	-- Anything below is advanced error handling.
 	-- It is to ensure that the addon has loaded correctly and completely without errors.
-	-- CompileFile gives your control in this regard
 
 	if force then
 		g_loaded[lua] = nil
 	end
 
 	if g_loaded[lua] then
+		-- Prevent loading twice
 		return true, g_loaded[lua]
 	end
 
-	local status, err = pcall(function()
+	local status, errOrResult = pcall(function()
 		if not file.Exists(lua, "LUA") then
 			error("Couldn't include file '" .. lua .. "' (File not found)", 0)
 		end
 
-		local func = CompileFile(lua)
-		if not func then
-			error("Couldn't include file '" .. lua .. "' (Syntax error)", 0)
-		end
-
-		return func()
+		return include(lua)
 	end)
 
 	if not status then
-		err = tostring(err or "")
+		local err = tostring(errOrResult or "")
 
 		if err == "" then
 			err = "Unknown error"
@@ -285,8 +280,8 @@ local function saveinclude(lua, force)
 		return nil
 	end
 
-	g_loaded[lua] = err
-	return status, err
+	g_loaded[lua] = errOrResult
+	return status, errOrResult
 end
 
 local function loadBASS3()
@@ -532,9 +527,9 @@ else
 end
 
 if SV then
-	util.AddNetworkString("3D_StreamRadio_LoadError")
+	util.AddNetworkString("3DStreamRadio/LoadError")
 
-	hook.Add("PlayerInitialSpawn", "3D_StreamRadio_LoadError", function(ply)
+	hook.Add("PlayerInitialSpawn", "3DStreamRadio/LoadError", function(ply)
 		if not IsValid(ply) then
 			return
 		end
@@ -547,12 +542,12 @@ if SV then
 			return
 		end
 
-		net.Start("3D_StreamRadio_LoadError")
+		net.Start("3DStreamRadio/LoadError")
 			net.WriteString(StreamRadioLib.ErrorString or "")
 		net.Send(ply)
 	end)
 else
-	net.Receive("3D_StreamRadio_LoadError", function()
+	net.Receive("3DStreamRadio/LoadError", function()
 		local err = net.ReadString()
 		if err == "" then return end
 		if not StreamRadioLib then return end
@@ -564,10 +559,5 @@ else
 		StreamRadioLib.Loaded = nil
 	end)
 end
-
-concommand.Add("debug_streamradio_reload", function()
-	if not StreamRadioLib then return end
-	StreamRadioLib.LoadSH(thisfile)
-end)
 
 collectgarbage( "collect" )

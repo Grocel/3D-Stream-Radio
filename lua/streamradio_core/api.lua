@@ -1,4 +1,4 @@
-/*
+--[[
     The developer API for the use in external addons or in non-sandbox gamemodes.
     Make sure you check for StreamRadioLib.Loaded == true before using this API.
 
@@ -6,7 +6,7 @@
         bool StreamRadioLib.EditRadio( Entity Radio [, table settings] )
         -- Set the Radio settings to the given settings. Returns true on success.
 
-        Entity StreamRadioLib.SpawnRadio( [Player player [, string model [, Vector pos [, Angle ang [, table settings]]]]] )
+        Entity StreamRadioLib.SpawnRadio( [Player player] [, string model] [, Vector pos] [, Angle ang] [, table settings] )
         -- Spawns a Radio and makes the given player to the owner for the tool and CPPI. It will have the given model and will be spawned at pos and ang.
         -- The settings table will set the radio's settings. The radio entity is returned on success.
 
@@ -24,13 +24,19 @@
 
         StreamVolume            number      1               0 is muted and 1 is 100% volume
         Radius                  number      1200            Number in units of the sound range
-        StreamLoop              boolean     false           True enables stream looping
-        PlaylistLoop            boolean     true            True enables playlist looping
-        Sound3D                 boolean     true            True enables the 3D world sound
+		Sound3D                 boolean     true            True enables the 3D world sound
         DisableInput            boolean     false           True disables the radio controlling. Does not affect Wiremod controlling.
         DisableDisplay          boolean     false           True disables the radio display.
         DisableAdvancedOutputs  boolean     true            True disables the Advanced Wire Outputs.
-*/
+
+		PlaybackLoopMode        number      1               Loop mode:
+                                                                StreamRadioLib.PLAYBACK_LOOP_MODE_NONE, Value: 0, No loop (Invalid values falls back to this)
+																StreamRadioLib.PLAYBACK_LOOP_MODE_SONG, Value: 1, Loops song
+																StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST, Value: 2
+
+        StreamLoop              boolean     false           True enables stream looping. DEPRECATED, use PlaybackLoopMode
+        PlaylistLoop            boolean     true            True enables playlist looping. DEPRECATED, use PlaybackLoopMode
+]]
 
 -- ======================================================================
 -- === Don't edit anything below, unless you know what you are doing. ===
@@ -43,12 +49,16 @@ local ValidTypes = {
 
 	StreamVolume = "number",
 	Radius = "number",
-	StreamLoop = "boolean",
-	PlaylistLoop = "boolean",
 	Sound3D = "boolean",
 	DisableInput = "boolean",
 	DisableDisplay = "boolean",
 	DisableAdvancedOutputs = "boolean",
+
+	PlaybackLoopMode = "number",
+
+	-- @DEPRECATED
+	StreamLoop = "boolean",
+	PlaylistLoop = "boolean",
 }
 
 function StreamRadioLib.IsValidRadioSettings( settings )
@@ -67,8 +77,7 @@ local function ErrorCheckArg( var, tright, argn, funcname, level )
 	local t = type( var )
 
 	if t ~= tright then
-		error( string.format( "bad argument #%i to '%s' (%s or nil expected, got %s)", argn, funcname, tright, t ), level or 3 )
-
+		ErrorNoHaltWithStack( string.format( "bad argument #%i to '%s' (%s or nil expected, got %s)", argn, funcname, tright, t ), level or 3 )
 		return false
 	end
 
@@ -83,7 +92,7 @@ local function ErrorCheckRadioSettings( settings, argn, funcname, level )
 		local t = type( v )
 		local tright = ValidTypes[k]
 		if not tright or t == tright then continue end
-		error( string.format( "bad datatype at index '%s' of argument #%i at '%s' (%s or nil expected, got %s)", k, argn, funcname, tright, t ), level )
+		ErrorNoHaltWithStack( string.format( "bad datatype at index '%s' of argument #%i at '%s' (%s or nil expected, got %s)", k, argn, funcname, tright, t ), level )
 
 		return false
 	end
@@ -101,19 +110,6 @@ function StreamRadioLib.EditRadio( ent, settings )
 
 	settings = settings or {}
 	if not ErrorCheckRadioSettings( settings, 2, "EditRadio", 3 ) then return false end
-
-	local StreamName = settings.StreamName or ""
-	local StreamUrl = settings.StreamUrl or ""
-
-	if StreamName == "" then
-		StreamName = StreamUrl
-	end
-
-	if StreamUrl == "" then
-		StreamUrl = StreamName
-	end
-
-	settings.Sound3D = settings.Sound3D
 
 	if ent.SetSettings then
 		ent:SetSettings(settings)
@@ -142,14 +138,11 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 		if StreamRadioLib.Msg then
 			StreamRadioLib.Msg( ply, err )
 		else
-			error( err, 2 )
+			ErrorNoHaltWithStack( err, 2 )
 		end
 
 		return
 	end
-
-	local ent = ents.Create( "sent_streamradio" )
-	if not IsValid(ent) then return end
 
 	if not IsValid(ply) or ply:IsWorld() then
 		ply = nil
@@ -164,9 +157,16 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 	settings = settings or {}
 	if not ErrorCheckRadioSettings(settings, 5, "SpawnRadio", 3) then return end
 
+	local ent = ents.Create( "sent_streamradio" )
+	if not IsValid(ent) then return end
+
+	if StreamRadioLib.IsValidModel(model) then
+		ent:SetModel(model)
+	end
+
 	ent:SetPos(pos or Vec_Zero)
 	ent:SetAngles(ang or Ang_Zero)
-	ent.ModelVar = model
+
 	ent:Spawn()
 	ent:Activate()
 
@@ -176,6 +176,10 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 
 	if isfunction(ent.CPPISetOwner) then
 		ent:CPPISetOwner(ply)
+	end
+
+	if isfunction(ent.SetLastUser) then
+		ent:SetLastUser(ply)
 	end
 
 	for k, v in pairs(data) do

@@ -46,6 +46,7 @@ function CLASS:Create()
 
 	self.BarButton = self:AddPanelByClassname("button", true)
 	self.BarButton:SetName("bar")
+	self.BarButton:SetNWName("bar")
 	self.BarButton:SetSkinIdentifyer("bar")
 	self:_TreatIconAsText(self.BarButton)
 
@@ -67,6 +68,7 @@ function CLASS:Create()
 
 	self.LeftUpButton = self:AddPanelByClassname("button", true)
 	self.LeftUpButton:SetName("left-up")
+	self.LeftUpButton:SetNWName("lup")
 	self.LeftUpButton:SetSkinIdentifyer("button")
 	self:_TreatIconAsText(self.LeftUpButton)
 
@@ -77,6 +79,7 @@ function CLASS:Create()
 
 	self.RightDownButton = self:AddPanelByClassname("button", true)
 	self.RightDownButton:SetName("right-down")
+	self.RightDownButton:SetNWName("rdn")
 	self.RightDownButton:SetSkinIdentifyer("button")
 	self:_TreatIconAsText(self.RightDownButton)
 
@@ -391,11 +394,11 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	self:SetNWVarProxy("ScrollPos", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("ScrollPos", "Int", function(this, nwkey, oldvar, newvar)
 		self.Scroll.Pos = newvar
 	end)
 
-	self:SetNWVarProxy("ScrollMax", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("ScrollMax", "Int", function(this, nwkey, oldvar, newvar)
 		self:SetMaxScroll(newvar)
 	end)
 

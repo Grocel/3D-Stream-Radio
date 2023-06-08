@@ -47,6 +47,7 @@ function CLASS:CreateText(class)
 	self.TextPanel:SetPos(0, 0)
 	self.TextPanel:SetAlign(TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self.TextPanel:SetName("label")
+	self.TextPanel:SetNWName("lbl")
 	self.TextPanel:SetSkinIdentifyer("label")
 
 	self.TextPanel.OnTextChange = function(pnl)

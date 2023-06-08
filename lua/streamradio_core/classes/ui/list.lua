@@ -3,6 +3,9 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBNet = StreamRadioLib.Net
+local LIBNetwork = StreamRadioLib.Network
+
 local BASE = CLASS:GetBaseClass()
 
 local g_listcache = CLASS:GetGlobalVar("list_listcache", {})
@@ -13,6 +16,7 @@ function CLASS:Create()
 
 	self.ScrollBar = self:AddPanelByClassname("scrollbar", true)
 	self.ScrollBar:SetName("scrollbar")
+	self.ScrollBar:SetNWName("sbar")
 	self.ScrollBar:SetSkinIdentifyer("scrollbar")
 	self.ScrollBar:SetSize(30, 30)
 
@@ -21,11 +25,9 @@ function CLASS:Create()
 	end
 
 	self.Hash = self:CreateListener({
-		hex = "",
-		crc = 0,
-		raw = {},
+		value = "",
 	}, function(this, k, v, oldv)
-		self:SetNWHash("Hash", self.Hash)
+		self:SetNWString("Hash", v)
 
 		if SERVER then return end
 		self:NetworkButtons()
@@ -74,29 +76,33 @@ function CLASS:Create()
 
 	if CLIENT then
 		self:NetReceive("data", function(this, id, len, ply)
-			self._waitfordata = nil
 			local count = net.ReadUInt(16)
-			local data = {}
+			local newdata = {}
 
 			for index = 1, count do
-				local text, icon = StreamRadioLib.Net.ReceiveListEntry( )
+				local text, icon = LIBNet.ReceiveListEntry()
 
-				table.insert(data, {
+				table.insert(newdata, {
 					text = text,
 					icon = icon,
 				})
 			end
 
-			local hash = self:GetHashID()
-			local datahash = self:GetHashID(self:GetHashFromData(data))
+			local curhash = self:GetHash()
+			local newhash = self:GetHashFromData(newdata)
 
-			self:SetCache(data, datahash)
+			-- Store the result of our request for later use
+			self:SetCache(newhash, newdata)
 
-			if datahash == hash then
-				self:SetData(data)
+			if curhash == newhash then
+				-- Apply the data if the request is the most up to date one
+				self:SetData(newdata)
 			end
 		end)
 	else
+		LIBNetwork.AddNetworkString("data")
+		LIBNetwork.AddNetworkString("datarequest")
+
 		self:NetReceive("datarequest", function(this, id, len, ply)
 			self.NetworkPlayerList = self.NetworkPlayerList or {}
 			self.NetworkPlayerList[ply] = true
@@ -133,13 +139,14 @@ end
 
 function CLASS:ClearButtons()
 	for k, v in pairs(self.Buttons or {}) do
+		if not v then
+			continue
+		end
+
 		v:Remove()
 	end
 
 	self.Buttons = {}
-	self._iscleared = true
-	self._curhash = nil
-	self._loadcounter = nil
 
 	local scrollbar = self.ScrollBar
 	if IsValid(scrollbar) then
@@ -162,6 +169,7 @@ function CLASS:GetOrCreateButton(buttonindex)
 	if not IsValid(button) then
 		button = self:AddPanelByClassname("button", true)
 		button:SetName("button" .. buttonindex)
+		button:SetNWName("but" .. buttonindex)
 		button:SetSkinIdentifyer("button")
 
 		self:CallHook("OnItemCreate", button, buttonindex)
@@ -185,16 +193,24 @@ function CLASS:NetworkButtons()
 end
 
 function CLASS:GetCache(hashstr)
-	hashstr = hashstr or ""
-	if hashstr == "" then return nil end
+	if SERVER then return nil end
 
-	local data = g_listcache[hashstr] or {}
-	if #data <= 0 then return nil end
+	hashstr = hashstr or ""
+	if hashstr == "" then
+		return nil
+	end
+
+	local data = g_listcache[hashstr]
+	if not data then
+		return nil
+	end
 
 	return data
 end
 
-function CLASS:SetCache(data, hashstr)
+function CLASS:SetCache(hashstr, data)
+	if SERVER then return end
+
 	hashstr = hashstr or ""
 	if hashstr == "" then return end
 
@@ -205,24 +221,15 @@ function CLASS:NetworkButtonsInternal()
 	if not self:IsVisible() then return end
 
 	if CLIENT then
-		local hash = self:GetHashID()
+		local hash = self:GetHash()
 		local cache = self:GetCache(hash)
 
 		if cache then
-			-- Workaround a glitch on first use on spawn
-			if self._firstcachedone then
-				self:SetData(cache)
-				return
-			end
-
-			self._firstcachedone = true
+			self:SetData(cache)
+			return
 		end
 
 		self:NetSend("datarequest")
-
-		self.LastButtonNW = RealTime()
-		self._loadcounter = nil
-		self._waitfordata = true
 
 		return
 	end
@@ -231,68 +238,17 @@ function CLASS:NetworkButtonsInternal()
 	local data = self.Data or {}
 
 	self.NetworkPlayerList = nil
-	if #playerlist <= 0 then return end
+	if #playerlist <= 0 then
+		return
+	end
 
 	self:NetSend("data", function()
 		net.WriteUInt(#data, 16)
 
-		for k, v in pairs(data) do
-			StreamRadioLib.Net.SendListEntry(v.text, v.icon)
+		for i, v in ipairs(data) do
+			LIBNet.SendListEntry(v.text, v.icon)
 		end
-
 	end, "Send", playerlist)
-
-end
-
-function CLASS:Think()
-	if SERVER then return end
-	if not self:IsVisible() then return end
-	if not self.Network.Active then return end
-	if self._waitfordata then return end
-
-	local lastnw = self.LastButtonNW or RealTime()
-	local delta = RealTime() - lastnw
-
-	local count = (self._loadcounter or 0) + 1
-	local mindelta = ((count * 0.5) ^ 2)
-
-	if delta < mindelta then return end
-	self.LastButtonNW = RealTime()
-
-	local load = false
-
-	if not load and self._iscleared then
-		load = true
-	end
-
-	if not load and not self._curhash then
-		load = true
-	end
-
-	if not load then
-		local h1 = self:GetHashID()
-		local h2 = self:GetHashID(self._curhash)
-
-		if not h1 then
-			load = true
-		end
-
-		if not h2 then
-			load = true
-		end
-
-		if h1 ~= h2 then
-			load = true
-		end
-	end
-
-	if not load then
-		self._loadcounter = nil
-		return
-	end
-
-	self:NetworkButtonsInternal()
-	self._loadcounter = count
 end
 
 function CLASS:UpdateButtonsInternal()
@@ -324,10 +280,6 @@ function CLASS:UpdateButtonsInternal()
 		self:ClearButtons()
 		return
 	end
-
-	self._iscleared = false
-	self._curhash = self:GetHashFromData(data)
-	self._loadcounter = nil
 
 	local ishorizontal = scrollbar:GetHorizontal()
 	local listviewsize = ListSizeX * ListSizeY
@@ -447,18 +399,16 @@ end
 function CLASS:GetHashFromData(data)
 	data = data or {}
 	local datastring = {}
-	local count = 0
 
-	for k, v in ipairs(data) do
+	for i, v in ipairs(data) do
 		local text = v.text or ""
 		local icon = v.icon or -1
 
-		table.insert(datastring, "{[" .. text .. "][" .. icon .. "][" .. k .. "]}")
-		count = count + 1
+		table.insert(datastring, string.format("{[%s][%d][%d]}", text, icon, i))
 	end
 
+	table.insert(datastring, string.format("[%d]", #data))
 	datastring = table.concat(datastring, "\n")
-	datastring = datastring .. "\nlen: {[" .. count .. "][" .. #datastring .. "]}"
 
 	local hash = StreamRadioLib.Hash(datastring)
 	return hash
@@ -469,9 +419,7 @@ function CLASS:CalcHash()
 	if not self.Network.Active then return end
 
 	local hash = self:GetHashFromData(self.Data)
-	self.Hash.raw = hash.raw or {}
-	self.Hash.hex = hash.hex or ""
-	self.Hash.crc = hash.crc or 0
+	self.Hash.value = hash or ""
 end
 
 function CLASS:SetData(data)
@@ -579,27 +527,23 @@ function CLASS:ActivateNetworkedMode()
 	self:SetGridSize(self:GetNWInt("ListGridX", 0), self:GetNWInt("ListGridY", 0))
 	self:SetHorizontal(self:GetNWBool("IsHorizontal", false))
 
-	local hash = self:GetNWHash("Hash") or {}
-	self.Hash.raw = hash.raw or {}
-	self.Hash.hex = hash.hex or ""
-	self.Hash.crc = hash.crc or 0
+	local hash = self:GetNWString("Hash", "")
+	self.Hash.value = hash
 
-	self:SetNWVarProxy("ListGridX", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("ListGridX", "Int", function(this, nwkey, oldvar, newvar)
 		self.Layout.ListGridX = newvar
 	end)
 
-	self:SetNWVarProxy("ListGridY", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("ListGridY", "Int", function(this, nwkey, oldvar, newvar)
 		self.Layout.ListGridY = newvar
 	end)
 
-	self:SetNWVarProxy("IsHorizontal", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("IsHorizontal", "Bool", function(this, nwkey, oldvar, newvar)
 		self:SetHorizontal(newvar)
 	end)
 
-	self:SetNWHashProxy("Hash", function(this, nwkey, oldvar, newvar)
-		self.Hash.raw = newvar.raw or {}
-		self.Hash.hex = newvar.hex or ""
-		self.Hash.crc = newvar.crc or 0
+	self:SetNWVarCallback("Hash", "String", function(this, nwkey, oldvar, newvar)
+		self.Hash.value = newvar or ""
 	end)
 
 	self:NetworkButtons()
@@ -622,31 +566,13 @@ function CLASS:GetIDIcon(ID)
 end
 
 function CLASS:GetHash()
-	local curhash = self.Hash or {}
+	local curhash = self.Hash.value or ""
 
 	if CLIENT and self.Network.Active then
-		curhash = self:GetNWHash("Hash") or {}
+		curhash = self:GetNWString("Hash", "")
 	end
 
-	local hash = {
-		raw = curhash.raw or {},
-		hex = curhash.hex or "",
-		crc = curhash.crc or 0,
-	}
-
-	return hash
-end
-
-function CLASS:GetHashID(hash)
-	hash = hash or self:GetHash() or {}
-
-	local hex = hash.hex or ""
-	local crc = hash.crc or 0
-
-	if hex == "" then return "" end
-	if crc == 0 then return "" end
-
-	return "[" .. hex .. "]_[" .. crc .. "]"
+	return curhash
 end
 
 function CLASS:OnModelSetup(setup)

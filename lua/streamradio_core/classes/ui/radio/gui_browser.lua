@@ -16,6 +16,7 @@ function CLASS:Create()
 	self.HeaderPanel = self:AddPanelByClassname("shadow_panel", true)
 	self.HeaderPanel:SetSize(1, 30)
 	self.HeaderPanel:SetName("header")
+	self.HeaderPanel:SetNWName("hdr")
 	self.HeaderPanel:SetSkinIdentifyer("header")
 
 	self.HeaderPanelTextPre = self.HeaderPanel:AddPanelByClassname("label", true)
@@ -23,11 +24,13 @@ function CLASS:Create()
 	self.HeaderPanelTextPre:SetSize(1, 30)
 	self.HeaderPanelTextPre:SetAlign(TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 	self.HeaderPanelTextPre:SetName("pretext")
+	self.HeaderPanelTextPre:SetNWName("ptxt")
 
 	self.HeaderPanelText = self.HeaderPanel:AddPanelByClassname("label", true)
 	self.HeaderPanelText:SetShorterAtEnd(false)
 	self.HeaderPanelText:SetAlign(TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 	self.HeaderPanelText:SetName("text")
+	self.HeaderPanelText:SetNWName("txt")
 
 	self.HeaderPanel.SetTextColor = function(this, color)
 		if IsValid(self.HeaderPanelText) then
@@ -55,50 +58,62 @@ function CLASS:Create()
 	self.UpButton:SetIcon(g_mat_upbutton)
 	self.UpButton:SetSize(50, 50)
 	self.UpButton:SetName("backbutton")
+	self.UpButton:SetNWName("bk")
 	self.UpButton:SetSkinIdentifyer("sidebutton")
-	self.UpButton:SetToolTip("Go to parent directory")
+	self.UpButton:SetTooltip("Go to parent directory")
 
 	self.RefreshButton = self:AddPanelByClassname("button", true)
 	self.RefreshButton:SetIcon(g_mat_refresh)
 	self.RefreshButton:SetSize(50, 50)
 	self.RefreshButton:SetName("refreshbutton")
+	self.RefreshButton:SetNWName("rfsh")
 	self.RefreshButton:SetSkinIdentifyer("sidebutton")
-	self.RefreshButton:SetToolTip("Refresh view")
+	self.RefreshButton:SetTooltip("Refresh view")
 
 	self.ToolButton = self:AddPanelByClassname("button", true)
 	self.ToolButton:SetIcon(g_mat_toolbutton)
 	self.ToolButton:SetSize(50, 50)
 	self.ToolButton:SetName("toolbutton")
+	self.ToolButton:SetNWName("tool")
 	self.ToolButton:SetSkinIdentifyer("sidebutton")
-	self.ToolButton:SetToolTip("Play URL from Toolgun")
+	self.ToolButton:SetTooltip("Play URL from Toolgun")
 
 	self.WireButton = self:AddPanelByClassname("button", true)
 	self.WireButton:SetIcon(g_mat_wirebutton)
 	self.WireButton:SetSize(50, 50)
 	self.WireButton:SetName("wirebutton")
+	self.WireButton:SetNWName("wire")
 	self.WireButton:SetSkinIdentifyer("sidebutton")
-	self.WireButton:SetVisible(StreamRadioLib.HasWiremod())
-	self.WireButton:SetToolTip("Play URL from Wiremod")
+	self.WireButton:SetVisible(StreamRadioLib.Wire.HasWiremod())
+	self.WireButton:SetTooltip("Play URL from Wiremod")
 
 	self.ListFiles = self:AddPanelByClassname("radio/list_playlists", true)
 	self.ListFiles:SetName("list-playlists")
+	self.ListFiles:SetNWName("lstp")
 	self.ListFiles:Open()
 	self.ListFiles:SetSkinIdentifyer("list")
 
 	self.ListPlaylist = self:AddPanelByClassname("radio/list_playlistview", true)
 	self.ListPlaylist:SetName("list-playlistview")
+	self.ListPlaylist:SetNWName("lstpv")
 	self.ListPlaylist:Close()
 	self.ListPlaylist:SetSkinIdentifyer("list")
 
 	self.Errorbox = self:AddPanelByClassname("radio/gui_errorbox", true)
 	self.Errorbox:SetName("error")
+	self.Errorbox:SetNWName("err")
 	self.Errorbox:SetSkinIdentifyer("error")
-	self.Errorbox.OnClose = function()
-		if not self.State then return end
 
-		self.State.PlaylistError = false
-		self.State.PlaylistOpened = false
+	self.Errorbox.OnCloseClick = function()
+		self:GoUpPath()
 	end
+
+	self.Errorbox.OnRetry = function()
+		self:Refresh()
+	end
+
+	self.Errorbox:SetZPos(100)
+	self.Errorbox:Close()
 
 	self.SideButtons = {
 		self.UpButton,
@@ -107,44 +122,34 @@ function CLASS:Create()
 		self.WireButton,
 	}
 
-	self.Errorbox.OnRetry = function()
-		if not self.State then return end
-
-		self.State.PlaylistOpened = true
-		self.ListPlaylist:Refresh()
-	end
-
-	self.Errorbox:SetZPos(100)
-	self.Errorbox:Close()
-
 	self.State = self:CreateListener({
 		PlaylistOpened = false,
-		PlaylistError = false,
 	}, function(this, k, v)
-		if k == "PlaylistOpened" then
-			if not v then
-				self.State.PlaylistError = false
+		if not v then
+			if IsValid(self.ListPlaylist) then
 				self.ListPlaylist:ClearData()
 				self.ListPlaylist:Close()
+			end
+
+			if IsValid(self.ListFiles) then
 				self.ListFiles:ActivateNetworkedMode()
 				self.ListFiles:Open()
 			end
-
-			if v then
+		else
+			if IsValid(self.ListFiles) then
 				self.ListFiles:ClearData()
 				self.ListFiles:Close()
+			end
+
+			if IsValid(self.ListPlaylist) then
 				self.ListPlaylist:ActivateNetworkedMode()
 				self.ListPlaylist:Open()
 			end
-
-			self:Refresh()
-			self:SetNWBool(k, v)
-			self:UpdatePath()
 		end
 
-		if k == "PlaylistError" and not v then
-			self.Errorbox:Close()
-		end
+		self:Refresh()
+		self:SetNWBool(k, v)
+		self:UpdatePath()
 
 		self:ApplyNetworkVars()
 		self:InvalidateLayout()
@@ -156,8 +161,6 @@ function CLASS:Create()
 	end
 
 	self.ListPlaylist.OnError = function(this, filename, filetype, ...)
-		self.State.PlaylistError = true
-
 		if IsValid(self.Errorbox) then
 			self.Errorbox:SetPlaylistError(filename)
 			self:InvalidateLayout()
@@ -166,13 +169,23 @@ function CLASS:Create()
 		return self:CallHook("OnError", filename, filetype, ...)
 	end
 
-	self.ListPlaylist.OnErrorClose = function(this, filename, filetype, ...)
-		self.State.PlaylistError = false
+	self.ListPlaylist.OnErrorRelease = function(this, filename, filetype, ...)
+		if IsValid(self.Errorbox) then
+			self.Errorbox:Close()
+			self:InvalidateLayout()
+		end
+
+		return self:CallHook("OnErrorRelease", filename, filetype, ...)
 	end
 
 	self.ListPlaylist.OnInvalidDupeFilepath = function(this, filename, filetype, ...)
 		self.InValidPlaylistDupe = true
 		self.State.PlaylistOpened = false
+
+		if IsValid(self.Errorbox) then
+			self.Errorbox:Close()
+			self:InvalidateLayout()
+		end
 
 		self:Refresh()
 		self:QueueCall("Refresh")
@@ -183,6 +196,11 @@ function CLASS:Create()
 	self.ListFiles.OnInvalidDupeFilepath = function(this)
 		self.InValidPlaylistDupe = true
 		self.State.PlaylistOpened = false
+
+		if IsValid(self.Errorbox) then
+			self.Errorbox:Close()
+			self:InvalidateLayout()
+		end
 
 		self:Refresh()
 		self:QueueCall("Refresh")
@@ -201,7 +219,10 @@ function CLASS:Create()
 		if r == false then return end
 
 		self.State.PlaylistOpened = true
-		self.ListPlaylist:SetFile(value.path, value.type)
+
+		if IsValid(self.ListPlaylist) then
+			self.ListPlaylist:SetFile(value.path, value.type)
+		end
 	end
 
 	self.ListFiles.OnPathChange = function(this, ...)
@@ -231,21 +252,30 @@ function CLASS:Create()
 	end
 
 	self:SetEvent("OnClose", "SaveScrollPos", function()
-		self.ListPlaylist:SaveScrollPos()
-		self.ListFiles:SaveScrollPos()
+		if IsValid(self.ListPlaylist) then
+			self.ListPlaylist:SaveScrollPos()
+		end
+
+		if IsValid(self.ListFiles) then
+			self.ListFiles:SaveScrollPos()
+		end
 	end)
 
 	self:UpdatePath()
 end
 
 function CLASS:IsSingleItem()
+	if not IsValid(self.ListPlaylist) then
+		return false
+	end
+
 	return self.ListPlaylist:IsSingleItem()
 end
 
 function CLASS:CloseSingleItem()
+	if CLIENT then return end
 	if not self:IsSingleItem() then return end
 
-	self.State.PlaylistError = false
 	self.State.PlaylistOpened = false
 end
 
@@ -291,12 +321,20 @@ function CLASS:GetHeaderTextPanel()
 	return self.HeaderPanelText
 end
 
-function CLASS:IsPlaylistOpend()
-	return self.State.PlaylistOpened or self.State.PlaylistError or false
+function CLASS:IsPlaylistOpen()
+	if self.State.PlaylistOpened then
+		return true
+	end
+
+	if IsValid(self.ListPlaylist) and self.ListPlaylist:HasError() then
+		return true
+	end
+
+	return false
 end
 
 function CLASS:GetPath()
-	if self:IsPlaylistOpend() then
+	if self:IsPlaylistOpen() then
 		return self.ListPlaylist:GetFile()
 	end
 
@@ -304,29 +342,59 @@ function CLASS:GetPath()
 end
 
 function CLASS:GoUpPath()
+	if CLIENT then return end
 	if not self.State then return end
 
-	if self.State.PlaylistOpened or self.State.PlaylistError then
+	if self:IsPlaylistOpen() then
 		self.State.PlaylistOpened = false
-		self.State.PlaylistError = false
 		return
 	end
 
-	if CLIENT then return end
-	self.ListFiles:GoUpPath()
+	if IsValid(self.ListFiles) then
+		self.ListFiles:GoUpPath()
+	end
 end
 
 function CLASS:Refresh()
-	if not self.State then return end
+	local antiSpamTime = 1
 
-	if self.State.PlaylistError then
-		self.State.PlaylistError = false
-		self.State.PlaylistOpened = false
-		self.State.PlaylistOpened = true
+	if IsValid(self.RefreshButton) then
+		self.RefreshButton:SetDisabled(true)
+
+		self:TimerOnce("RefreshButtonAntiSpam", antiSpamTime, function()
+			if not IsValid(self.RefreshButton) then
+				return
+			end
+
+			self.RefreshButton:SetDisabled(false)
+		end)
 	end
 
-	self.ListPlaylist:Refresh()
-	self.ListFiles:Refresh()
+	if IsValid(self.Errorbox) and IsValid(self.Errorbox.RetryButton) then
+		self.Errorbox.RetryButton:SetDisabled(true)
+
+		self:TimerOnce("RetryButtonAntiSpam", antiSpamTime, function()
+			if not IsValid(self.Errorbox) then
+				return
+			end
+
+			if not IsValid(self.Errorbox.RetryButton) then
+				return
+			end
+
+			self.Errorbox.RetryButton:SetDisabled(false)
+		end)
+	end
+
+	if CLIENT then return end
+
+	if IsValid(self.ListPlaylist) and self.ListPlaylist:IsVisible() then
+		self.ListPlaylist:Refresh()
+	end
+
+	if IsValid(self.ListFiles) and self.ListFiles:IsVisible() then
+		self.ListFiles:Refresh()
+	end
 end
 
 function CLASS:PlayNext()
@@ -433,7 +501,7 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	self:SetNWVarProxy("PlaylistOpened", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("PlaylistOpened", "Bool", function(this, nwkey, oldvar, newvar)
 		self.State.PlaylistOpened = newvar
 	end)
 end

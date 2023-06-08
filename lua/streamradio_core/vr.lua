@@ -135,16 +135,16 @@ function LIB.GetRadioTouched()
 		return false
 	end
 
-	local tr = LIB.TraceHand()
-	if not tr then
+	local trace = LIB.TraceHand()
+	if not trace then
 		return false
 	end
 
-	if not tr.Hit then
+	if not trace.Hit then
 		return false
 	end
 
-	local ent = tr.Entity
+	local ent = trace.Entity
 
 	if not IsValid(ent) then
 		return false
@@ -194,16 +194,22 @@ function LIB.TraceHand()
 	g_PlayerHandTrace.endpos = end_pos
 
 	local ply = LocalPlayer()
+	local plyVehicle = ply.GetVehicle and ply:GetVehicle() or false
 
-	g_PlayerHandTrace.filter = g_PlayerHandTrace.filter or (function(ent)
-		if not IsValid(ent) then return false end
-		if not IsValid(ply) then return false end
+	local tmp = {}
 
-		if ent == ply then return false end
+	tmp[ply] = ply
+	tmp[plyVehicle] = plyVehicle
 
-		if ply.GetVehicle and ent == ply:GetVehicle() then return false end
-		return true
-	end)
+	filter = {}
+
+	for _, filterEnt in pairs(tmp) do
+		if not IsValid(filterEnt) then continue end
+
+		filter[#filter + 1] = filterEnt
+	end
+
+	g_PlayerHandTrace.filter = filter
 
 	util.TraceLine(g_PlayerHandTrace)
 	g_PlayerHandTraceCache = g_PlayerHandTrace.output

@@ -1,99 +1,99 @@
 StreamRadioLib.Net = {}
 local LIB = StreamRadioLib.Net
+local LIBNetwork = StreamRadioLib.Network
 
-local pairs = pairs
-local type = type
-local IsValid = IsValid
-local file = file
-local table = table
-local string = string
-local util = util
-local player = player
-local ents = ents
+LIBNetwork.AddNetworkString("Control")
+LIBNetwork.AddNetworkString("PlaylistMenu")
+LIBNetwork.AddNetworkString("Playlist")
 
-if ( SERVER ) then
-	util.AddNetworkString( "Streamradio_Show_Functions" )
+LIBNetwork.AddNetworkString("Editor_Return_Files")
+LIBNetwork.AddNetworkString("Editor_Return_Playlist")
+LIBNetwork.AddNetworkString("Editor_Request_Files")
+LIBNetwork.AddNetworkString("Editor_Request_Playlist")
+LIBNetwork.AddNetworkString("Editor_Error")
 
-	util.AddNetworkString( "Streamradio_Radio_Control" )
-	util.AddNetworkString( "Streamradio_Radio_PlaylistMenu" )
-	util.AddNetworkString( "Streamradio_Radio_Playlist" )
+do
+	-- Automaticly generated network string table map
 
-	util.AddNetworkString( "Streamradio_Radio_MasterCallback" )
-	util.AddNetworkString( "Streamradio_Radio_ClientError" )
-
-	util.AddNetworkString( "Streamradio_Editor_Return_Files" )
-	util.AddNetworkString( "Streamradio_Editor_Return_Playlist" )
-	util.AddNetworkString( "Streamradio_Editor_Request_Files" )
-	util.AddNetworkString( "Streamradio_Editor_Request_Playlist" )
-	util.AddNetworkString( "Streamradio_Editor_Error" )
+	LIBNetwork.AddNetworkString("classsystem_listen")
+	LIBNetwork.AddNetworkString("LoadError")
+	LIBNetwork.AddNetworkString("ClientToolHook")
+	LIBNetwork.AddNetworkString("clientstate")
+	LIBNetwork.AddNetworkString("str")
+	LIBNetwork.AddNetworkString("str/Volume")
+	LIBNetwork.AddNetworkString("str/URL")
+	LIBNetwork.AddNetworkString("str/PlayMode")
+	LIBNetwork.AddNetworkString("str/Loop")
+	LIBNetwork.AddNetworkString("str/Name")
+	LIBNetwork.AddNetworkString("str/MasterTime")
+	LIBNetwork.AddNetworkString("skin")
+	LIBNetwork.AddNetworkString("skinrequest")
+	LIBNetwork.AddNetworkString("skintoserver")
+	LIBNetwork.AddNetworkString("g")
+	LIBNetwork.AddNetworkString("gui_sk")
+	LIBNetwork.AddNetworkString("gui_sk/Hash")
+	LIBNetwork.AddNetworkString("data")
+	LIBNetwork.AddNetworkString("datarequest")
+	LIBNetwork.AddNetworkString("streamreset_on_sv")
+	LIBNetwork.AddNetworkString("streamreset_on_cl")
+	LIBNetwork.AddNetworkString("g/m")
+	LIBNetwork.AddNetworkString("g/m/brw")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/sbar")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/sbar/ScrollPos")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/sbar/ScrollMax")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/ListGridX")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/ListGridY")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/IsHorizontal")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/Hash")
+	LIBNetwork.AddNetworkString("g/m/brw/lstp/Path")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/sbar")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/sbar/ScrollPos")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/sbar/ScrollMax")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/ListGridX")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/ListGridY")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/IsHorizontal")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/Hash")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/Path")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/PathType")
+	LIBNetwork.AddNetworkString("g/m/brw/lstpv/Error")
+	LIBNetwork.AddNetworkString("g/m/brw/PlaylistOpened")
+	LIBNetwork.AddNetworkString("g/m/ply")
+	LIBNetwork.AddNetworkString("g/m/PlayerOpened")
+	LIBNetwork.AddNetworkString("g/m/ply/ctrl")
+	LIBNetwork.AddNetworkString("g/m/ply/ctrl/PlaylistEnabled")
 end
 
-local HashRegister = {}
-HashRegister.To = {}
-HashRegister.From = {}
+function LIB.Receive(name, ...)
+	name = LIBNetwork.TransformNWIdentifier(name)
+	return net.Receive(name, ...)
+end
 
-function LIB.ToHash( str )
-	str = tostring(str or "")
-	local cachedhash = HashRegister.To[str] or {}
-	local cachedhashstr = cachedhash.hex
+function LIB.Start(name, ...)
+	name = LIBNetwork.TransformNWIdentifier(name)
+	return net.Start(name, ...)
+end
 
-	if cachedhashstr and HashRegister.From[cachedhashstr] == str then
-		return cachedhash
+function LIB.SendIdentifier(identifier)
+	local identifierId = 0
+
+	if isstring(identifier) then
+		identifierId = LIBNetwork.NetworkStringToID(identifier)
+
+		if identifierId == 0 then
+			ErrorNoHaltWithStack("Identifier '" .. identifier .. "' was not added via util.AddNetworkString() yet.")
+		end
 	end
 
-	local hash = StreamRadioLib.Hash(str)
-	HashRegister.To[str] = hash
-
-	local hashstr = hash.hex
-	HashRegister.From[hashstr] = str
-
-	return hash
+	net.WriteUInt(identifierId, 12)
 end
 
-function LIB.FromHash( hash )
-	if not hash then return nil end
+function LIB.ReceiveIdentifier()
+	local identifierId = net.ReadUInt(12) or 0
+	local identifier = LIBNetwork.NetworkIDToString(identifierId)
 
-	local hashstr = hash.hex
-	if not hashstr then return nil end
-
-	local str = HashRegister.From[hashstr]
-
-	if not str then return nil end
-	if not HashRegister.To[str] then return nil end
-
-	return str
-end
-
-function LIB.SendHash( hash )
-	if not hash then return end
-	hash = hash.raw or hash
-
-	for i = 1, 6 do
-		net.WriteUInt( hash[i] or 0, 24 )
-	end
-end
-
-function LIB.ReceiveHash()
-	local hash = {}
-	hash.raw = {}
-
-	for i = 1, 6 do
-		hash.raw[i] = net.ReadUInt( 24 ) or 0
-	end
-
-	hash.hex, hash.crc = StreamRadioLib.HashToHex( hash )
-	return hash
-end
-
-function LIB.SendStringHash( str )
-	local hash = LIB.ToHash(str)
-	LIB.SendHash(hash)
-end
-
-function LIB.ReceiveStringHash()
-	local hash = LIB.ReceiveHash()
-	local str = LIB.FromHash(hash)
-	return str
+	return identifier
 end
 
 function LIB.SendListEntry( text, iconid )
@@ -106,37 +106,6 @@ function LIB.ReceiveListEntry( )
 	local iconid = net.ReadInt( 16 ) or -1
 
 	return text, iconid
-end
-
-
-function StreamRadioLib.NetSendMasterCallback( ent, code )
-	if ( not IsValid( ent ) ) then return end
-	if ( not code ) then return end
-
-	net.WriteEntity( ent )
-	net.WriteUInt( code, 8 )
-end
-
-function StreamRadioLib.NetReceiveMasterCallback( )
-	local ent = net.ReadEntity( )
-	local code = net.ReadUInt( 8 ) or 0
-
-	return ent, code
-end
-
-function StreamRadioLib.NetSendClientError( ent, code )
-	if ( not IsValid( ent ) ) then return end
-	if ( not code ) then return end
-
-	net.WriteEntity( ent )
-	net.WriteUInt( code, 16 )
-end
-
-function StreamRadioLib.NetReceiveClientError( )
-	local ent = net.ReadEntity( )
-	local code = net.ReadUInt( 16 ) or 0
-
-	return ent, code
 end
 
 function StreamRadioLib.NetSendEditorError( path, code )

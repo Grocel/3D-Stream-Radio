@@ -32,6 +32,10 @@ function CLASS:Create()
 
 	self.CanHaveLabel = false
 	self.SkinAble = true
+
+	if CLIENT then
+		self:StartSuperThink()
+	end
 end
 
 function CLASS:SetForegroundColor(color)
@@ -178,18 +182,63 @@ function CLASS:Render()
 	end
 
 	local ent = self:GetEntity()
-	if IsValid(ent) and ent.CanDrawSpectrum then
-		if not ent:CanDrawSpectrum() then
-			self:RenderSpectrumReplacement()
-			return
-		end
+	if IsValid(ent) and ent.CanDrawSpectrum and not ent:CanDrawSpectrum() then
+		self:RenderSpectrumReplacement()
+		return
 	end
 
 	if not self.StreamOBJ:IsPlayMode() then
 		self:RenderIcon(g_mat_pause)
+		return
 	end
 
 	self:RenderSpectrum()
+end
+
+function CLASS:ShouldPerformRerender()
+	if SERVER then return false end
+
+	if self.StreamOBJ:GetMuted() then
+		return false
+	end
+
+	if self.StreamOBJ:IsLoading() then
+		return true
+	end
+
+	if self.StreamOBJ:IsBuffering() then
+		return true
+	end
+
+	if self.StreamOBJ:IsSeeking() then
+		return true
+	end
+
+	if StreamRadioLib.IsSpectrumHidden() then
+		return false
+	end
+
+	local ent = self:GetEntity()
+	if IsValid(ent) and ent.CanDrawSpectrum and not ent:CanDrawSpectrum() then
+		return false
+	end
+
+	if not self.StreamOBJ:IsPlaying() then
+		return false
+	end
+
+	return true
+end
+
+function CLASS:SuperThink()
+	if SERVER then return end
+	if not IsValid(self.StreamOBJ) then return end
+
+	if not self:IsSeen() then return end
+	if not self:IsVisible() then return end
+
+	if not self:ShouldPerformRerender() then return end
+	self:PerformRerender(true)
 end
 
 function CLASS:SetStream(stream)

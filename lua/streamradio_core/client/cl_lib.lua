@@ -12,7 +12,9 @@ local math = math
 local string = string
 local net = net
 
-net.Receive( "Streamradio_Radio_PlaylistMenu", function( length )
+local LIBNet = StreamRadioLib.Net
+
+LIBNet.Receive("PlaylistMenu", function( length )
 	if ( not istable( StreamRadioLib ) ) then return end
 	if ( not StreamRadioLib.NetReceiveFileEntry ) then return end
 	local entity, name, type, x, y = StreamRadioLib.NetReceiveFileEntry( )
@@ -23,9 +25,9 @@ net.Receive( "Streamradio_Radio_PlaylistMenu", function( length )
 	fileinfo.filetype = type
 	entity.PlaylistMenu[x] = entity.PlaylistMenu[x] or {}
 	entity.PlaylistMenu[x][y] = fileinfo
-end )
+end)
 
-net.Receive( "Streamradio_Radio_Playlist", function( length )
+LIBNet.Receive("Playlist", function( length )
 	if ( not istable( StreamRadioLib ) ) then return end
 	if ( not StreamRadioLib.NetReceivePlaylistEntry ) then return end
 	local entity, name, x, y = StreamRadioLib.NetReceivePlaylistEntry( )
@@ -35,25 +37,25 @@ net.Receive( "Streamradio_Radio_Playlist", function( length )
 	fileinfo.filename = name
 	entity.Playlist[x] = entity.Playlist[x] or {}
 	entity.Playlist[x][y] = fileinfo
-end )
+end)
 
-local CamPos = nil
-local InRenderScene = false
+local g_camPos = nil
+local g_inRenderScene = false
 
 hook.Add( "RenderScene", "Streamradio_CamInfo", function( origin, angles, fov )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 
 	if StreamRadioLib.VR.IsActive() then
-		CamPos = nil
+		g_camPos = nil
 		return
 	end
 
-	if InRenderScene then return end
+	if g_inRenderScene then return end
 
-	InRenderScene = true
-	CamPos = origin
-	InRenderScene = false
+	g_inRenderScene = true
+	g_camPos = origin
+	g_inRenderScene = false
 end )
 
 local g_pressed = false
@@ -69,22 +71,22 @@ local function ReleaseLastRadioControl()
 	if not g_lastradio.__IsRadio then return end
 	if not g_lastradio.Control then return end
 
-	local pressed = g_pressed
+	local wasPressed = g_pressed
 	g_pressed = false
 
-	if not pressed then return end
+	if not wasPressed then return end
 
-	net.Start( "Streamradio_Radio_Control" )
+	local trace = StreamRadioLib.Trace( ply )
+
+	LIBNet.Start("Control")
 		net.WriteBool( false )
 	net.SendToServer()
 
-	StreamRadioLib.Control( ply, nil, false )
+	StreamRadioLib.Control( ply, trace, false )
 	g_lastradio = nil
 end
 
 local function GetPressed(ply)
-	local inVehicle = ply.InVehicle and ply:InVehicle()
-
 	if StreamRadioLib.GameIsPaused() then
 		return false
 	end
@@ -112,6 +114,8 @@ local function GetPressed(ply)
 		return false
 	end
 
+	local inVehicle = ply.InVehicle and ply:InVehicle()
+
 	local key = StreamRadioLib.GetControlKey()
 
 	if inVehicle then
@@ -126,7 +130,7 @@ local function GetPressed(ply)
 	return pressed
 end
 
-hook.Add( "Think", "Streamradio_Control", function( )
+hook.Add("Think", "Streamradio_Control", function( )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 
@@ -143,13 +147,13 @@ hook.Add( "Think", "Streamradio_Control", function( )
 	end
 	g_pressed = pressed
 
-	local tr = StreamRadioLib.Trace( ply )
-	if not tr then
+	local trace = StreamRadioLib.Trace( ply )
+	if not trace then
 		ReleaseLastRadioControl()
 		return
 	end
 
-	local Radio = tr.Entity
+	local Radio = trace.Entity
 	if not IsValid( Radio ) then
 		ReleaseLastRadioControl()
 		return
@@ -165,20 +169,27 @@ hook.Add( "Think", "Streamradio_Control", function( )
 		return
 	end
 
-	if Radio ~= g_lastradio then
+	if IsValid(g_lastradio) and Radio ~= g_lastradio then
 		ReleaseLastRadioControl()
 	end
 
-	net.Start( "Streamradio_Radio_Control" )
+	LIBNet.Start("Control")
 		net.WriteBool( pressed )
 	net.SendToServer()
 
-	StreamRadioLib.Control( ply, tr, pressed )
+	StreamRadioLib.Control( ply, trace, pressed )
 	g_lastradio = Radio
-end )
+end)
 
+function StreamRadioLib.IsCursorEnabled()
+	if StreamRadioLib.VR.IsActive() then
+		return StreamRadioLib.Settings.GetConVarValue("vr_enable_cursor")
+	end
 
-function StreamRadioLib.GetCameraPos(ply)
+	return StreamRadioLib.Settings.GetConVarValue("enable_cursor")
+end
+
+function StreamRadioLib.GetCameraViewPos(ply)
 	local islocal = false
 
 	if not IsValid(ply) then
@@ -194,23 +205,13 @@ function StreamRadioLib.GetCameraPos(ply)
 		return pos
 	end
 
-	if not CamPos or not islocal then
-		local camera = StreamRadioLib.GetCameraEnt(ply)
-		if not IsValid(camera) then return nil end
-
-		local viewpos = nil
-		if camera:IsPlayer() then
-			viewpos = camera:EyePos()
-		else
-			viewpos = camera:GetPos()
-		end
-
-		return viewpos
+	if not g_camPos or not islocal then
+		local pos = StreamRadioLib.GetCameraPos(ply)
+		return pos
 	end
 
-	return CamPos
+	return g_camPos
 end
-
 
 function StreamRadioLib.CalcDistanceVolume( distance, max )
 	distance = distance or 0
@@ -229,7 +230,6 @@ function StreamRadioLib.CalcDistanceVolume( distance, max )
 end
 
 local oldfloat = 0
-local oldvar = 0
 
 function StreamRadioLib.PrintFloat( float, len, ... )
 	local float = math.Clamp( float, 0, 1 )
@@ -244,7 +244,7 @@ function StreamRadioLib.PrintFloat( float, len, ... )
 	local space1 = math.Round( ( oldfloat - float ) * len )
 	local space2 = space - space1 - 1
 	str = string.rep( "#", bar ) .. string.rep( " ", space1 ) .. ( math.Round( oldfloat * len ) < len and "|" or "" ) .. string.rep( " ", space2 )
-	MsgC( Color( 510 * ( float ), 510 * ( 1 - ( float ) ), 0, 255 ), str, " ", string.format( "% 7.2f%%\t", float * 100 ), ..., "\n" )
+	MsgC( Color( 510 * float, 510 * ( 1 - float ), 0, 255 ), str, " ", string.format( "% 7.2f%%\t", float * 100 ), ..., "\n" )
 
 	if ( float < oldfloat ) then
 		oldfloat = oldfloat - 0.5 * RealFrameTime( )
@@ -255,61 +255,63 @@ function StreamRadioLib.PrintFloat( float, len, ... )
 	return str
 end
 
-if ( StreamRadioLib.TestChannel ) then
-	StreamRadioLib.TestChannel:Remove()
-	StreamRadioLib.TestChannel = nil
-end
-
-local function testchannel( args )
-	local TestChannel = StreamRadioLib.TestChannel or StreamRadioLib.CreateOBJ("stream")
-
-	if not IsValid(TestChannel) then
-		ErrorNoHaltWithStack("Could not create the TestChannel!\n")
-		return
+do
+	if ( StreamRadioLib._TestChannel ) then
+		StreamRadioLib._TestChannel:Remove()
+		StreamRadioLib._TestChannel = nil
 	end
 
-	TestChannel:SetVolume( tonumber( args[2] ) )
-	TestChannel:Play()
-	TestChannel:SetURL( tostring( args[1] ) )
-	print( TestChannel )
+	local function testchannel( args )
+		local TestChannel = StreamRadioLib._TestChannel or StreamRadioLib.CreateOBJ("stream")
 
-	print("Online", TestChannel:IsOnline())
+		if not IsValid(TestChannel) then
+			ErrorNoHaltWithStack("Could not create the TestChannel!\n")
+			return
+		end
 
-	TestChannel.OnConnect = function(self, channel)
-		print("OnConnect", self, channel)
+		TestChannel:SetVolume( tonumber( args[2] ) )
+		TestChannel:Play()
+		TestChannel:SetURL( tostring( args[1] ) )
+		print( TestChannel )
+
+		print("Online", TestChannel:IsOnline())
+
+		TestChannel.OnConnect = function(self, channel)
+			print("OnConnect", self, channel)
+		end
+
+		TestChannel.OnRetry = function(self, err)
+			print("OnRetry", self, err)
+			return true
+		end
+
+		TestChannel.OnError = function(self, err)
+			print( "OnError", self, err, StreamRadioLib.DecodeErrorCode( err ) )
+		end
+
+		StreamRadioLib._TestChannel = TestChannel
 	end
 
-	TestChannel.OnRetry = function(self, err)
-		print("OnRetry", self, err)
-		return true
+	concommand.Add( "test_streamradio_channel_play", function( pl, cmd, args )
+		testchannel( args or {} )
+	end )
+
+	local function testchannel_vol( pl, cmd, args )
+		if not StreamRadioLib._TestChannel then return end
+		args = args or {}
+
+		StreamRadioLib.TestChannel:SetVolume( tonumber( args[1] ) )
 	end
 
-	TestChannel.OnError = function(self, err)
-		print( "OnError", self, err, StreamRadioLib.DecodeErrorCode( err ) )
+	concommand.Add( "test_streamradio_channel_vol", testchannel_vol )
+
+	local function testchannel_stop( pl, cmd, args )
+		if not StreamRadioLib._TestChannel then return end
+		args = args or {}
+
+		StreamRadioLib._TestChannel:Remove()
+		StreamRadioLib._TestChannel = nil
 	end
 
-	StreamRadioLib.TestChannel = TestChannel
+	concommand.Add( "test_streamradio_channel_stop", testchannel_stop )
 end
-
-concommand.Add( "test_streamradio_channel_play", function( pl, cmd, args )
-	testchannel( args or {} )
-end )
-
-local function testchannel_vol( pl, cmd, args )
-	if ( not StreamRadioLib.TestChannel ) then return end
-	args = args or {}
-
-	StreamRadioLib.TestChannel:SetVolume( tonumber( args[1] ) )
-end
-
-concommand.Add( "test_streamradio_channel_vol", testchannel_vol )
-
-local function testchannel_stop( pl, cmd, args )
-	if ( not StreamRadioLib.TestChannel ) then return end
-	args = args or {}
-
-	StreamRadioLib.TestChannel:Remove()
-	StreamRadioLib.TestChannel = nil
-end
-
-concommand.Add( "test_streamradio_channel_stop", testchannel_stop )

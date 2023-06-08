@@ -21,100 +21,6 @@ local StreamRadioLib = StreamRadioLib
 local _, NetURL = StreamRadioLib.LoadSH('streamradio_core/neturl.lua')
 StreamRadioLib.NetURL = NetURL
 
--- Placeholder for Blocked URLs with non-Keyboard chars
-StreamRadioLib.BlockedURLCode = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5) .. "___blocked_url"
-
-StreamRadioLib.EDITOR_ERROR_OK = 0
-StreamRadioLib.EDITOR_ERROR_WRITE_OK = 1
-StreamRadioLib.EDITOR_ERROR_READ_OK = 2
-StreamRadioLib.EDITOR_ERROR_FILES_OK = 3
-StreamRadioLib.EDITOR_ERROR_DIR_OK = 4
-StreamRadioLib.EDITOR_ERROR_DEL_OK = 5
-StreamRadioLib.EDITOR_ERROR_COPY_OK = 6
-StreamRadioLib.EDITOR_ERROR_RENAME_OK = 7
-
-StreamRadioLib.EDITOR_ERROR_WPATH = 10
-StreamRadioLib.EDITOR_ERROR_WDATA = 11
-StreamRadioLib.EDITOR_ERROR_WFORMAT = 12
-StreamRadioLib.EDITOR_ERROR_WVIRTUAL = 13
-StreamRadioLib.EDITOR_ERROR_WRITE = 14
-
-StreamRadioLib.EDITOR_ERROR_DIR_WRITE = 14
-StreamRadioLib.EDITOR_ERROR_DIR_EXIST = 15
-StreamRadioLib.EDITOR_ERROR_FILE_EXIST = 16
-StreamRadioLib.EDITOR_ERROR_DEL_ACCES = 17
-
-StreamRadioLib.EDITOR_ERROR_RPATH = 20
-StreamRadioLib.EDITOR_ERROR_RDATA = 21
-StreamRadioLib.EDITOR_ERROR_RFORMAT = 22
-StreamRadioLib.EDITOR_ERROR_READ = 23
-
-StreamRadioLib.EDITOR_ERROR_COPY_DIR = 30
-StreamRadioLib.EDITOR_ERROR_COPY_EXIST = 31
-StreamRadioLib.EDITOR_ERROR_COPY_WRITE = 32
-StreamRadioLib.EDITOR_ERROR_COPY_READ = 33
-
-StreamRadioLib.EDITOR_ERROR_RENAME_DIR = 40
-StreamRadioLib.EDITOR_ERROR_RENAME_EXIST = 41
-StreamRadioLib.EDITOR_ERROR_RENAME_WRITE = 42
-StreamRadioLib.EDITOR_ERROR_RENAME_READ = 43
-
-StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED = 50
-StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED = 51
-StreamRadioLib.EDITOR_ERROR_NOADMIN = 252
-StreamRadioLib.EDITOR_ERROR_RESET = 253
-StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED = 254
-StreamRadioLib.EDITOR_ERROR_UNKNOWN = 255
-
-local EditorErrors = {
-	-- Code										// Error
-	[StreamRadioLib.EDITOR_ERROR_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_WRITE_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_READ_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_FILES_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_DIR_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_DEL_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_COPY_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_RENAME_OK] = "OK",
-	[StreamRadioLib.EDITOR_ERROR_WPATH] = "Invalid path!",
-	[StreamRadioLib.EDITOR_ERROR_WDATA] = "Invalid data!",
-	[StreamRadioLib.EDITOR_ERROR_WVIRTUAL] = "This virtual file is readonly!",
-	[StreamRadioLib.EDITOR_ERROR_WFORMAT] = "Invalid file format!\nValid formats are: %s",
-	[StreamRadioLib.EDITOR_ERROR_WRITE] = "Couldn't write the file!",
-	[StreamRadioLib.EDITOR_ERROR_DIR_WRITE] = "Couldn't create the directory!",
-	[StreamRadioLib.EDITOR_ERROR_DIR_EXIST] = "This directory already exists!",
-	[StreamRadioLib.EDITOR_ERROR_FILE_EXIST] = "This file already exists!",
-	[StreamRadioLib.EDITOR_ERROR_DEL_ACCES] = "Couldn't delete the file or the directory!",
-	[StreamRadioLib.EDITOR_ERROR_RPATH] = "Invalid path!",
-	[StreamRadioLib.EDITOR_ERROR_RDATA] = "Couldn't read the file!",
-	[StreamRadioLib.EDITOR_ERROR_RFORMAT] = "Couldn't read the file format!",
-	[StreamRadioLib.EDITOR_ERROR_READ] = "Couldn't read the file!",
-	[StreamRadioLib.EDITOR_ERROR_COPY_DIR] = "You can't copy a directory",
-	[StreamRadioLib.EDITOR_ERROR_COPY_EXIST] = "This file already exists!",
-	[StreamRadioLib.EDITOR_ERROR_COPY_WRITE] = "Couldn't create the copy!",
-	[StreamRadioLib.EDITOR_ERROR_COPY_READ] = "Couldn't read the source file!",
-	[StreamRadioLib.EDITOR_ERROR_RENAME_DIR] = "You can't rename a directory",
-	[StreamRadioLib.EDITOR_ERROR_RENAME_EXIST] = "This file already exists!",
-	[StreamRadioLib.EDITOR_ERROR_RENAME_WRITE] = "Couldn't rename/move the file!",
-	[StreamRadioLib.EDITOR_ERROR_RENAME_READ] = "Couldn't read the source file!",
-	[StreamRadioLib.EDITOR_ERROR_COMMUNITY_PROTECTED] = "You can not edit files inside the community folder!",
-	[StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED] = "You can not add or remove files inside the virtual folders!",
-	[StreamRadioLib.EDITOR_ERROR_NOADMIN] = "You need admin rights!",
-	[StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED] = "This is not implemented!",
-	[StreamRadioLib.EDITOR_ERROR_UNKNOWN] = "Unknown Error"
-}
-
-function StreamRadioLib.DecodeEditorErrorCode( err )
-	err = tonumber(err) or StreamRadioLib.EDITOR_ERROR_UNKNOWN
-	local errorText = EditorErrors[err] or EditorErrors[StreamRadioLib.EDITOR_ERROR_UNKNOWN]
-
-	if (err == StreamRadioLib.EDITOR_ERROR_WFORMAT) then
-		errorText = string.format(errorText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST)
-	end
-
-	return errorText
-end
-
 function StreamRadioLib.Msg(ply, msgstring)
 	msgstring = tostring(msgstring or "")
 	if msgstring == "" then return end
@@ -202,94 +108,25 @@ function StreamRadioLib.Debug(format, ...)
 	end
 end
 
-local hashcache = {}
-
-local function CRCfloat32(str)
+function StreamRadioLib.Hash(str)
 	str = tostring(str or "")
 
-	local crc = util.CRC(str)
-	crc = tonumber(crc or 0) or 0
+	local salt = "StreamRadioLib_Hash230603"
 
-	local a = #str + crc
-	local right = (a % 2) ~= 0
+	local data = string.format(
+		"[%s][%s]",
+		salt,
+		str
+	)
 
-	local bits = 24
-	local shift = 32 - bits
-
-	crc = bit.tobit(crc)
-
-	if right then
-		crc = bit.rshift(crc, shift)
-	else
-		crc = bit.lshift(crc, shift)
-		crc = bit.rshift(crc, shift)
-	end
-
-	crc = bit.tobit(crc)
-	crc = bit.band(crc, (2 ^ bits) - 1)
-	return crc
+	local hash = util.SHA256(data)
+	return hash
 end
 
-function StreamRadioLib.Hash( str )
-	str = tostring(str or "")
-
-	if hashcache[str] then
-		return hashcache[str]
-	end
-
-	local len = #str
-	local salt = "[Hash171202]"
-	salt = salt .. "[StreamRadioLib: '" .. str .. "']" .. salt .. "[len: '" .. len .. "']" .. salt
-	local hash = {}
-
-	local rstr = string.reverse(str)
-	local rsalt = string.reverse(salt)
-
-	-- There is no other 'hash' than CRC in GMod,
-	-- so inflate it a bit to avoid collisions.
-
-	hash[1] = CRCfloat32(salt)
-	hash[2] = CRCfloat32("wdwer" .. rstr .. "jakwd")
-	hash[3] = CRCfloat32("sjreb" .. str .. "gkdzh")
-	hash[4] = CRCfloat32(rsalt)
-	hash[5] = CRCfloat32("heasw" .. len .. "xrjhw")
-
-	hash[6] = CRCfloat32(table.concat({
-		"awkjd", salt, hash[2], "ksdew",
-		"cajwe", rstr, hash[3], "nawjd",
-		"wakjd", str, hash[1], "vekhw",
-		"dklrg", rsalt, hash[4], "lecds",
-	}))
-
-	local output = {}
-	output.raw = hash
-	output.hex, output.crc = StreamRadioLib.HashToHex(hash)
-
-	hashcache[str] = output
-	return output
-end
-
-function StreamRadioLib.HashToHex( h )
-	h = h or {}
-	local hash = h.raw or h
-
-	local hex = ""
-	local add = 0
-
-	for i = 1, 6 do
-		local v = tonumber(hash[i] or 0) or 0
-		hex = hex .. string.format("%06x", v)
-		add = add + v
-	end
-
-	local crc = "yhefs" .. hex .. "laxkr" .. add .. "eawts"
-
-	crc = #crc .. crc
-	crc = crc .. #crc
-
-	crc = "awedw" .. crc .. "pwfjh"
-
-	return hex, CRCfloat32(crc)
+local g_uid = 0
+function StreamRadioLib.Uid()
+	g_uid = (g_uid + 1) % 2 ^ 31
+	return g_uid
 end
 
 function StreamRadioLib.NormalizeNewlines(text, nl)
@@ -315,14 +152,6 @@ function StreamRadioLib.NormalizeNewlines(text, nl)
 	text = string.gsub(text, "([\r]?[\n]?)", replacemap)
 
 	return text
-end
-
-function StreamRadioLib.HasWiremod()
-	local wmod = WireAddon or WIRE_CLIENT_INSTALLED
-	if not wmod then return false end
-	if not WireLib then return false end
-
-	return true
 end
 
 function StreamRadioLib.IsGUIHidden(ply)
@@ -391,12 +220,67 @@ function StreamRadioLib.GameIsPaused()
 	return true
 end
 
+function StreamRadioLib.GetDefaultModel()
+	local defaultModel = Model("models/sligwolf/grocel/radio/radio.mdl")
+	return defaultModel
+end
 
-local g_LastFrameRegister = {}
-function StreamRadioLib.IsSameFrame(id)
-	local id = tostring(id or "")
-	local lastFrame = g_LastFrameRegister[id]
+local g_cache_IsValidModel = {}
+local g_cache_IsValidModelFile = {}
 
+function StreamRadioLib.IsValidModel(model)
+	model = tostring(model or "")
+
+	if g_cache_IsValidModel[model] then
+		return true
+	end
+
+	g_cache_IsValidModel[model] = nil
+
+	if not StreamRadioLib.IsValidModelFile(model) then
+		return false
+	end
+
+	util.PrecacheModel(model)
+
+	if not util.IsValidModel(model) then
+		return false
+	end
+
+	if not util.IsValidProp(model) then
+		return false
+	end
+
+	g_cache_IsValidModel[model] = true
+	return true
+end
+
+function StreamRadioLib.IsValidModelFile(model)
+	model = tostring(model or "")
+
+	if g_cache_IsValidModelFile[model] then
+		return true
+	end
+
+	g_cache_IsValidModelFile[model] = nil
+
+	if model == "" then
+		return false
+	end
+
+	if IsUselessModel(model) then
+		return false
+	end
+
+	if not file.Exists(model, "GAME") then
+		return false
+	end
+
+	g_cache_IsValidModelFile[model] = true
+	return true
+end
+
+function StreamRadioLib.FrameNumber()
 	local frame = nil
 
 	if CLIENT then
@@ -405,8 +289,56 @@ function StreamRadioLib.IsSameFrame(id)
 		frame = engine.TickCount()
 	end
 
+	return frame
+end
+
+function StreamRadioLib.RealFrameTime()
+	local frameTime = nil
+
+	if CLIENT then
+		frameTime = RealFrameTime()
+	else
+		frameTime = FrameTime()
+	end
+
+	return frameTime
+end
+
+function StreamRadioLib.RealTimeFps()
+	local fps = StreamRadioLib.RealFrameTime()
+
+	if fps <= 0 then
+		return 0
+	end
+
+	fps = 1 / fps
+
+	return fps
+end
+
+local g_LastFrameRegister = {}
+local g_LastFrameRegisterCount = 0
+
+function StreamRadioLib.IsSameFrame(id)
+	local id = tostring(id or "")
+	local lastFrame = g_LastFrameRegister[id]
+
+	local frame = StreamRadioLib.FrameNumber()
+
 	if not lastFrame or frame ~= lastFrame then
+
+		-- prevent the cache from overflowing
+		if g_LastFrameRegisterCount > 1024 then
+			g_LastFrameRegister = {}
+			g_LastFrameRegisterCount = 0
+		end
+
 		g_LastFrameRegister[id] = frame
+
+		if not lastFrame then
+			g_LastFrameRegisterCount = g_LastFrameRegisterCount + 1
+		end
+
 		return false
 	end
 
@@ -430,26 +362,36 @@ function StreamRadioLib.GetCameraEnt(ply)
 		ply = LocalPlayer()
 	end
 
-	if not IsValid(ply) then return nil end
+	if not IsValid(ply) then
+		return nil
+	end
 
 	local camera = ply:GetViewEntity()
-	if not IsValid(camera) then return ply end
+	if not IsValid(camera) then
+		return ply
+	end
 
 	return camera
 end
 
-function StreamRadioLib.GetCameraPos(ply)
-	if not IsValid(ply) and CLIENT then
-		ply = LocalPlayer()
+function StreamRadioLib.GetCameraPos(ent)
+	if not IsValid(ent) and CLIENT then
+		ent = LocalPlayer()
 	end
 
-	if StreamRadioLib.VR.IsActive(ply) then
-		local pos = StreamRadioLib.VR.GetCameraPos(ply)
+	if StreamRadioLib.VR.IsActive(ent) then
+		local pos = StreamRadioLib.VR.GetCameraPos(ent)
 		return pos
 	end
 
-	local camera = StreamRadioLib.GetCameraEnt(ply)
+	if StreamRadioLib.Wire.IsWireUser(ent) then
+		return StreamRadioLib.Wire.GetUserPos(ent)
+	end
+
+	local camera = StreamRadioLib.GetCameraEnt(ent)
 	if not IsValid(camera) then return nil end
+
+	local pos = nil
 
 	if camera:IsPlayer() then
 		pos = camera:EyePos()
@@ -460,19 +402,24 @@ function StreamRadioLib.GetCameraPos(ply)
 	return pos
 end
 
-function StreamRadioLib.GetControlPosDir(ply)
-	if not IsValid(ply) and CLIENT then
-		ply = LocalPlayer()
+function StreamRadioLib.GetControlPosDir(ent)
+	if not IsValid(ent) and CLIENT then
+		ent = LocalPlayer()
 	end
 
-	if StreamRadioLib.VR.IsActive(ply) then
-		local pos, dir = StreamRadioLib.VR.GetControlPosDir(ply)
+	if StreamRadioLib.VR.IsActive(ent) then
+		local pos, dir = StreamRadioLib.VR.GetControlPosDir(ent)
 		return pos, dir
 	end
 
-	local camera = StreamRadioLib.GetCameraEnt(ply)
+	if StreamRadioLib.Wire.IsWireUser(ent) then
+		local pos, dir = StreamRadioLib.Wire.GetUserPosDir(ent)
+		return pos, dir
+	end
 
-	if not IsValid(ply) then return nil end
+	local camera = StreamRadioLib.GetCameraEnt(ent)
+
+	if not IsValid(ent) then return nil end
 	if not IsValid(camera) then return nil end
 
 	if camera:IsPlayer() then
@@ -480,21 +427,37 @@ function StreamRadioLib.GetControlPosDir(ply)
 		dir = camera:GetAimVector()
 	else
 		pos = camera:GetPos()
-		dir = ply:GetAimVector()
+
+		-- This is not a mistake
+		-- This allowes UI clicks/use via C-Menu aim
+		dir = ent:GetAimVector()
 	end
 
 	return pos, dir
 end
 
 local g_PlayerTraceCache = {}
+local g_PlayerTraceCacheCount = 0
 local g_PlayerTrace = {}
 
-function StreamRadioLib.Trace(ply)
-	if not IsValid(ply) and CLIENT then
-		ply = LocalPlayer()
+function StreamRadioLib.Trace(ent)
+	if not IsValid(ent) and CLIENT then
+		ent = LocalPlayer()
 	end
 
-	local cacheID = tostring(ply or "")
+	if not IsValid(ent) then
+		return nil
+	end
+
+	if StreamRadioLib.Wire.IsWireUser(ent) then
+		local trace = StreamRadioLib.Wire.WireUserTrace(ent)
+		return trace
+	end
+
+	local camera = StreamRadioLib.GetCameraEnt(ent)
+	if not IsValid(camera) then return nil end
+
+	local cacheID = tostring(ent or "")
 	local cacheItem = g_PlayerTraceCache[cacheID]
 
 	if cacheItem and StreamRadioLib.IsSameFrame("StreamRadioLib.Trace_" .. cacheID) then
@@ -503,7 +466,7 @@ function StreamRadioLib.Trace(ply)
 
 	g_PlayerTraceCache[cacheID] = nil
 
-	local pos, dir = StreamRadioLib.GetControlPosDir(ply)
+	local pos, dir = StreamRadioLib.GetControlPosDir(ent)
 
 	if not pos then
 		return nil
@@ -513,34 +476,47 @@ function StreamRadioLib.Trace(ply)
 		return nil
 	end
 
-	local camera = StreamRadioLib.GetCameraEnt(ply)
-	if not IsValid(ply) then return nil end
-	if not IsValid(camera) then return nil end
-
 	local start_pos = pos
 	local end_pos = pos + dir * 5000
 
 	g_PlayerTrace.start = start_pos
 	g_PlayerTrace.endpos = end_pos
 
-	g_PlayerTrace.filter = function(ent)
-		if not IsValid(ent) then return false end
-		if not IsValid(ply) then return false end
-		if not IsValid(camera) then return false end
+	local entVehicle = ent.GetVehicle and ent:GetVehicle() or false
+	local cameraVehicle = camera.GetVehicle and camera:GetVehicle() or false
 
-		if ent == ply then return false end
-		if ent == camera then return false end
+	local tmp = {}
 
-		if ply.GetVehicle and ent == ply:GetVehicle() then return false end
-		if camera.GetVehicle and ent == camera:GetVehicle() then return false end
+	tmp[ent] = ent
+	tmp[camera] = camera
+	tmp[entVehicle] = entVehicle
+	tmp[cameraVehicle] = cameraVehicle
 
-		return true
+	filter = {}
+
+	for _, filterEnt in pairs(tmp) do
+		if not IsValid(filterEnt) then continue end
+
+		filter[#filter + 1] = filterEnt
 	end
 
-	local tr = util.TraceLine(g_PlayerTrace)
-	g_PlayerTraceCache[cacheID] = tr
+	g_PlayerTrace.filter = filter
 
-	return tr
+	local trace = util.TraceLine(g_PlayerTrace)
+
+	-- prevent the cache from overflowing
+	if g_PlayerTraceCacheCount > 1024 then
+		g_PlayerTraceCache = {}
+		g_PlayerTraceCacheCount = 0
+	end
+
+	g_PlayerTraceCache[cacheID] = trace
+
+	if not cacheItem then
+		g_PlayerTraceCacheCount = g_PlayerTraceCacheCount + 1
+	end
+
+	return g_PlayerTraceCache[cacheID]
 end
 
 local g_PI = math.pi
@@ -593,8 +569,9 @@ function StreamRadioLib.StarTrace(traceparams, size, edges, layers)
 
 		local trace = util.TraceLine(traceparams)
 
-		--debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.1, color_white, false)
-		--debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
+		-- Tracers Debug
+		-- debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.1, color_white, false)
+		-- debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
 
 		traces[#traces + 1] = trace
 	end
@@ -604,11 +581,21 @@ end
 
 local g_mat_cache = {}
 
-function StreamRadioLib.GetPNG(name)
+function StreamRadioLib.GetCustomPNGPath(name)
 	if SERVER then return nil end
 	if not name then return nil end
 
 	local path = "3dstreamradio/" .. name .. ".png"
+	return path
+end
+
+function StreamRadioLib.GetCustomPNG(name)
+	if SERVER then return nil end
+	if not name then return nil end
+
+	local path = StreamRadioLib.GetCustomPNGPath(name)
+	if not path then return nil end
+
 	local mat = g_mat_cache[path]
 
 	if mat then
@@ -619,17 +606,27 @@ function StreamRadioLib.GetPNG(name)
 	return mat
 end
 
-function StreamRadioLib.GetPNGIcon(name, custom)
+function StreamRadioLib.GetPNGIconPath(name, custom)
 	if SERVER then return nil end
 	if not name then return nil end
 
 	local prepath = "icon16/" .. name
 
 	if custom then
-		return StreamRadioLib.GetPNG(prepath)
+		return StreamRadioLib.GetCustomPNGPath(prepath)
 	end
 
 	local path = prepath .. ".png"
+	return path
+end
+
+function StreamRadioLib.GetPNGIcon(name, custom)
+	if SERVER then return nil end
+	if not name then return nil end
+
+	local path = StreamRadioLib.GetPNGIconPath(name, custom)
+	if not path then return nil end
+
 	local mat = g_mat_cache[path]
 
 	if mat then
@@ -693,81 +690,118 @@ function StreamRadioLib.SetSkinTableProperty(tab, hierarchy, property, value)
 	return tab
 end
 
-local g_pressed = false
-local g_lastradio = nil
-local g_addonnamespace = "_3dstreamradio"
-
-local function getplayervar(ply, name)
-	local arr = ply[g_addonnamespace]
-	if not arr then return nil end
-	return arr[name]
-end
-
-local function setplayervar(ply, name, var)
-	ply[g_addonnamespace] = ply[g_addonnamespace] or {}
-	ply[g_addonnamespace][name] = var
-end
-
-local function ReleaseLastRadioControl(ply)
-	local LastRadio = getplayervar(ply, "lastusedradio")
-	setplayervar(ply, "lastusedradio", nil)
+local function ReleaseLastRadioControl(ply, trace, userEntity)
+	local LastRadio = userEntity._3dstreamradio_lastusedradio
+	userEntity._3dstreamradio_lastusedradio = nil
 
 	if not IsValid( LastRadio ) then return end
 	if not LastRadio.__IsRadio then return end
 	if not LastRadio.Control then return end
 
-	LastRadio:Control( ply, tr, false )
+	LastRadio:Control( ply, trace, false, userEntity )
 end
 
-local function CanUseRadio(ply, Radio)
-	if not IsValid( Radio ) then return false end
-	if not Radio.__IsRadio then return false end
-	if not Radio.Control then return false end
+function StreamRadioLib.CanUseRadio(ply, radio, userEntity)
+	if not IsValid( ply ) then return false end
+	if not IsValid( radio ) then return false end
+	if not radio.__IsRadio then return false end
+	if not radio.Control then return false end
+	if not radio.CanControl then return false end
 
-	-- Support for prop protections
-	if Radio.CPPICanUse then
-		local use = Radio:CPPICanUse( ply ) or false
-		if not use then return false end
+	if not IsValid(userEntity) then
+		userEntity = ply
 	end
 
-	if SERVER then
-		local use = hook.Run( "PlayerUse", ply, Radio )
-		if not use then return false end
+	local use = radio:CanControl(ply, userEntity)
+	if not use then
+		return false
 	end
 
 	return true
 end
 
-function StreamRadioLib.Control( ply, tr, keydown )
+function StreamRadioLib.Control( ply, trace, keydown, userEntity )
 	if not IsValid( ply ) then return end
 
-	tr = tr or StreamRadioLib.Trace( ply )
-	if not tr then
-		ReleaseLastRadioControl( ply )
+	if not IsValid(userEntity) then
+		userEntity = ply
+	end
+
+	if not trace then
+		ReleaseLastRadioControl( ply, nil, userEntity )
 		return
 	end
 
 	if not keydown then
-		ReleaseLastRadioControl( ply )
+		ReleaseLastRadioControl( ply, trace, userEntity )
 		return
 	end
 
-	local Radio = tr.Entity
-	local LastRadio = getplayervar(ply, "lastusedradio")
+	local Radio = trace.Entity
+	local LastRadio = userEntity._3dstreamradio_lastusedradio
+
+	if not StreamRadioLib.CanUseRadio( ply, Radio, userEntity ) then
+		ReleaseLastRadioControl( ply, trace, userEntity )
+		return
+	end
 
 	if Radio ~= LastRadio then
-		ReleaseLastRadioControl( ply )
+		ReleaseLastRadioControl( ply, trace, userEntity )
 	end
 
-	if not CanUseRadio( ply, Radio ) then
-		ReleaseLastRadioControl( ply )
+	local rv = Radio:Control( ply, trace, true, userEntity )
+	userEntity._3dstreamradio_lastusedradio = Radio
+
+	return rv
+end
+
+function StreamRadioLib.TabControl( ply, trace, userEntity )
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
+	end
+
+	if not IsValid(ply) then
 		return
 	end
 
-	local rv = Radio:Control( ply, tr, true )
-	setplayervar(ply, "lastusedradio", Radio)
+	if not trace then
+		return
+	end
 
-	return rv
+	if not IsValid(userEntity) then
+		userEntity = ply
+	end
+
+	local ent = trace.Entity
+	if not IsValid( ent ) then
+		return
+	end
+
+	if not ent.__IsRadio then
+		return
+	end
+
+	local name = tostring(ent) .. "_" .. tostring(ply) .. "_TabControl"
+
+	trace = table.Copy(trace)
+
+	StreamRadioLib.Control(ply, trace, true, userEntity)
+
+	StreamRadioLib.Timer.NextFrame(name, function()
+		if not IsValid(ply) then
+			return
+		end
+
+		if not IsValid(ent) then
+			return
+		end
+
+		if not IsValid(userEntity) then
+			return
+		end
+
+		StreamRadioLib.Control(ply, trace, false, userEntity)
+	end)
 end
 
 local g_PlayerCache = {}
@@ -787,7 +821,7 @@ function StreamRadioLib.GetPlayerId(ply)
 	end
 
 	if game.SinglePlayer() then
-		return 'LOCAL_CLIENT'
+		return "LOCAL_CLIENT"
 	end
 
 	if SERVER and not ply:IsConnected() then
@@ -812,7 +846,7 @@ function StreamRadioLib.GetPlayerFromId(id)
 	end
 
 	if game.SinglePlayer() then
-		if id == 'LOCAL_CLIENT' then
+		if id == "LOCAL_CLIENT" then
 			if not IsValid(g_LocalPlayer) then
 				g_LocalPlayer = player.GetHumans()[1]
 			end
@@ -862,94 +896,6 @@ function StreamRadioLib.IsPlayerNetworkable(plyOrId)
 
 	return IsValid(_GetPlayerFromId(plyOrId))
 end
-
-local Errors = {
-	-- Code		// Error
-	[-1] = "Unknown Error",
-	[0] = "OK",
-	[1] = "Memory Error",
-	[2] = "Can't open the file",
-	[3] = "Can't find a free/valid driver",
-	[4] = "The sample buffer was lost",
-	[5] = "Invalid handle",
-	[6] = "Unsupported sample format",
-	[7] = "Invalid position",
-	[8] = "BASS_Init has not been successfully called",
-	[9] = "BASS_Start has not been successfully called",
-	[14] = "Already initialized/paused/whatever",
-	[18] = "Can't get a free channel",
-	[19] = "An illegal type was specified",
-	[20] = "An illegal parameter was specified",
-	[21] = "No 3D support",
-	[22] = "No EAX support",
-	[23] = "Illegal device number",
-	[24] = "Not playing",
-	[25] = "Illegal sample rate",
-	[27] = "The stream is not a file stream",
-	[29] = "No hardware voices available",
-	[31] = "The MOD music has no sequence data",
-	[32] = "No internet connection could be opened",
-	[33] = "Couldn't create the file",
-	[34] = "Effects are not available",
-	[37] = "Requested data is not available",
-	[38] = "The channel is a 'decoding channel'",
-	[39] = "A sufficient DirectX version is not installed",
-	[40] = "Connection timedout",
-	[41] = "Unsupported file format",
-	[42] = "Unavailable speaker",
-	[43] = "Invalid BASS version (used by add-ons)",
-	[44] = "Codec is not available/supported",
-	[45] = "The channel/file has ended",
-
-	[1000] = "Custom URLs are blocked on this server",
-}
-
-function StreamRadioLib.DecodeErrorCode(errorcode)
-	errorcode = tonumber(errorcode or -1) or -1
-
-	if BASS3 and BASS3.DecodeErrorCode and errorcode < 200 and errorcode >= -1 then
-		return BASS3.DecodeErrorCode(errorcode)
-	end
-
-	if Errors[errorcode] then
-		return Errors[errorcode]
-	end
-
-	local errordata = StreamRadioLib.Interface.GetErrorData(errorcode) or {}
-	local errordesc = string.Trim(errordata.desc or "")
-
-	if errordesc == "" then
-		errordesc = Errors[-1]
-	end
-
-	if not errordata.interface then
-		return errordesc
-	end
-
-	local iname = errordata.interface.name
-
-	if errordata.subinterface then
-		iname = iname .. "/" .. errordata.subinterface.name
-	end
-
-	errordesc = "[" .. iname .. "] " .. errordesc
-	return errordesc
-end
-
-local function ShowErrorInfo( ply, cmd, args )
-	if ( not args[1] or ( args[1] == "" ) ) then
-		StreamRadioLib.Msg(ply, "You need to enter a valid error code.")
-
-		return
-	end
-
-	local err = tonumber( args[1] ) or -1
-	local errstr = StreamRadioLib.DecodeErrorCode( err )
-	local msgstring = StreamRadioLib.AddonPrefix .. "Error code " .. err .. " = " .. errstr
-	StreamRadioLib.Msg( ply, msgstring )
-end
-
-concommand.Add( "info_streamradio_errorcode", ShowErrorInfo )
 
 local function toUnicode(s)
 	local s1, s2, s3, s4 = s:byte( 1, -1 )

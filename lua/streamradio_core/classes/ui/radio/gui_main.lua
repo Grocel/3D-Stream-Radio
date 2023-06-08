@@ -10,12 +10,14 @@ function CLASS:Create()
 
 	self.Browser = self:AddPanelByClassname("radio/gui_browser", true)
 	self.Browser:SetName("browser")
+	self.Browser:SetNWName("brw")
 	self.Browser:SetZPos(50)
 	self.Browser:Open()
 	self.Browser:SetSkinIdentifyer("browser")
 
 	self.Player = self:AddPanelByClassname("radio/gui_player", true)
 	self.Player:SetName("player")
+	self.Player:SetNWName("ply")
 	self.Player:SetZPos(100)
 	self.Player:Close()
 	self.Player:SetSkinIdentifyer("player")
@@ -86,6 +88,10 @@ function CLASS:Create()
 		self.Browser:PlayNext()
 	end
 
+	self.Player.OnPlaybackLoopModeChange = function(this, newLoopMode)
+		self:CallHook("OnPlaybackLoopModeChange", newLoopMode)
+	end
+
 	self:QueueCall("ActivateNetworkedMode")
 	self:InvalidateLayout()
 end
@@ -147,6 +153,10 @@ function CLASS:EnablePlaylist(bool)
 	self.Player:EnablePlaylist(not self.Browser:IsSingleItem() and self._showplaylist)
 end
 
+function CLASS:UpdatePlaybackLoopMode(...)
+	self.Player:UpdatePlaybackLoopMode(...)
+end
+
 function CLASS:SetSyncMode(...)
 	self.Player:SetSyncMode(...)
 end
@@ -169,7 +179,7 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	self:SetNWVarProxy("PlayerOpened", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("PlayerOpened", "Bool", function(this, nwkey, oldvar, newvar)
 		self.State.PlayerOpened = newvar
 	end)
 end

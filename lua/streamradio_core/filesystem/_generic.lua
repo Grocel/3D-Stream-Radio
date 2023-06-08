@@ -6,7 +6,7 @@ end
 
 RADIOFS.name = "generic"
 RADIOFS.type = ":generic"
-RADIOFS.icon = StreamRadioLib.GetPNGIcon("page")
+RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = -1
 

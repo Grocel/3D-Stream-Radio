@@ -1,5 +1,7 @@
 StreamRadioLib.Tool = StreamRadioLib.Tool or {}
 local LIB = StreamRadioLib.Tool
+local LIBNetwork = StreamRadioLib.Network
+local LIBNet = StreamRadioLib.Net
 
 function LIB.GetTool(ply)
 	if not IsValid(ply) then
@@ -172,13 +174,13 @@ function LIB.Setup(toolobj)
 
 	function toolobj:GetFallbackTrace()
 		local ply = self:GetOwner()
-		local tr = util.GetPlayerTrace(ply)
-		tr.mask = bit.bor( CONTENTS_SOLID, CONTENTS_MOVEABLE, CONTENTS_MONSTER, CONTENTS_WINDOW, CONTENTS_DEBRIS, CONTENTS_GRATE, CONTENTS_AUX )
+		local trace = util.GetPlayerTrace(ply)
+		trace.mask = bit.bor( CONTENTS_SOLID, CONTENTS_MOVEABLE, CONTENTS_MONSTER, CONTENTS_WINDOW, CONTENTS_DEBRIS, CONTENTS_GRATE, CONTENTS_AUX )
 
-		local trace = util.TraceLine(tr)
-		if not self:IsValidTrace(trace) then return nil end
+		local result = util.TraceLine(trace)
+		if not self:IsValidTrace(result) then return nil end
 
-		return trace
+		return result
 	end
 
 	function toolobj:SetClientInfo( name, var )
@@ -279,6 +281,16 @@ function LIB.Setup(toolobj)
 
 	function toolobj:AddCheckbox( panel, command, descbool )
 		local checkbox = panel:CheckBox(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
+
+		if descbool then
+			checkbox:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
+		end
+
+		return checkbox
+	end
+
+	function toolobj:AddComboBox( panel, command, descbool )
+		local checkbox = panel:ComboBox(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
 
 		if descbool then
 			checkbox:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
@@ -420,25 +432,20 @@ function LIB.Setup(toolobj)
 end
 
 local callback = nil
-local nwlib = StreamRadioLib.Net
 
-function LIB.RegisterClientToolHook(tool, hook)
-	local toolname = tool.Mode
-
-	nwlib.ToHash(toolname)
-	nwlib.ToHash(hook)
-
+function LIB.RegisterClientToolHook(tool, toolhook)
 	if SERVER then
-		util.AddNetworkString( "Streamradio_Tool" )
+		LIBNetwork.AddNetworkString("ClientToolHook")
 		return
 	end
 
 	if callback then return end
+
 	callback = function()
 		local ply = LocalPlayer()
 
-		local nwtoolname = nwlib.ReceiveStringHash()
-		local bwhook = nwlib.ReceiveStringHash()
+		local nwtoolname = net.ReadString()
+		local bwhook = net.ReadString()
 
 		local tool = ply:GetWeapon("gmod_tool")
 
@@ -456,17 +463,17 @@ function LIB.RegisterClientToolHook(tool, hook)
 		func(toolobj)
 	end
 
-	net.Receive("Streamradio_Tool", callback)
+	LIBNet.Receive("ClientToolHook", callback)
 end
 
-function LIB.CallClientToolHook(tool, hook)
+function LIB.CallClientToolHook(tool, toolhook)
 	if CLIENT then return end
 
 	local owner = tool:GetOwner()
 	local toolname = tool.Mode
 
-	net.Start("Streamradio_Tool")
-		nwlib.SendStringHash(toolname)
-		nwlib.SendStringHash(hook)
+	LIBNet.Start("ClientToolHook")
+		net.WriteString(toolname)
+		net.WriteString(toolhook)
 	net.Send(owner)
 end

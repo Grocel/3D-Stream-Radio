@@ -3,6 +3,8 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBNetwork = StreamRadioLib.Network
+
 local BASE = CLASS:GetBaseClass()
 
 local function g_encode(value)
@@ -33,15 +35,13 @@ function CLASS:Create()
 	self.Skin = {}
 
 	self.Hash = self:CreateListener({
-		hex = "",
-		crc = 0,
-		raw = {},
+		value = "",
 	}, function(this, k, v, oldv)
 		if CLIENT then
 			self:NetworkSkin()
 		else
 			self:UpdateSkin()
-			self:SetNWHash("Hash", self.Hash)
+			self:SetNWString("Hash", v)
 		end
 	end)
 
@@ -54,6 +54,10 @@ function CLASS:Create()
 			self:SetSkin(skin)
 		end)
 	else
+		LIBNetwork.AddNetworkString("skin")
+		LIBNetwork.AddNetworkString("skinrequest")
+		LIBNetwork.AddNetworkString("skintoserver")
+
 		self:NetReceive("skinrequest", function(this, id, len, ply)
 			self.NetworkPlayerList = self.NetworkPlayerList or {}
 			self.NetworkPlayerList[ply] = true
@@ -188,37 +192,17 @@ function CLASS:CalcHash()
 	if not self.Network.Active then return end
 
 	local hash = StreamRadioLib.Hash(self:GetSkinEncoded())
-	self.Hash.raw = hash.raw or {}
-	self.Hash.hex = hash.hex or ""
-	self.Hash.crc = hash.crc or 0
+	self.Hash.value = hash or ""
 end
 
 function CLASS:GetHash()
-	local curhash = self.Hash
+	local curhash = self.Hash.value or ""
 
 	if CLIENT and self.Network.Active then
-		curhash = self:GetNWHash("Hash", {})
+		curhash = self:GetNWString("Hash", "")
 	end
 
-	local hash = {
-		raw = curhash.raw or {},
-		hex = curhash.hex or "",
-		crc = curhash.crc or 0,
-	}
-
-	return hash
-end
-
-function CLASS:GetHashID(hash)
-	hash = hash or self:GetHash() or {}
-
-	local hex = hash.hex or ""
-	local crc = hash.crc or 0
-
-	if hex == "" then return "" end
-	if crc == 0 then return "" end
-
-	return "[" .. hex .. "]_[" .. crc .. "]"
+	return curhash
 end
 
 function CLASS:ActivateNetworkedMode()
@@ -229,15 +213,11 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	local hash = self:GetNWHash("Hash", {})
-	self.Hash.raw = hash.raw or {}
-	self.Hash.hex = hash.hex or ""
-	self.Hash.crc = hash.crc or 0
+	local hash = self:GetNWString("Hash", "")
+	self.Hash.value = hash
 
-	self:SetNWHashProxy("Hash", function(this, nwkey, oldvar, newvar)
-		self.Hash.raw = newvar.raw or {}
-		self.Hash.hex = newvar.hex or ""
-		self.Hash.crc = newvar.crc or 0
+	self:SetNWVarCallback("Hash", "String", function(this, nwkey, oldvar, newvar)
+		self.Hash.value = newvar or ""
 	end)
 
 	self:NetworkSkin()

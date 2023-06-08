@@ -12,9 +12,11 @@ function CLASS:Create()
 	self.TextPanel:SetPos(0, 0)
 	self.TextPanel:SetAlign(TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self.TextPanel:SetName("text")
+	self.TextPanel:SetNWName("txt")
 
 	self.ScrollBar = self:AddPanelByClassname("scrollbar", true)
 	self.ScrollBar:SetName("scrollbar")
+	self.ScrollBar:SetNWName("sbar")
 	self.ScrollBar:SetSkinIdentifyer("scrollbar")
 	self.ScrollBar:Hide()
 

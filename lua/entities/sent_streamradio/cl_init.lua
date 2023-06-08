@@ -1,6 +1,8 @@
 include("shared.lua")
 DEFINE_BASECLASS("base_streamradio_gui")
 
+local StreamRadioLib = StreamRadioLib
+
 function ENT:StopTuneSound()
 	if not self.NoiseSound then return end
 
@@ -130,6 +132,8 @@ function ENT:Initialize()
 			end
 		end)
 	end
+
+	self:MarkForUpdatePlaybackLoopMode()
 end
 
 function ENT:OnSetupModelSetup()
@@ -158,22 +162,27 @@ function ENT:GetWallTraceParamenters()
 		}
 	end
 
+	self.WallTraceParamenters.output = self.WallTraceParamenters.output or {}
+
 	return self.WallTraceParamenters
 end
 
 function ENT:TraceToCamera(frompos)
-	local endpos = StreamRadioLib.GetCameraPos()
+	local endpos = StreamRadioLib.GetCameraViewPos()
 	local traceparams = self:GetWallTraceParamenters()
 
 	traceparams.start = frompos
 	traceparams.endpos = endpos
 
-	local trace = util.TraceLine(traceparams)
+	util.TraceLine(traceparams)
 
-	--debugoverlay.Line(frompos, trace.HitPos or endpos, 0.1, color_white, false)
-	--debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
+	local result = traceparams.output
 
-	return trace
+	-- Tracers Debug
+	-- debugoverlay.Line(frompos, result.HitPos or endpos, 0.1, color_white, false)
+	-- debugoverlay.Line(result.HitPos or endpos, endpos, 0.1, color_black, false)
+
+	return result
 end
 
 function ENT:TraceWalls(radius)
@@ -194,7 +203,6 @@ function ENT:TraceWalls(radius)
 	traceparams.start = startpos
 
 	local traces = StreamRadioLib.StarTrace(traceparams, radius, 16, 16)
-	local tracecount = #traces
 
 	local blockcount = 0
 	local wallcount = 0
@@ -222,6 +230,10 @@ function ENT:TraceWalls(radius)
 		return 1
 	end
 
+	if blockcount <= 0 then
+		return 1
+	end
+
 	local f = blockcount / wallcount
 
 	local volfactor = math.Clamp((1 - f) * 2, coveredvol, 1)
@@ -237,6 +249,11 @@ function ENT:GetWallVolumeFactor()
 	if self:GetVolume() <= 0 then
 		self.wallvolcache = nil
 		return 0
+	end
+
+	if StreamRadioLib.GetCoveredVolume() >= 1 then
+		self.wallvolcache = nil
+		return 1
 	end
 
 	local now = RealTime()
@@ -274,17 +291,39 @@ function ENT:GetWallVolumeFactorSmoothed()
 
 	local speed = ticktime * 2
 
-	if self._wallvolvalue > curwallvol then
-		self._wallvolvalue = math.max(self._wallvolvalue - speed, curwallvol)
-		return self._wallvolvalue
-	end
-
-	if self._wallvolvalue < curwallvol then
-		self._wallvolvalue = math.min(self._wallvolvalue + speed, curwallvol)
-		return self._wallvolvalue
-	end
-
+	self._wallvolvalue = math.Approach(self._wallvolvalue, curwallvol, speed)
 	return self._wallvolvalue
+end
+
+function ENT:IsMuted()
+	ply = LocalPlayer()
+
+	if not IsValid(ply) then return true end
+	if not ply:IsPlayer() then return true end
+	if ply:IsBot() then return true end
+
+	if StreamRadioLib.IsMuted(ply) then
+		return true
+	end
+
+	local willMute = self:IsMutedForPlayer(ply)
+	local now = RealTime()
+
+	if willMute then
+		if not self._mutedTimer then
+			self._mutedTimer = now + 1
+		end
+
+		if self._mutedTimer < now then
+			return true
+		end
+
+		return false
+	else
+		self._mutedTimer = nil
+	end
+
+	return false
 end
 
 function ENT:UpdateStream()
@@ -299,28 +338,37 @@ function ENT:UpdateStream()
 	end
 
 	local ply = LocalPlayer()
-	local camerapos = StreamRadioLib.GetCameraPos()
 
 	self.StreamObj:Set3D(StreamRadioLib.Is3DSound() and self:GetSound3D())
 	self.Sound3D = self.StreamObj:Get3D()
 
-	self.PlayerDistance = self:DistanceToPlayer(ply, nil, camerapos)
-
 	self.Radius = self:GetRadius() or 0
 	self.StreamObj:Set3DFadeDistance(self.Radius / 3)
 
-	local wallvol = self:GetWallVolumeFactorSmoothed()
-	local distVolume = StreamRadioLib.CalcDistanceVolume(self.PlayerDistance, self.Radius)
+	local muted = self:IsMuted()
 
-	self.Muted = self:IsMutedForPlayer(ply)
+	local wallvol = 0
+	local distVolume = 0
+	local playerDistance = nil
+
+	if not muted then
+		playerDistance = self:DistanceToEntity(ply, nil, StreamRadioLib.GetCameraViewPos(ply))
+
+		wallvol = self:GetWallVolumeFactorSmoothed()
+		distVolume = StreamRadioLib.CalcDistanceVolume(playerDistance, self.Radius)
+	end
+
+	self.PlayerDistance = playerDistance
 
 	local StreamVol = distVolume * wallvol
 
-	self.StreamObj:SetMuted(self.Muted)
+	self.StreamObj:SetMuted(muted)
 	self.StreamObj:SetClientVolume(StreamVol)
 
+	self.Muted = muted
+
 	if self.NoiseSound and self.NoiseSound_vol then
-		local global_vol = StreamRadioLib.Settings.GetConVarValue("volume")
+		local global_vol = StreamRadioLib.GetGlobalVolume()
 		global_vol = math.Clamp(global_vol, 0, 1)
 
 		self.NoiseSound:ChangeVolume(self.StreamObj:GetVolume() * global_vol * wallvol * self.NoiseSound_vol, 0.5)
@@ -347,7 +395,12 @@ function ENT:StreamAnimModel()
 		return
 	end
 
-	if self.PlayerDistance >= StreamRadioLib.GetSpectrumDistance() then
+	if self.Muted then
+		self:StreamStopAnimModel()
+		return
+	end
+
+	if not self.PlayerDistance or self.PlayerDistance >= StreamRadioLib.GetSpectrumDistance() then
 		self:StreamStopAnimModel()
 		return
 	end
@@ -415,6 +468,7 @@ end
 function ENT:Think()
 	BaseClass.Think(self)
 
+	self:PlaybackLoopModeThink()
 	self:MasterRadioSyncThink()
 	self:PanelThink()
 	self:UpdateStream()

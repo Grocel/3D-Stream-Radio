@@ -8,7 +8,7 @@ local BASE = CLASS:GetBaseClass()
 local ColR = Color(255,0,0, 255)
 local ColY = Color(255,255,0, 60)
 local tune_nohdr = Vector( 0.80, 0, 0 )
-local CursorMat = StreamRadioLib.GetPNG("cursor")
+local CursorMat = StreamRadioLib.GetCustomPNG("cursor")
 
 local catchAndErrorNoHalt = StreamRadioLib.CatchAndErrorNoHalt
 
@@ -35,14 +35,15 @@ function CLASS:Create()
 	end)
 
 	if CLIENT then
-		self.ToolTip = self:AddPanelByClassname("tooltip")
-		self.ToolTip:SetPos(0, 0)
-		self.ToolTip:SetSize(1, 1)
-		self.ToolTip:SetName("tooltip")
-		self.ToolTip:SetSkinIdentifyer("tooltip")
-		self.ToolTip:SetText("")
-		self.ToolTip:SetZPos(1000)
-		self.ToolTip:Close()
+		self.Tooltip = self:AddPanelByClassname("tooltip")
+		self.Tooltip:SetPos(0, 0)
+		self.Tooltip:SetSize(1, 1)
+		self.Tooltip:SetName("tooltip")
+		self.Tooltip:SetNWName("tip")
+		self.Tooltip:SetSkinIdentifyer("tooltip")
+		self.Tooltip:SetText("")
+		self.Tooltip:SetZPos(1000)
+		self.Tooltip:Close()
 	end
 
 	self._Skin = StreamRadioLib.CreateOBJ("skin_controller")
@@ -103,8 +104,8 @@ function CLASS:Create()
 
 		self:SetCursorSize(csq, csq)
 
-		if IsValid(self.ToolTip) then
-			self.ToolTip:SetMaxWidth(w / 3)
+		if IsValid(self.Tooltip) then
+			self.Tooltip:SetMaxWidth(w / 3)
 		end
 	end
 
@@ -180,45 +181,60 @@ function CLASS:GetRenderPos()
 	return x, y
 end
 
-function CLASS:GetToolTipPanel()
-	return self.ToolTip
+function CLASS:GetTooltipPanel()
+	return self.Tooltip
 end
 
-function CLASS:OpenToolTip(text)
+function CLASS:UpdateTooltip(text)
 	if SERVER then return end
-	if not IsValid(self.ToolTip) then return end
+	if not IsValid(self.Tooltip) then return end
+	if not self.Tooltip:IsVisible() then return end
 
 	text = tostring(text or "")
-	self.ToolTip:SetText(text)
+	self.Tooltip:SetText(text)
 
-	if text ~= "" then
-		self.ToolTip:Open()
-		self:PosToolTipToCursor(true)
-	else
-		self.ToolTip:Close()
+	if text == "" then
+		self.Tooltip:Close()
 	end
 
-	return self.ToolTip
+	return self.Tooltip
 end
 
-function CLASS:CloseToolTip(text)
+function CLASS:OpenTooltip(text)
 	if SERVER then return end
-	if not IsValid(self.ToolTip) then return end
+	if not IsValid(self.Tooltip) then return end
 
-	self.ToolTip:Close()
+	text = tostring(text or "")
+	self.Tooltip:SetText(text)
+
+	if text ~= "" then
+		self.Tooltip:Open()
+		self:PosTooltipToCursor(true)
+	else
+		self.Tooltip:Close()
+	end
+
+	return self.Tooltip
 end
 
-function CLASS:PosToolTipToCursor(force)
+function CLASS:CloseTooltip(text)
 	if SERVER then return end
-	if not IsValid(self.ToolTip) then return end
-	if not force and not self.ToolTip:IsVisible() then return end
+	if not IsValid(self.Tooltip) then return end
+
+	self.Tooltip:Close()
+end
+
+function CLASS:PosTooltipToCursor(force)
+	if SERVER then return end
+	if not IsValid(self.Tooltip) then return end
+	if not force and not self.Tooltip:IsVisible() then return end
 
 	local x, y = self:GetPos()
 
 	local cx, cy = self:GetCursor()
 	local cw, ch = self:GetCursorSize()
 	local pw, ph = self:GetClientSize()
-	local tw, th = self.ToolTip:GetSize()
+	local tw, th = self.Tooltip:GetSize()
 
 	cx = cx - x
 	cy = cy - y
@@ -235,19 +251,19 @@ function CLASS:PosToolTipToCursor(force)
 	tx = math.Clamp(tx, 0, pw - tw)
 	ty = math.Clamp(ty, 0, ph - th)
 
-	self.ToolTip:SetPos(tx, ty)
+	self.Tooltip:SetPos(tx, ty)
 end
 
-function CLASS:OpenToolTipDelay(text, delay, callback)
+function CLASS:OpenTooltipDelay(text, delay, callback)
 	if SERVER then return end
-	if not IsValid(self.ToolTip) then return end
+	if not IsValid(self.Tooltip) then return end
 
 	self:TimerOnce("tooltip", delay or 3, function()
 		callback = self:GetFunction(callback)
 		if not callback then return end
 		if not callback(self) then return end
 
-		self:OpenToolTip(text)
+		self:OpenTooltip(text)
 	end)
 end
 
@@ -379,7 +395,7 @@ function CLASS:Think()
 
 	self._RT:SetFramerate(StreamRadioLib.RenderTargetFPS())
 	self._RT:SetEnabled(StreamRadioLib.IsRenderTarget())
-	self:PosToolTipToCursor()
+	self:PosTooltipToCursor()
 end
 
 function CLASS:SuperThink()
@@ -496,6 +512,7 @@ function CLASS:SetDebug(allowdebug)
 
 	self._Debug = self:AddPanelByClassname("debug")
 	self._Debug:SetName("debug")
+	self._Debug:SetNWName("debug")
 	self:InvalidateLayout()
 end
 
@@ -582,12 +599,16 @@ function CLASS:SetName(...)
 	BASE.SetName(self, ...)
 
 	local name = self:GetName()
+	local nwname = self:GetName()
+
 	if IsValid(self._Skin) then
 		self._Skin:SetName(name .. "/skin")
+		self._Skin:SetNWName(nwname .. "/sk")
 	end
 
 	if IsValid(self._RT) then
 		self._RT:SetName(name .. "/rendertarget")
+		self._RT:SetNWName(nwname .. "/rt")
 	end
 end
 

@@ -281,8 +281,6 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 	self.SL_LastTickTime = now - (self.SL_LastTick or now)
 	self.SL_LastTick = now
 
-	local FrameTimeConst = self.SL_LastTickTime
-
 	if not speakerlevel then
 		self:CloseWings(true)
 		return

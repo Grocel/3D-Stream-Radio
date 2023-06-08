@@ -18,6 +18,7 @@ function CLASS:Create()
 	self.BodyPanelText = self:AddPanelByClassname("textview", true)
 	self.BodyPanelText:SetAlign(TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self.BodyPanelText:SetName("textbox")
+	self.BodyPanelText:SetNWName("txt")
 	self.BodyPanelText:SetSkinIdentifyer("textbox")
 
 	self.HelpButton = self:AddPanelByClassname("button", true)
@@ -25,6 +26,7 @@ function CLASS:Create()
 	self.HelpButton:SetIcon(g_mat_help)
 	self.HelpButton:SetText("Help")
 	self.HelpButton:SetName("help")
+	self.HelpButton:SetNWName("hlp")
 	self.HelpButton:SetSkinIdentifyer("button")
 	self.HelpButton.DoClick = function()
 		self:CallHook("OnHelp")
@@ -43,9 +45,11 @@ function CLASS:Create()
 	self.CloseButton:SetIcon(g_mat_cross)
 	self.CloseButton:SetText("Close")
 	self.CloseButton:SetName("close")
+	self.CloseButton:SetNWName("cls")
 	self.CloseButton:SetSkinIdentifyer("button")
 	self.CloseButton.DoClick = function()
 		self:Close()
+		self:CallHook("OnCloseClick")
 	end
 
 	self.RetryButton = self:AddPanelByClassname("button", true)
@@ -53,9 +57,9 @@ function CLASS:Create()
 	self.RetryButton:SetIcon(g_mat_arrow_refresh)
 	self.RetryButton:SetText("Retry")
 	self.RetryButton:SetName("retry")
+	self.RetryButton:SetNWName("rty")
 	self.RetryButton:SetSkinIdentifyer("button")
 	self.RetryButton.DoClick = function()
-		self:Close()
 		self:CallHook("OnRetry")
 	end
 end
@@ -109,7 +113,11 @@ function CLASS:SetErrorCode(err, url)
 		self.BodyPanelText:SetText(text)
 	end
 
-	self:Open()
+	if err ~= 0 then
+		self:Open()
+	else
+		self:Close()
+	end
 end
 
 function CLASS:PerformLayout(...)
@@ -157,24 +165,24 @@ function CLASS:PerformLayout(...)
 	local buttonx = (w - buttonbarw) / 2
 	local buttony = h - buttonh
 
-	if IsValid(self.CloseButton) then
+	if IsValid(self.CloseButton) and self.CloseButton.Layout.Visible then
 		self.CloseButton:SetSize(buttonw, buttonh)
 		self.CloseButton:SetPos(buttonx, buttony)
 		buttonx = buttonx + (buttonw + margin)
 	end
 
-	if IsValid(self.RetryButton) then
+	if IsValid(self.RetryButton) and self.RetryButton.Layout.Visible then
 		self.RetryButton:SetSize(buttonw, buttonh)
 		self.RetryButton:SetPos(buttonx, buttony)
 		buttonx = buttonx + (buttonw + margin)
 	end
 
-	if IsValid(self.HelpButton) then
+	if IsValid(self.HelpButton) and self.HelpButton.Layout.Visible then
 		self.HelpButton:SetSize(buttonw, buttonh)
 		self.HelpButton:SetPos(buttonx, buttony)
 	end
 
-	if IsValid(self.BodyPanelText) then
+	if IsValid(self.BodyPanelText) and self.BodyPanelText.Layout.Visible then
 		self.BodyPanelText:SetPos(0, 0)
 		self.BodyPanelText:SetSize(w, bodyheight)
 	end

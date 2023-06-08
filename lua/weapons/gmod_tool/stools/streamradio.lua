@@ -13,22 +13,26 @@ end
 
 cleanup.Register( TOOL.Mode )
 
-TOOL.ClientConVar["model"] = "models/sligwolf/grocel/radio/radio.mdl"
-TOOL.ClientConVar["noadvwire"] = "1"
-TOOL.ClientConVar["nodisplay"] = "0"
-TOOL.ClientConVar["noinput"] = "0"
-TOOL.ClientConVar["loop"] = "0"
-TOOL.ClientConVar["playlistloop"] = "1"
+TOOL.ClientConVar["model"] = StreamRadioLib.GetDefaultModel()
+TOOL.ClientConVar["streamurl"] = ""
+TOOL.ClientConVar["play"] = "1"
 TOOL.ClientConVar["3dsound"] = "1"
 TOOL.ClientConVar["volume"] = "1"
 TOOL.ClientConVar["radius"] = "1200"
-TOOL.ClientConVar["play"] = "1"
-TOOL.ClientConVar["streamurl"] = ""
+TOOL.ClientConVar["playbackloopmode"] = tostring(StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST)
+
+TOOL.ClientConVar["nodisplay"] = "0"
+TOOL.ClientConVar["noinput"] = "0"
+TOOL.ClientConVar["noadvwire"] = "1"
 
 TOOL.ClientConVar["freeze"] = "1"
 TOOL.ClientConVar["weld"] = "1"
 TOOL.ClientConVar["worldweld"] = "0"
 TOOL.ClientConVar["nocollide"] = "1"
+
+local g_icon_playbackloopmode_none = StreamRadioLib.GetPNGIconPath("arrow_not_refresh", true)
+local g_icon_playbackloopmode_song = StreamRadioLib.GetPNGIconPath("arrow_refresh")
+local g_icon_playbackloopmode_playlist = StreamRadioLib.GetPNGIconPath("table_refresh")
 
 if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "name", "Radio Spawner")
@@ -55,9 +59,11 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "noadvwire.desc", "Disables the advanced wire outputs.\nIt's always disabled if Wiremod or GM_BASS3 is not installed on the Server.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noinput", "Disable control")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noinput.desc", "Disable the control of the display.\nWiremod controlling will still work.")
-	StreamRadioLib.Tool.AddLocale(TOOL, "loop", "Enable loop")
-	StreamRadioLib.Tool.AddLocale(TOOL, "playlistloop", "Enable playlist track switch")
-	StreamRadioLib.Tool.AddLocale(TOOL, "playlistloop.desc", "If set, the radio will play the next track in the playlist when the current one ends.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode", "Loop Playback:")
+	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.desc", "Set what happens after a song ends.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.option.none", "No loop")
+	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.option.song", "Loop song")
+	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.option.playlist", "Loop playlist")
 	StreamRadioLib.Tool.AddLocale(TOOL, "3dsound", "Enable 3D Sound")
 	StreamRadioLib.Tool.AddLocale(TOOL, "volume", "Volume:")
 	StreamRadioLib.Tool.AddLocale(TOOL, "radius", "Radius:")
@@ -67,7 +73,6 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "weld", "Weld")
 	StreamRadioLib.Tool.AddLocale(TOOL, "worldweld", "Weld to world")
 	StreamRadioLib.Tool.AddLocale(TOOL, "nocollide", "Nocollide")
-	StreamRadioLib.Tool.AddLocale(TOOL, "radiosettings", "Radio settings:")
 	StreamRadioLib.Tool.AddLocale(TOOL, "spawnsettings", "Spawn settings:")
 
 	StreamRadioLib.Tool.Setup(TOOL)
@@ -118,15 +123,24 @@ function TOOL:BuildToolPanel(CPanel)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
-	self:AddLabel( CPanel, "radiosettings", false )
 	self:AddURLTextEntry( CPanel, "streamurl", false )
 	self:AddCheckbox( CPanel, "play", true )
 	self:AddCheckbox( CPanel, "nodisplay", false )
 	self:AddCheckbox( CPanel, "noinput", true )
 	self:AddCheckbox( CPanel, "noadvwire", true )
-	self:AddCheckbox( CPanel, "loop", false )
-	self:AddCheckbox( CPanel, "playlistloop", true )
 	self:AddCheckbox( CPanel, "3dsound", false )
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+
+	local PlaybackLoopModeComboBox = self:AddComboBox(CPanel, "playbackloopmode", true)
+	PlaybackLoopModeComboBox:SetSortItems(false)
+	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.none"), StreamRadioLib.PLAYBACK_LOOP_MODE_NONE, false, g_icon_playbackloopmode_none)
+	PlaybackLoopModeComboBox:AddSpacer()
+	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.song"), StreamRadioLib.PLAYBACK_LOOP_MODE_SONG, false, g_icon_playbackloopmode_song)
+	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.playlist"), StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST, false, g_icon_playbackloopmode_playlist)
+
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
 	local VolumeNumSlider = self:AddNumSlider( CPanel, "volume", false )
 	VolumeNumSlider:SetMin( 0 )
@@ -256,10 +270,8 @@ function TOOL:GetSettings()
 
 	settings.StreamVolume = self:GetClientNumberMinMax("volume", 0, 1)
 	settings.Radius = self:GetClientNumberMinMax("radius", 0, 5000)
+	settings.PlaybackLoopMode = self:GetClientNumber("playbackloopmode", StreamRadioLib.PLAYBACK_LOOP_MODE_NONE)
 	settings.Sound3D = self:GetClientBool("3dsound")
-	settings.StreamLoop = self:GetClientBool("loop")
-
-	settings.PlaylistLoop = self:GetClientBool("playlistloop")
 	settings.DisableDisplay = self:GetClientBool("nodisplay")
 	settings.DisableInput = self:GetClientBool("noinput")
 	settings.DisableAdvancedOutputs = self:GetClientBool("noadvwire")
@@ -278,11 +290,8 @@ function TOOL:SetSettings(settings)
 
 	self:SetClientNumber("volume", settings.StreamVolume or 1)
 	self:SetClientNumber("radius", settings.Radius or 1200)
-
+	self:SetClientNumber("playbackloopmode", settings.PlaybackLoopMode or StreamRadioLib.PLAYBACK_LOOP_MODE_NONE)
 	self:SetClientBool("3dsound", settings.Sound3D)
-	self:SetClientBool("loop", settings.StreamLoop)
-
-	self:SetClientBool("playlistloop", settings.PlaylistLoop)
 	self:SetClientBool("nodisplay", settings.DisableDisplay)
 	self:SetClientBool("noinput", settings.DisableInput)
 	self:SetClientBool("noadvwire", settings.DisableAdvancedOutputs)
@@ -405,7 +414,6 @@ function TOOL:Reload( trace )
 	if not self.ToolLibLoaded then return false end
 	if not self:IsValidTrace(trace) then return false end
 
-	local ply = self:GetOwner( )
 	local ent = trace.Entity
 
 	if not IsValid(ent) then return false end
@@ -414,9 +422,7 @@ function TOOL:Reload( trace )
 	if ent:GetPhysicsObjectCount() > 1 then return false end -- No ragdolls!
 
 	local model = ent:GetModel()
-	if IsUselessModel(model) then return false end
-	if not util.IsValidModel(model) then return false end
-	if not util.IsValidProp(model) then return false end
+	if not StreamRadioLib.IsValidModel(model) then return false end
 
 	if CLIENT then return true end
 
@@ -455,9 +461,12 @@ function TOOL:Think( )
 	if not IsValid(self.GhostEntity) then
 		self:MakeGhostEntity(
 			Model(model),
-			Vector(),
-			Angle(0, 0, 0)
+			vector_origin,
+			angle_zero
 		)
+	end
+
+	if not IsValid(self.GhostEntity) then
 		return
 	end
 
@@ -470,11 +479,10 @@ function TOOL:Think( )
 end
 
 function TOOL:GetModel( )
-	local model = "models/sligwolf/grocel/radio/radio.mdl"
-	local modelcheck = self:GetClientInfo("model")
+	local model = self:GetClientInfo("model")
 
-	if util.IsValidModel(modelcheck) and util.IsValidProp(modelcheck) and not IsUselessModel(modelcheck) then
-		return modelcheck
+	if not StreamRadioLib.IsValidModel(model) then
+		return StreamRadioLib.GetDefaultModel()
 	end
 
 	return model

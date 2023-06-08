@@ -72,7 +72,7 @@ function CLASS:BuildList()
 end
 
 function CLASS:BuildListInternal()
-
+	-- override me
 end
 
 function CLASS:GetUpPath()
@@ -132,7 +132,7 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	self:SetNWVarProxy("Path", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("Path", "String", function(this, nwkey, oldvar, newvar)
 		self.Path.Value = newvar
 	end)
 

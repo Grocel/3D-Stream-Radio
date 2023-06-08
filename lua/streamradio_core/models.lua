@@ -171,8 +171,7 @@ function LIB.RegisteredModels( )
 
 	for model, setting in pairs( Models ) do
 		if model == "default" then continue end
-		if IsUselessModel( model ) then continue end
-		if not file.Exists( model, "GAME" ) then continue end
+		if not StreamRadioLib.IsValidModelFile(model) then continue end
 		if setting.HiddenInTool then continue end
 
 		ToolModels[model] = setting.tool or {}

@@ -1,6 +1,12 @@
 AddCSLuaFile()
 DEFINE_BASECLASS("base_streamradio")
 
+local StreamRadioLib = StreamRadioLib
+local LIBNetwork = StreamRadioLib.Network
+local LIBModel = StreamRadioLib.Model
+local LIBSkin = StreamRadioLib.Skin
+local LIBWire = StreamRadioLib.Wire
+
 ENT.RenderGroup = RENDERGROUP_BOTH
 ENT.Spawnable = false
 ENT.AdminOnly = false
@@ -21,60 +27,6 @@ function ENT:SetDisplayPosAng(pos, ang)
 	self.DisplayAngles = ang
 end
 
-function ENT:CanControlDisplay(ply)
-	if not self.__IsLibLoaded then return false end
-	if self:GetDisableInput() then return false end
-
-	if not self:HasGUI() then return false end
-	if self:GetDisableDisplay() then return false end
-
-	if StreamRadioLib.IsGUIHidden(ply) then return false end
-	if not self:OnGUIShowCheck(ply) then return false end
-
-	local pos, ang = self:GetDisplayPos()
-	if not pos then return false end
-
-	local controlpos = StreamRadioLib.GetControlPosDir(ply)
-	if not controlpos then return false end
-
-	-- Return false if from the backside
-	local a = controlpos - pos
-	local b = ang:Up():Dot( a ) / a:Length()
-
-	local displayVisAng = math.acos( b ) / math.pi * 180
-	return displayVisAng < 90
-end
-
-function ENT:CanSeeDisplay(ply)
-	if not self.__IsLibLoaded then return false end
-
-	if not self:HasGUI() then return false end
-	if self:GetDisableDisplay() then return false end
-
-	if StreamRadioLib.IsGUIHidden(ply) then return false end
-	if not self:OnGUIShowCheck(ply) then return false end
-
-	local pos, ang = self:GetDisplayPos()
-	if not pos then return false end
-
-	local campos = StreamRadioLib.GetCameraPos(ply)
-	if not campos then return false end
-
-	-- Return false if from the backside
-	local a = campos - pos
-	local b = ang:Up():Dot( a ) / a:Length()
-
-	local displayVisAng = math.acos( b ) / math.pi * 180
-	return displayVisAng < 90
-end
-
-function ENT:CursorInGUI(cx, cy)
-	if not IsValid(self.GUI) then return false end
-
-	local px, py = self.GUI:GetAbsolutePos()
-	return self.GUI:IsInBounds(cx - px, cy - py)
-end
-
 function ENT:GetDisplayPos( )
 	if not self:HasGUI() then return end
 	if self:GetDisableDisplay() then return end
@@ -93,57 +45,127 @@ function ENT:GetDisplayPos( )
 	return pos, ang
 end
 
-function ENT:GetCursor( ply, trace )
-	if not self.__IsLibLoaded then
+function ENT:CheckPropProtection(ply)
+	-- Support for prop protections
+	if self.CPPICanUse then
+		local use = self:CPPICanUse(ply) or false
+		if not use then
+			return false
+		end
+	end
+
+	if SERVER then
+		local use = hook.Run("PlayerUse", ply, radio)
+		if not use then
+			return false
+		end
+	end
+
+	return true
+end
+
+function ENT:CanControlInternal(ply, userEntity)
+	if self:GetDisableInput() then return false end
+
+	if not self:HasGUI() then return false end
+	if self:GetDisableDisplay() then return false end
+
+	-- Check the player for +use permission
+	if not self:CheckPropProtection(ply) then
 		return false
 	end
 
-	local Scale = self:GetScale()
-	local Pos, Ang = self:GetDisplayPos()
+	if userEntity:IsPlayer() then
+		if not userEntity:Alive() then
+			return false
+		end
 
-	if Scale <= 0 then
+		if StreamRadioLib.IsGUIHidden(userEntity) then
+			return false
+		end
+
+		if not self:OnGUIShowCheck(userEntity) then
+			return false
+		end
+	end
+
+	local scale = self:GetScale()
+	if scale <= 0 then return false end
+
+	local pos, ang = self:GetDisplayPos()
+	if not pos then return false end
+	if not ang then return false end
+
+	local controlpos = StreamRadioLib.GetControlPosDir(userEntity)
+	if not controlpos then return false end
+
+	-- Return false if from the backside
+	local a = controlpos - pos
+	local b = ang:Up():Dot( a ) / a:Length()
+
+	local displayVisAng = math.acos( b ) / math.pi * 180
+	return displayVisAng < 90
+end
+
+function ENT:CanControl(ply, userEntity)
+	if not self.__IsLibLoaded then return false end
+
+	if not IsValid(ply) then return false end
+	if not ply:IsPlayer() then return false end
+
+	if not IsValid(userEntity) then
+		userEntity = ply
+	end
+
+	local cacheId = tostring(ply) .. "_" .. tostring(userEntity)
+
+	if self._canControlCache and self._canControlCache[cacheId] ~= nil then
+		return self._canControlCache[cacheId]
+	end
+
+	self._canControlCache = self._canControlCache or {}
+	self._canControlCache[cacheId] = nil
+
+	local result = self:CanControlInternal(ply, userEntity)
+
+	self._canControlCache[cacheId] = result
+	return result
+end
+
+function ENT:CursorInGUI(cx, cy)
+	if not IsValid(self.GUI) then return false end
+
+	local px, py = self.GUI:GetAbsolutePos()
+	return self.GUI:IsInBounds(cx - px, cy - py)
+end
+
+function ENT:GetCursor( ply, trace, userEntity )
+	if not self.__IsLibLoaded then return false end
+
+	if not IsValid(ply) then return false end
+	if not ply:IsPlayer() then return false end
+
+	if not IsValid(userEntity) then
+		userEntity = ply
+	end
+
+	if not self:CanControl(ply, userEntity) then
 		return false
 	end
 
-	if not Pos then
-		return false
-	end
-
-	if not IsValid(ply) then
-		return false
-	end
-
-	if not ply:IsPlayer() then
-		return false
-	end
-
-	if not ply:Alive() then
-		return false
-	end
-
-	if not self:CanControlDisplay(ply) then
-		return false
-	end
-
-	if not trace or not trace.Hit then
-		trace = StreamRadioLib.Trace(ply)
+	if not trace then
+		trace = StreamRadioLib.Trace(userEntity)
 		if not trace or not trace.Hit then
 			return false
 		end
 	end
 
-	if not self:OnGUIInteractionCheck(ply, trace) then
+	if not self:OnGUIInteractionCheck(ply, trace, userEntity) then
 		return false
 	end
 
-	if self.CPPICanUse then
-		local allowuse = self:CPPICanUse(ply) or false
-		if not allowuse then
-			return false
-		end
-	end
-
-	if self:DistanceToPlayer(ply, trace.HitPos) > self.MaxCursorTraceDist then
+	-- Ignore distances when we are using via an entity that is not a player
+	if userEntity:IsPlayer() and not self:CheckDistanceToEntity(userEntity, self.MaxCursorTraceDist, trace.HitPos) then
 		return false
 	end
 
@@ -153,15 +175,18 @@ function ENT:GetCursor( ply, trace )
 		return false
 	end
 
-	local TraceHitPos = util.IntersectRayWithPlane( trace.StartPos, trace.Normal, Pos, Ang:Up( ) )
+	local scale = self:GetScale()
+	local pos, ang = self:GetDisplayPos()
+
+	local TraceHitPos = util.IntersectRayWithPlane( trace.StartPos, trace.Normal, pos, ang:Up( ) )
 
 	if not TraceHitPos then
 		return false
 	end
 
-	local HitPos = WorldToLocal( TraceHitPos, ang_zero, Pos, Ang )
-	local CursorX = math.Round( HitPos.x / Scale )
-	local CursorY = math.Round( -HitPos.y / Scale )
+	local HitPos = WorldToLocal( TraceHitPos, ang_zero, pos, ang )
+	local CursorX = math.Round( HitPos.x / scale )
+	local CursorY = math.Round( -HitPos.y / scale )
 
 	Cursor = self:CursorInGUI(CursorX, CursorY)
 
@@ -198,7 +223,7 @@ function ENT:SetUpModel()
 	if not IsValid(self.StreamObj) then return end
 
 	local model = self:GetModel()
-	self.ModelData = StreamRadioLib.Model.GetModelSettings(model)
+	self.ModelData = LIBModel.GetModelSettings(model)
 	local MD = self.ModelData or {}
 
 	self:CallModelFunction("Initialize", model)
@@ -240,6 +265,7 @@ function ENT:SetUpModel()
 	end
 
 	self.GUI:SetName("gui")
+	self.GUI:SetNWName("g")
 	self.GUI:SetEntity(self)
 	self.GUI:ActivateNetworkedMode()
 
@@ -255,6 +281,7 @@ function ENT:SetUpModel()
 
 	self.GUI_Main:SetPos(0, 0)
 	self.GUI_Main:SetName("main")
+	self.GUI_Main:SetNWName("m")
 	self.GUI_Main:SetSkinIdentifyer("main")
 	self.GUI_Main:SetStream(self.StreamObj)
 
@@ -281,8 +308,8 @@ function ENT:SetUpModel()
 	self:CallModelFunction("InitializeFonts", model)
 	self:CallModelFunction("SetupGUI", self.GUI, self.GUI_Main)
 
-	self.GUI:SetSkin(StreamRadioLib.Skin.GetDefaultSkin())
-	self.GUI:_PerformRerenderInternal()
+	self.GUI:SetSkin(LIBSkin.GetDefaultSkin())
+	self.GUI:PerformRerender(true)
 
 	if self.OnSetupModelSetup then
 		self:OnSetupModelSetup()
@@ -329,35 +356,58 @@ end
 
 function ENT:FastThink()
 	BaseClass.FastThink(self)
-	self:ControlThink(self:GetLastUser())
+
+	self._canControlCache = {}
+
+	self:ControlThink(self:GetLastUser(), self:GetLastUsingEntity())
 end
 
-function ENT:ControlThink(ply, tr)
+function ENT:ControlThink(ply, userEntity)
 	if not IsValid(self.GUI) then return end
 	if not IsValid(ply) then return end
 
-	local Cursor, CursorX, CursorY = self:GetCursor(ply, tr)
+	local Cursor, CursorX, CursorY = self:GetCursor(ply, nil, userEntity)
+
+	if not Cursor then
+		if self.GUI:GetCursor() ~= -1 then
+			self.GUI:Click(false)
+			self.GUI:SetCursor(-1, -1)
+		end
+
+		return
+	end
+
 	self.GUI:SetCursor(CursorX or -1, CursorY or -1)
 end
 
-function ENT:Think()
-	BaseClass.Think(self)
-	return true
-end
-
-function ENT:Control(ply, tr, pressed)
+function ENT:Control(ply, trace, pressed, userEntity)
 	if not IsValid(self.GUI) then return end
-
-	if not self:CanControlDisplay(ply) then return end
+	if not IsValid(ply) then return end
 
 	if pressed then
+		if not self:CanControl(ply, userEntity) then
+			return
+		end
+
+		-- anti click spam
 		local now = RealTime()
-		if (now - (self._oldusetime or 0)) < 0.1 then return end
+
+		if (now - (self._oldusetime or 0)) < 0.1 then
+			return
+		end
+
 		self._oldusetime = now
 	end
 
-	local Cursor, CursorX, CursorY = self:GetCursor(ply, tr)
-	if not Cursor then return end
+	local Cursor, CursorX, CursorY = self:GetCursor(ply, trace, userEntity)
+	if not Cursor then
+		if self.GUI:GetCursor() ~= -1 then
+			self.GUI:Click(false)
+			self.GUI:SetCursor(-1, -1)
+		end
+
+		return
+	end
 
 	self.GUI:SetCursor(CursorX or -1, CursorY or -1)
 	self.GUI:Click(pressed)
@@ -366,6 +416,7 @@ function ENT:Control(ply, tr, pressed)
 		self:EmitSoundIfExist(self.Sounds_Use, 50, 100, 0.40, CHAN_ITEM)
 
 		self:SetLastUser(ply)
+		self:SetLastUsingEntity(userEntity)
 	end
 end
 
@@ -380,7 +431,7 @@ function ENT:SetupDataTables()
 			category = "GUI",
 			title = "Disable display",
 			type = "Boolean",
-			order = 1
+			order = 10
 		}
 	})
 
@@ -390,7 +441,7 @@ function ENT:SetupDataTables()
 			category = "GUI",
 			title = "Disable input",
 			type = "Boolean",
-			order = 2
+			order = 11
 		}
 	})
 
@@ -400,24 +451,28 @@ function ENT:SetupDataTables()
 			category = "GUI",
 			title = "Show debug panel",
 			type = "Boolean",
-			order = 3
+			order = 12
 		}
 	})
 
-	self:AddDTNetworkVar( "Bool", "PlaylistLoop", {
-		KeyName = "PlaylistLoop",
-		Edit = {
-			category = "Playlist",
-			title = "Enable playlist track switch",
-			type = "Boolean",
-			order = 1
-		}
-	})
-
-	StreamRadioLib.Network.SetDTVarCallback(self, "EnableDebug", function(this, name, oldv, newv)
+	LIBNetwork.SetDTVarCallback(self, "EnableDebug", function(this, name, oldv, newv)
 		if not IsValid(self.GUI) then return end
 		self.GUI:SetDebug(newv)
 	end)
+end
+
+function ENT:IsPlaylistEnabled()
+	local GUI_Main = self.GUI_Main
+
+	if not IsValid(GUI_Main) then
+		return false
+	end
+
+	if not GUI_Main:IsPlaylistEnabled() then
+		return false
+	end
+
+	return true
 end
 
 function ENT:Initialize()
@@ -476,66 +531,80 @@ function ENT:OnGUIShowCheck(ply)
 	return true
 end
 
-function ENT:OnGUIInteractionCheck(ply, tr)
+function ENT:OnGUIInteractionCheck(ply, trace, userEntity)
 	-- Override me
 	return true
 end
 
 if CLIENT then
+	function ENT:CanSeeDisplay()
+		if not self.__IsLibLoaded then return false end
 
-	function ENT:CanPlayerUse(ply)
-		if not IsValid(self.GUI) then return false end
-		if not IsValid(ply) then return false end
+		if not self:HasGUI() then return false end
+		if self:GetDisableDisplay() then return false end
 
-		if not self:CanControlDisplay(ply) then return false end
-		return true
+		local ply = LocalPlayer()
+		if StreamRadioLib.IsGUIHidden(ply) then return false end
+		if not self:OnGUIShowCheck(ply) then return false end
+
+		local scale = self:GetScale()
+		if scale <= 0 then return false end
+
+		local pos, ang = self:GetDisplayPos()
+		if not pos then return false end
+
+		local campos = StreamRadioLib.GetCameraViewPos(ply)
+		if not campos then return false end
+
+		-- Return false if from the backside
+		local a = campos - pos
+		local b = ang:Up():Dot( a ) / a:Length()
+
+		local displayVisAng = math.acos( b ) / math.pi * 180
+		return displayVisAng < 90
 	end
 
-	function ENT:GetCurserFromUser()
-		local lastuser = self:GetLastUser()
-		local lp = LocalPlayer()
+	function ENT:GetCurserFromLastUser()
+		if not self.__IsLibLoaded then return false end
+		if not IsValid(self.GUI) then return false end
 
-		local Cursor, CursorX, CursorY
+		local lastUser = self:GetLastUser()
+		local userEntity = self:GetLastUsingEntity()
 
-		if self:CanPlayerUse(lastuser) then
-			Cursor, CursorX, CursorY = self:GetCursor(lastuser)
+		if not IsValid(lastUser) then
+			lastUser = LocalPlayer()
 		end
 
-		if Cursor then
-			return Cursor, CursorX, CursorY
+		if not IsValid(userEntity) then
+			userEntity = lastUser
 		end
 
-		if self:CanPlayerUse(lp) then
-			Cursor, CursorX, CursorY = self:GetCursor(lp)
-		end
-
-		return Cursor, CursorX, CursorY
+		return self:GetCursor(lastUser, nil, userEntity)
 	end
 
 	function ENT:DrawGUI()
 		if not self.__IsLibLoaded then return end
 		if not IsValid(self.GUI) then return end
 
+		if not self:CanSeeDisplay() then return end
+
 		local ply = LocalPlayer()
-		if not self:CanSeeDisplay(ply) then return end
+		if not self:CheckDistanceToEntity(ply, StreamRadioLib.GetDrawDistance(), nil, StreamRadioLib.GetCameraViewPos(ply)) then return end
 
-		local dist = self:DistanceToPlayer(ply)
-		if dist > StreamRadioLib.GetDrawDistance() then return end
+		local scale = self:GetScale()
+		local pos, ang = self:GetDisplayPos()
 
-		local Scale = self:GetScale()
-		local Pos, Ang = self:GetDisplayPos()
-
-		if Scale <= 0 then return end
-		if not Pos then return end
-
-		local Cursor, CursorX, CursorY = self:GetCurserFromUser()
+		local Cursor, CursorX, CursorY = self:GetCurserFromLastUser()
 
 		local col = self:GetColor()
-		self.GUI:SetAllowCursor(not StreamRadioLib.IsCursorHidden())
+		self.GUI:SetAllowCursor(StreamRadioLib.IsCursorEnabled())
 		self.GUI:SetDrawAlpha(col.a / 255)
-		self.GUI:SetCursor(CursorX or -1, CursorY or -1)
 
-		cam.Start3D2D( Pos, Ang, Scale )
+		if Cursor then
+			self.GUI:SetCursor(CursorX or -1, CursorY or -1)
+		end
+
+		cam.Start3D2D( pos, ang, scale )
 			self.GUI:RenderSystem()
 		cam.End3D2D( )
 	end
@@ -551,15 +620,43 @@ if CLIENT then
 		if not IsValid(self.GUI) then return false end
 		if StreamRadioLib.IsSpectrumHidden() then return false end
 
-		local ply = LocalPlayer()
-		if not self:CanSeeDisplay(ply) then return false end
+		if not self:CanSeeDisplay() then return false end
 
-		local dist = self:DistanceToPlayer(ply)
-		if dist > StreamRadioLib.GetSpectrumDistance() then return false end
+		local ply = LocalPlayer()
+		if not self:CheckDistanceToEntity(ply, StreamRadioLib.GetSpectrumDistance(), nil, StreamRadioLib.GetCameraViewPos(ply)) then return false end
 
 		return true
 	end
 else
+	function ENT:Use(activator, ...)
+		if not self.__IsWiremodLoaded then return false end
+		if not IsValid(self.GUI) then return end
+
+		if not IsValid(activator) then
+			return false
+		end
+
+		if not activator:IsPlayer() then
+			return false
+		end
+
+		local data = LIBWire.FindCallingWireUserEntityData()
+		if not data then
+			return false
+		end
+
+		local now = RealTime()
+
+		if (now - (self._oldwireusetime or 0)) < 0.1 then
+			return false
+		end
+
+		self._oldwireusetime = now
+
+		StreamRadioLib.TabControl(activator, data.trace, data.userEntity)
+		return true
+	end
+
 	function ENT:OnSetupCopyData(data)
 		data.GUI = nil
 		data.GUI_Main = nil

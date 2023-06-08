@@ -7,7 +7,7 @@ end
 RADIOFS.name = "JSON"
 RADIOFS.type = "json"
 RADIOFS.extension = "json"
-RADIOFS.icon = StreamRadioLib.GetPNGIcon("table")
+RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = 2000
 

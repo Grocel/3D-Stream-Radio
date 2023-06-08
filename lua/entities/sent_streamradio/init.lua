@@ -3,10 +3,19 @@ include( "shared.lua" )
 
 DEFINE_BASECLASS( "base_streamradio_gui" )
 
-ENT.ModelVar = Model( "models/sligwolf/grocel/radio/radio.mdl" )
+local StreamRadioLib = StreamRadioLib
+
+function ENT:InitializeModel()
+	local model = self:GetModel()
+
+	if not StreamRadioLib.IsValidModel(model) then
+		self:SetModel(StreamRadioLib.GetDefaultModel())
+	end
+end
 
 function ENT:Initialize( )
-	self:SetModel( Model( self.ModelVar or "models/sligwolf/grocel/radio/radio.mdl" ) )
+	self:InitializeModel()
+
 	self:SetUseType( SIMPLE_USE )
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetMoveType( MOVETYPE_VPHYSICS )
@@ -39,7 +48,7 @@ function ENT:Initialize( )
 	self:AddWireInput("Pause", "NORMAL")
 	self:AddWireInput("Volume", "NORMAL")
 	self:AddWireInput("Radius", "NORMAL")
-	self:AddWireInput("Loop", "NORMAL")
+	self:AddWireInput("LoopMode", "NORMAL")
 	self:AddWireInput("Time", "NORMAL")
 	self:AddWireInput("3D Sound", "NORMAL")
 	self:AddWireInput("Stream URL", "STRING")
@@ -51,7 +60,12 @@ function ENT:Initialize( )
 	self:AddWireOutput("Stopped", "NORMAL")
 	self:AddWireOutput("Volume", "NORMAL")
 	self:AddWireOutput("Radius", "NORMAL")
-	self:AddWireOutput("Loop", "NORMAL")
+
+	self:AddWireOutput("LoopMode", "NORMAL")
+	self:AddWireOutput("LoopsSong", "NORMAL")
+	self:AddWireOutput("LoopsPlaylist", "NORMAL")
+	self:AddWireOutput("PlaylistAvailable", "NORMAL")
+
 	self:AddWireOutput("Time", "NORMAL")
 	self:AddWireOutput("Length", "NORMAL")
 	self:AddWireOutput("Ended", "NORMAL")
@@ -59,7 +73,7 @@ function ENT:Initialize( )
 	self:AddWireOutput("Stream Name", "STRING")
 	self:AddWireOutput("Stream URL", "STRING")
 
-	self:AddWireOutput("Advanced Outputs", "NORMAL")
+	self:AddWireOutput("Advanced Outputs", "NORMAL", "Advanced Outputs available? Needs GM_BASS3.")
 	self:AddWireOutput("Playing", "NORMAL", "Adv. Output")
 	self:AddWireOutput("Loading", "NORMAL", "Adv. Output")
 	self:AddWireOutput("Tag", "ARRAY", "Adv. Output")
@@ -74,17 +88,18 @@ function ENT:Initialize( )
 
 	self:InitWirePorts()
 	self:SetSettings()
+
+	self:MarkForUpdatePlaybackLoopMode()
 end
 
 function ENT:SetSettings(settings)
 	if not self.__IsLibLoaded then return end
 	settings = settings or {}
 
-	settings.StreamUrl = settings.StreamUrl or ""
-	settings.StreamName = settings.StreamName or ""
+	local url = settings.StreamUrl or ""
 
-	if settings.StreamUrl ~= "" then
-		self:SetStreamURL(settings.StreamUrl)
+	if url ~= "" then
+		self:SetStreamURL(url)
 	end
 
 	local sound3d = settings.Sound3D
@@ -99,24 +114,32 @@ function ENT:SetSettings(settings)
 		noadvoutputs = true
 	end
 
-	local playlistloop = settings.PlaylistLoop
-
-	if playlistloop == nil then
-		playlistloop = true
-	end
-
-	self:SetStreamName(settings.StreamName)
+	self:SetStreamName(settings.StreamName or "")
 
 	self:SetVolume(settings.StreamVolume or 1)
-	self:SetLoop(settings.StreamLoop or false)
 
 	self:SetRadius(settings.Radius or 1200)
 	self:SetSound3D(sound3d)
-	self:SetPlaylistLoop(playlistloop)
 
 	self:SetDisableDisplay(settings.DisableDisplay or false)
 	self:SetDisableInput(settings.DisableInput or false)
 	self:SetDisableAdvancedOutputs(noadvoutputs)
+
+	if settings.PlaybackLoopMode then
+		self:SetPlaybackLoopMode(settings.PlaybackLoopMode)
+	end
+
+	-- @DEPRECATED
+	if not settings.PlaybackLoopMode then
+		local playlistloop = settings.PlaylistLoop
+
+		if playlistloop == nil then
+			playlistloop = true
+		end
+
+		self:SetPlaylistLoop(playlistloop)
+		self:SetLoop(settings.StreamLoop or false)
+	end
 end
 
 function ENT:GetSettings()
@@ -127,15 +150,18 @@ function ENT:GetSettings()
 	settings.StreamName = self:GetStreamName()
 
 	settings.StreamVolume = self:GetVolume()
-	settings.StreamLoop = self:GetLoop()
-
 	settings.Radius = self:GetRadius()
 	settings.Sound3D = self:GetSound3D()
-	settings.PlaylistLoop = self:GetPlaylistLoop()
 
 	settings.DisableDisplay = self:GetDisableDisplay()
 	settings.DisableInput = self:GetDisableInput()
 	settings.DisableAdvancedOutputs = self:GetDisableAdvancedOutputs()
+
+	settings.PlaybackLoopMode = self:GetPlaybackLoopMode()
+
+	-- @DEPRECATED
+	settings.StreamLoop = self:GetLoop()
+	settings.PlaylistLoop = self:GetPlaylistLoop()
 
 	return settings
 end
@@ -201,6 +227,7 @@ end
 function ENT:FastThink()
 	BaseClass.FastThink(self)
 
+	self:PlaybackLoopModeThink()
 	self:MasterRadioSyncThink()
 	self:PanelThink()
 	self:UpdateVolume()
@@ -246,7 +273,12 @@ function ENT:WiremodThink( )
 	self:TriggerWireOutput("Stopped", self.StreamObj:IsStopMode())
 	self:TriggerWireOutput("Volume", self:GetVolume())
 	self:TriggerWireOutput("Radius", self:GetRadius())
-	self:TriggerWireOutput("Loop", self:GetLoop())
+
+	self:TriggerWireOutput("LoopMode", self:GetPlaybackLoopMode())
+	self:TriggerWireOutput("LoopsSong", self:GetLoop())
+	self:TriggerWireOutput("LoopsPlaylist", self:GetPlaylistLoop())
+	self:TriggerWireOutput("PlaylistAvailable", self:IsPlaylistEnabled())
+
 	self:TriggerWireOutput("Time", self.StreamObj:GetMasterTime())
 	self:TriggerWireOutput("Length", self.StreamObj:GetMasterLength())
 	self:TriggerWireOutput("Ended", self.StreamObj:HasEnded())
@@ -258,7 +290,7 @@ function ENT:WiremodThink( )
 	self:TriggerWireOutput("Playing", self.StreamObj:IsPlaying())
 	self:TriggerWireOutput("Loading", self.StreamObj:IsLoading() or self.StreamObj:IsBuffering() or self.StreamObj:IsSeeking())
 
-	self:TriggerWireOutput("Tag", {}) -- todo
+	self:TriggerWireOutput("Tag", {}) -- @TODO
 	self:TriggerWireOutput("Codec", self._codec)
 	self:TriggerWireOutput("Spectrum", self._spectrum)
 	self:TriggerWireOutput("Sound Level", self.StreamObj:GetAverageLevel())
@@ -311,7 +343,11 @@ function ENT:Think( )
 
 		if IsValid(self.StreamObj) then
 			self.StreamObj:SetBASSEngineEnabled(self:CanHaveSpectrum())
-			self.StreamObj:SetLoop(self:GetLoop())
+
+			-- Loop the song also when we are in playlist mode without a playlist. We pretend we have a playlist with a single item.
+			local shouldLoop = self:GetLoop() or (not self:IsPlaylistEnabled() and self:GetPlaylistLoop())
+
+			self.StreamObj:SetLoop(shouldLoop)
 		end
 	end
 
@@ -450,8 +486,7 @@ function ENT:PermaPropLoad(data)
 	if data.Model then
 		local model = Model(data.Model)
 
-		if model ~= "" and util.IsValidModel(model) then
-			self.ModelVar = model
+		if StreamRadioLib.IsValidModel(model) then
 			self:SetModel(model)
 		end
 	end
@@ -588,14 +623,14 @@ function ENT:OnWireInputTrigger(name, value, wired)
 		return
 	end
 
-	if name == "Loop" then
+	if name == "LoopMode" then
 		value = tobool(value)
 
 		if not wired then
 			value = false
 		end
 
-		self:SetLoop(value)
+		self:SetPlaybackLoopMode(value)
 		return
 	end
 

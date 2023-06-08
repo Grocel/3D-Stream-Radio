@@ -1,5 +1,11 @@
 StreamRadioLib.Network = {}
+StreamRadioLib.Network.Debug = {}
 local LIB = StreamRadioLib.Network
+
+local StreamRadioLib = StreamRadioLib
+
+local g_addonprefix = "3DStreamRadio/"
+local g_maxIdentifierLen = 44
 
 local g_types = {
 	["Angle"] = {
@@ -8,7 +14,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		dtonly = true,
+		nwGetter = "GetNWAngle",
+		nwSetter = "SetNWAngle",
 	},
 
 	["Bool"] = {
@@ -19,7 +26,8 @@ local g_types = {
 			return tobool(v)
 		end,
 		dtmaxcount = 32,
-		dtonly = true,
+		nwGetter = "GetNWBool",
+		nwSetter = "SetNWBool",
 	},
 
 	["Entity"] = {
@@ -28,7 +36,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		dtonly = true,
+		nwGetter = "GetNWEntity",
+		nwSetter = "SetNWEntity",
 	},
 
 	["Float"] = {
@@ -37,7 +46,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		dtonly = true,
+		nwGetter = "GetNWFloat",
+		nwSetter = "SetNWFloat",
 	},
 
 	["Int"] = {
@@ -48,7 +58,8 @@ local g_types = {
 			return math.floor(v)
 		end,
 		dtmaxcount = 32,
-		dtonly = true,
+		nwGetter = "GetNWInt",
+		nwSetter = "SetNWInt",
 	},
 
 	["String"] = {
@@ -57,7 +68,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 0,
-		dtonly = true,
+		nwGetter = "GetNWString",
+		nwSetter = "SetNWString",
 	},
 
 	["Vector"] = {
@@ -66,19 +78,87 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		dtonly = true,
+		nwGetter = "GetNWVector",
+		nwSetter = "SetNWVector",
 	},
 }
 
-local _R = debug.getregistry()
-local ENTITY = _R.Entity
+function LIB.TransformNWIdentifier(str)
+	str = tostring(str or "")
+	assert(str ~= "", "identifier is empty")
 
-local g_hasnw2 = isfunction(ENTITY.SetNW2Var)
-local g_addonprefix = "3dstreamradio/"
+	str = g_addonprefix .. str
 
-local function GetDTNetworkVarInternalIndex(name)
-	name = tostring(name or "")
-	return "_SRNWLib_[" .. name .. "]"
+	local strLen = #str
+	assert(strLen < g_maxIdentifierLen, "identifier '" .. str .. "' must shorter than " .. g_maxIdentifierLen .. " chars, got " .. strLen .. " chars")
+
+	return str
+end
+
+function LIB.UntransformNWIdentifier(str)
+	str = tostring(str or "")
+	assert(str ~= "", "identifier is empty")
+
+	local strLen = #str
+	assert(strLen < g_maxIdentifierLen, "identifier '" .. str .. "' must shorter than " .. g_maxIdentifierLen .. " chars, got " .. strLen .. " chars")
+
+	str = string.gsub(str, "^" .. string.PatternSafe(g_addonprefix), "", 1)
+	return str
+end
+
+function LIB.AddNetworkStringRaw(str)
+	str = tostring(str or "")
+	assert(str ~= "", "identifier is empty")
+
+	local strLen = #str
+	assert(strLen < g_maxIdentifierLen, "identifier '" .. str .. "' must shorter than " .. g_maxIdentifierLen .. " chars, got " .. strLen .. " chars")
+
+	local currentId = util.NetworkStringToID(str) or 0
+
+	if CLIENT then
+		return currentId
+	end
+
+	if currentId ~= 0 then
+		return currentId
+	end
+
+	util.AddNetworkString(str)
+
+	local newId = util.NetworkStringToID(str) or 0
+	assert(newId ~= 0, "Could not add network string for '" .. str .. "'! Is network string table is full?")
+	assert(util.NetworkIDToString(newId) == str, "Could not add network string at ID '" .. newId .. "' for '" .. newId .. "'! Is network string table is full?")
+
+	return newId
+end
+
+function LIB.AddNetworkString(str)
+	str = LIB.TransformNWIdentifier(str)
+
+	local id = LIB.AddNetworkStringRaw(str)
+	return id
+end
+
+function LIB.NetworkStringToID(str)
+	str = LIB.TransformNWIdentifier(str)
+
+	local id = util.NetworkStringToID(str) or 0
+	return id
+end
+
+function LIB.NetworkIDToString(id)
+	id = tonumber(id or 0) or 0
+	if id == 0 then
+		return nil
+	end
+
+	local str = util.NetworkIDToString(id)
+	if not str then
+		return nil
+	end
+
+	str = LIB.UntransformNWIdentifier(str)
+	return str
 end
 
 local function DTNetworkVarExists(ent, name)
@@ -113,197 +193,81 @@ local function CanAddDTNetworkVar(ent, datatype, name, ...)
 	return true
 end
 
-local function GetDTNetworkVarInternal(ent, name, defaultvalue, ...)
-	local index = GetDTNetworkVarInternalIndex(name)
-	return LIB.GetDTNetworkVar(ent, index, defaultvalue, ...)
-end
+do
+	local loopThis = function(datatype, dtd)
+		local checkfunc = dtd.check
+		local convertfunc = dtd.convert
+		local nwGetter = dtd.nwGetter
+		local nwSetter = dtd.nwSetter
 
-local function SetDTNetworkVarInternal(ent, name, value, ...)
-	if CLIENT then return end
-	local index = GetDTNetworkVarInternalIndex(name)
-	return LIB.SetDTNetworkVar(ent, index, value, ...)
-end
+		local nwGetterFunc = function(ent, key, defaultvalue, ...)
+			key = LIB.TransformNWIdentifier(key)
 
-local function AddDTNetworkVarInternal(ent, datatype, name, ...)
-	local index = GetDTNetworkVarInternalIndex(name)
-	return LIB.AddDTNetworkVar(ent, datatype, index, ...)
-end
-
-local function SetDTVarCallbackInternal(ent, name, func)
-	local index = GetDTNetworkVarInternalIndex(name)
-	return LIB.SetDTVarCallback(ent, index, func, name)
-end
-
-for datatype, dtd in pairs(g_types) do
-	local checkfunc = dtd.check
-	local convertfunc = dtd.convert
-	local dtonly = dtd.dtonly
-
-	LIB["SetNW" .. datatype] = function(ent, key, value, ...)
-		local prefix = g_addonprefix .. "/"
-		key = prefix .. tostring(key or "")
-
-		assert(checkfunc(value), "invalid datatype of value at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(value) .. "'", 2)
-		value = convertfunc and convertfunc(value) or value
-
-		if not dtonly then
-			if AddDTNetworkVarInternal(ent, datatype, key) then
-				SetDTNetworkVarInternal(ent, key, value)
-				return
+			if defaultvalue ~= nil then
+				assert(checkfunc(defaultvalue), "invalid datatype of defaultvalue at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(defaultvalue) .. "'")
+				defaultvalue = convertfunc and convertfunc(defaultvalue) or defaultvalue
 			end
-		end
 
-
-		if CLIENT then return end
-
-		local nw = g_hasnw2 and "SetNW2" or "SetNW"
-		ent[nw .. datatype](ent, key, value, ...)
-	end
-
-	LIB["GetNW" .. datatype] = function(ent, key, defaultvalue, ...)
-		local prefix = g_addonprefix .. "/"
-		key = prefix .. tostring(key or "")
-
-		if defaultvalue ~= nil then
-			assert(checkfunc(defaultvalue), "invalid datatype of defaultvalue at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(defaultvalue) .. "'", 2)
-			defaultvalue = convertfunc and convertfunc(defaultvalue) or defaultvalue
-		end
-
-		if not dtonly then
-			if AddDTNetworkVarInternal(ent, datatype, key) then
-				return GetDTNetworkVarInternal(ent, key, defaultvalue)
+			local r = ent[nwGetter](ent, key, defaultvalue, ...)
+			if r == nil and defaultvalue ~= nil then
+				r = defaultvalue
 			end
+
+			return r
 		end
 
-		local nw = g_hasnw2 and "GetNW2" or "GetNW"
+		local nwSetterFunc = function(ent, key, value, ...)
+			if CLIENT then
+				return nil
+			end
 
-		local r = ent[nw .. datatype](ent, key, defaultvalue, ...)
-		if r == nil then
-			r = defaultvalue
+			key = LIB.TransformNWIdentifier(key)
+			value = convertfunc and convertfunc(value) or value
+
+			assert(checkfunc(value), "invalid datatype of value at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(value) .. "'")
+
+			return ent[nwSetter](ent, key, value, ...)
 		end
 
-		return r
+		LIB["GetNW" .. datatype] = nwGetterFunc
+		LIB["SetNW" .. datatype] = nwSetterFunc
+
+		dtd.nwSetterFunc = nwSetterFunc
+		dtd.nwGetterFunc = nwGetterFunc
+	end
+
+	for datatype, dtd in pairs(g_types) do
+		loopThis(datatype, dtd)
 	end
 end
 
-function LIB.SetNWHash(ent, key, h)
-	if CLIENT then return end
-
-	local setvector = LIB.SetNWVector
-	if not setvector then return end
-
-	h = h or {}
-
-	local hash = {}
-	hash.raw = h.raw or h
-
-	for i = 1, 6 do
-		hash.raw[i] = hash.raw[i] or 0
-	end
-
-	hash.hex, hash.crc = StreamRadioLib.HashToHex( hash )
-
-	local crc = hash.crc
-	local raw = hash.raw
-
-	local v1 = Vector(crc   , raw[1], raw[4])
-	local v2 = Vector(raw[2], crc   , raw[5])
-	local v3 = Vector(raw[3], raw[6], crc   )
-
-	setvector(ent, key .. "-hashv1", v1)
-	setvector(ent, key .. "-hashv2", v2)
-	setvector(ent, key .. "-hashv3", v3)
-
-	local test = LIB.GetNWHash(ent, key)
-end
-
-function LIB.GetNWHash(ent, key)
-	local getvector = LIB.GetNWVector
-	if not getvector then return {} end
-
-	ent.StreamRadioNWHashes = ent.StreamRadioNWHashes or {}
-	ent.StreamRadioNWHashes[key] = ent.StreamRadioNWHashes[key] or {}
-
-	local hash = {}
-	hash.raw = {}
-	hash.crc = {}
-
-	local v1 = getvector(ent, key .. "-hashv1")
-	local v2 = getvector(ent, key .. "-hashv2")
-	local v3 = getvector(ent, key .. "-hashv3")
-
-	hash.raw[1] = v1.y
-	hash.raw[2] = v2.x
-	hash.raw[3] = v3.x
-	hash.raw[4] = v1.z
-	hash.raw[5] = v2.z
-	hash.raw[6] = v3.y
-
-	local crc1 = v1.x
-	local crc2 = v2.y
-	local crc3 = v3.z
-
-	hash.hex, hash.crc = StreamRadioLib.HashToHex( hash )
-
-	if hash.crc ~= crc1 then
-		return ent.StreamRadioNWHashes[key]
-	end
-
-	if hash.crc ~= crc2 then
-		return ent.StreamRadioNWHashes[key]
-	end
-
-	if hash.crc ~= crc3 then
-		return ent.StreamRadioNWHashes[key]
-	end
-
-	ent.StreamRadioNWHashes[key] = hash
-	return ent.StreamRadioNWHashes[key]
-end
-
-function LIB.SetNWHashProxy(ent, key, func, ...)
-	assert(isfunction(func), "argument #3 must be a function!")
-
+function LIB.GetNWVar(ent, datatype, key, defaultvalue)
 	key = tostring(key or "")
-	ent.StreamRadioNWHashes = ent.StreamRadioNWHashes or {}
+	datatype = tostring(datatype or "")
 
-	for i = 1, 3 do
-		local postfix = "-hashv" .. i
+	assert(g_types[datatype] ~= nil, "argument #2 must be a valid datatype! Got '" .. datatype .. "'")
+	assert(key ~= "", "argument #3 is an invalid name!")
 
-		local proxyfunc = function(this, nwkey, ov, nv, ...)
-			if ov == nv then return end
+	local dtd = g_types[datatype or ""]
+	if not dtd then return defaultvalue end
+	if not dtd.nwGetterFunc then return defaultvalue end
 
-			nwkey = string.gsub(nwkey, string.PatternSafe(postfix) .. "$", "", 1 )
-
-			local oldvar = this.StreamRadioNWHashes[nwkey] or {}
-			local newvar = LIB.GetNWHash(this, nwkey)
-
-			if not newvar.hex then return end
-			if oldvar.hex == newvar.hex then return end
-
-			return func(this, nwkey, oldvar, newvar, ...)
-		end
-
-		LIB.SetNWVarProxy(ent, key .. postfix, proxyfunc, ...)
-	end
+	local r = dtd.nwGetterFunc(ent, key, defaultvalue)
+	return r
 end
 
-function LIB.SetNWVarProxy(ent, key, func, ...)
-	assert(isfunction(func), "argument #3 must be a function!")
-	local prefix = g_addonprefix .. "/"
-	key = prefix .. tostring(key or "")
+function LIB.SetNWVar(ent, datatype, key, value)
+	key = tostring(key or "")
+	datatype = tostring(datatype or "")
 
-	local proxyfunc = function(this, nwkey, ov, nv, ...)
-		if ov == nv then return end
+	assert(g_types[datatype] ~= nil, "argument #2 must be a valid datatype! Got '" .. datatype .. "'")
+	assert(key ~= "", "argument #3 is an invalid name!")
 
-		nwkey = string.gsub(nwkey, "^" .. string.PatternSafe(prefix), "", 1 )
-		return func(this, nwkey, ov, nv, ...)
-	end
+	local dtd = g_types[datatype or ""]
+	if not dtd then return end
+	if not dtd.nwSetterFunc then return end
 
-	SetDTVarCallbackInternal(ent, key, proxyfunc)
-
-	local setNWVarProxy = g_hasnw2 and ent.SetNW2VarProxy or ent.SetNWVarProxy
-	setNWVarProxy(ent, key, proxyfunc, ...)
+	dtd.nwSetterFunc(ent, key, value)
 end
 
 function LIB.SetupDataTables(ent)
@@ -324,23 +288,20 @@ function LIB.SetupDataTables(ent)
 	end
 end
 
-function LIB.Pull(ent)
-	local NW = ent.StreamRadioDT
+local function pullNWVars(ent)
+	local NW = ent.StreamRadioNW
 	if not NW then return end
 	if not NW.Names then return end
-	if not NW.Setup then return end
 
 	local loopThis = function(name, data)
 		if not data.callback then return end
-		if not data.callbackname then return end
 		if not data.datatype then return end
-		if not DTNetworkVarExists(ent, name) then return end
 
 		local oldvalue = data.oldvalue
-		local newvalue = LIB.GetDTNetworkVar(ent, name)
+		local newvalue = LIB.GetNWVar(ent, data.datatype, name)
 
 		if oldvalue == newvalue then return end
-		data.callback(ent, data.callbackname, oldvalue, newvalue)
+		StreamRadioLib.CatchAndErrorNoHalt(data.callback, ent, name, oldvalue, newvalue)
 
 		NW.Names[name].oldvalue = newvalue
 	end
@@ -350,6 +311,36 @@ function LIB.Pull(ent)
 	end
 end
 
+local function pullDTVars(ent)
+	local NW = ent.StreamRadioDT
+	if not NW then return end
+	if not NW.Names then return end
+	if not NW.Setup then return end
+
+	local loopThis = function(name, data)
+		if not data.callback then return end
+		if not data.datatype then return end
+		if not DTNetworkVarExists(ent, name) then return end
+
+		local oldvalue = data.oldvalue
+		local newvalue = LIB.GetDTNetworkVar(ent, name)
+
+		if oldvalue == newvalue then return end
+		StreamRadioLib.CatchAndErrorNoHalt(data.callback, ent, name, oldvalue, newvalue)
+
+		NW.Names[name].oldvalue = newvalue
+	end
+
+	for name, data in pairs(NW.Names) do
+		loopThis(name, data)
+	end
+end
+
+function LIB.Pull(ent)
+	pullNWVars(ent)
+	pullDTVars(ent)
+end
+
 function LIB.AddDTNetworkVar(ent, datatype, name, ...)
 	name = tostring(name or "")
 	datatype = tostring(datatype or "")
@@ -357,10 +348,7 @@ function LIB.AddDTNetworkVar(ent, datatype, name, ...)
 	assert(g_types[datatype], "argument #1 is an invalid datatype!")
 	assert(name ~= "", "argument #2 is an invalid name!")
 
-
-	-- local exists = DTNetworkVarExists(ent, name)
-
-	-- if DTNetworkVarExists(ent, name) then return true end
+	if DTNetworkVarExists(ent, name) then return true end
 	if not CanAddDTNetworkVar(ent, datatype, name) then return false end
 
 	ent.StreamRadioDT = ent.StreamRadioDT or {}
@@ -432,7 +420,12 @@ function LIB.SetDTNetworkVar(ent, name, value)
 	func(ent, value)
 end
 
-function LIB.SetDTVarCallback(ent, name, func, callbackname)
+function LIB.SetDTVarCallback(ent, name, func)
+	name = tostring(name or "")
+
+	assert(name ~= "", "argument #2 is an invalid name!")
+	assert(isfunction(func), "argument #3 must be a function!")
+
 	ent.StreamRadioDT = ent.StreamRadioDT or {}
 	local NW = ent.StreamRadioDT
 
@@ -441,11 +434,30 @@ function LIB.SetDTVarCallback(ent, name, func, callbackname)
 	local data = NW.Names[name]
 
 	data.callback = func
-	data.callbackname = callbackname or name
 	data.oldvalue = nil
 end
 
-function LIB.DumpDTNetworkStats(ent)
+function LIB.SetNWVarCallback(ent, datatype, name, func)
+	datatype = tostring(datatype or "")
+	name = tostring(name or "")
+
+	assert(g_types[datatype] ~= nil, "argument #2 must be a valid datatype! Got '" .. datatype .. "'")
+	assert(name ~= "", "argument #3 is an invalid name!")
+	assert(isfunction(func), "argument #4 must be a function!")
+
+	ent.StreamRadioNW = ent.StreamRadioNW or {}
+	local NW = ent.StreamRadioNW
+
+	NW.Names = NW.Names or {}
+	NW.Names[name] = NW.Names[name] or {}
+	local data = NW.Names[name]
+
+	data.callback = func
+	data.datatype = datatype
+	data.oldvalue = nil
+end
+
+function LIB.Debug.DumpDTNetworkStats(ent)
 	local NW = ent.StreamRadioDT or {}
 	local Count = NW.Count or {}
 
@@ -470,4 +482,126 @@ function LIB.DumpDTNetworkStats(ent)
 	end
 
 	print("======================")
+end
+
+function LIB.Debug.DumpDTNetworkVars(ent)
+	local NW = ent.StreamRadioDT or {}
+
+	print("DumpDTNetworkVars of: " .. tostring(ent))
+	print("======================")
+
+	for name, data in pairs(NW.Names) do
+		local line = string.format("%s (%s) [%i] | %s", name, data.datatype, data.index, LIB.GetDTNetworkVar(ent, name))
+		print(line)
+	end
+
+	print("======================")
+end
+
+local function getAddonStringTable()
+	local max = 4096
+	local result = {}
+
+	for k = 1, max do
+		local name = util.NetworkIDToString(k)
+
+		if not name then
+			break
+		end
+
+		if not string.find(name, "^" .. string.PatternSafe(g_addonprefix)) then
+			continue
+		end
+
+		result[#result + 1] = {
+			index = k,
+			name = name,
+		}
+	end
+
+	return result
+end
+
+function LIB.Debug.DumpDTNetworkStringTable()
+	print("DumpDTNetworkStringTable")
+	print("======================")
+
+	local max = 4096
+	local stringTable = getAddonStringTable()
+	local countAssigned = 0
+	local countAddon = #stringTable
+
+	for k = 1, max do
+		local name = util.NetworkIDToString(k)
+
+		if not name then
+			break
+		end
+
+		countAssigned = countAssigned + 1
+	end
+
+	for i, value in ipairs(stringTable) do
+		local index = value.index
+		local name = value.name
+
+		print(index, name)
+	end
+
+	local fractionMax = countAddon / max
+	local fractionAssigned = countAddon / countAssigned
+
+	print("======================")
+	print(countAddon .. " of " .. max .. " slots total, " .. (math.Round(fractionMax, 3) * 100) .. '%')
+	print(countAddon .. " of " .. countAssigned .. " slots assigned, " .. (math.Round(fractionAssigned, 3) * 100) .. '%')
+	print("======================")
+end
+
+function LIB.Debug.DumpDTNetworkStringTableCode()
+	print("DumpDTNetworkStringTableCode")
+	print("======================")
+
+	print("")
+	print("local LIBNetwork = StreamRadioLib.Network")
+	print("")
+	print("do")
+	print("    -- Automaticly generated network string table map")
+	print("")
+
+	local stringTable = getAddonStringTable()
+
+	for i, value in ipairs(stringTable) do
+		local name = LIB.UntransformNWIdentifier(value.name)
+
+		local code = string.format("    LIBNetwork.AddNetworkString(\"%s\")", name)
+		print(code)
+	end
+
+	print("end")
+	print("")
+	print("======================")
+end
+
+do
+	local concommandFlags = FCVAR_NONE
+
+	if CLIENT then
+		concommandFlags = FCVAR_CHEAT
+	end
+
+	concommand.Add("debug_streamradio_dump_nwstringtable", function(ply)
+		if IsValid(ply) and not ply:IsAdmin() then
+			return
+		end
+
+		LIB.Debug.DumpDTNetworkStringTable()
+	end, nil, nil, concommandFlags)
+
+	concommand.Add("debug_streamradio_dump_nwstringtable_code", function(ply)
+		if IsValid(ply) and not ply:IsAdmin() then
+			return
+		end
+
+		LIB.Debug.DumpDTNetworkStringTableCode()
+	end, nil, nil, concommandFlags)
 end

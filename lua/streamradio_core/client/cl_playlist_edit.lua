@@ -1,5 +1,6 @@
 StreamRadioLib.Editor = StreamRadioLib.Editor or {}
 local LIB = StreamRadioLib.Editor
+local LIBNet = StreamRadioLib.Net
 
 local pairs = pairs
 local type = type
@@ -30,7 +31,7 @@ function LIB.CreateDir( path )
 	if not path then return false end
 	if path == "" then return false end
 
-	net.Start( "Streamradio_Editor_Request_Playlist" )
+	LIBNet.Start("Editor_Request_Playlist")
 	net.WriteUInt( 0, 4 )
 	net.WriteString( path )
 	net.SendToServer( )
@@ -51,7 +52,7 @@ function LIB.Save( path, DataTab )
 	if not ply:IsAdmin() then return false end
 
 	--Start
-	net.Start("Streamradio_Editor_Request_Playlist")
+	LIBNet.Start("Editor_Request_Playlist")
 	net.WriteUInt(1, 4)
 	net.WriteString(path)
 	net.SendToServer()
@@ -63,7 +64,7 @@ function LIB.Save( path, DataTab )
 		if isstring(k) then return end
 
 		--Body
-		net.Start("Streamradio_Editor_Request_Playlist")
+		LIBNet.Start("Editor_Request_Playlist")
 		net.WriteUInt( 2, 4 )
 		StreamRadioLib.NetSendPlaylistEditor(v["url"], v["name"], path)
 		net.SendToServer( )
@@ -72,7 +73,7 @@ function LIB.Save( path, DataTab )
 		if not ply:IsAdmin() then return false end
 
 		--Finish
-		net.Start("Streamradio_Editor_Request_Playlist")
+		LIBNet.Start("Editor_Request_Playlist")
 		net.WriteUInt(3, 4)
 		net.WriteUInt(DataTab["format"], 8)
 		net.WriteUInt(#DataTab, 16)
@@ -92,7 +93,7 @@ function LIB.Remove(path, format)
 	if not IsValid(ply) then return false end
 	if not ply:IsAdmin() then return false end
 
-	net.Start("Streamradio_Editor_Request_Playlist")
+	LIBNet.Start("Editor_Request_Playlist")
 	net.WriteUInt(4, 4)
 	net.WriteUInt(format, 8)
 	net.WriteString(path)
@@ -113,7 +114,7 @@ function LIB.Copy(path_old, path_new)
 	if not IsValid(ply) then return false end
 	if not ply:IsAdmin() then return false end
 
-	net.Start("Streamradio_Editor_Request_Playlist")
+	LIBNet.Start("Editor_Request_Playlist")
 	net.WriteUInt(5, 4)
 	net.WriteString(path_old)
 	net.WriteString(path_new)
@@ -134,7 +135,7 @@ function LIB.Rename(path_old, path_new)
 	if not IsValid(ply) then return false end
 	if not ply:IsAdmin() then return false end
 
-	net.Start("Streamradio_Editor_Request_Playlist")
+	LIBNet.Start("Editor_Request_Playlist")
 	net.WriteUInt(6, 4)
 	net.WriteString(path_old)
 	net.WriteString(path_new)
@@ -157,7 +158,7 @@ function LIB.SetCallback(func, self, ...)
 	CallbackSelf = self
 end
 
-net.Receive( "Streamradio_Editor_Return_Files", function( length )
+LIBNet.Receive("Editor_Return_Files", function( length )
 	local path, name, type, filepath = StreamRadioLib.NetReceiveFileEditor( )
 	if not isfunction(CallbackFunc) then return end
 
@@ -168,7 +169,7 @@ net.Receive( "Streamradio_Editor_Return_Files", function( length )
 	end
 end)
 
-net.Receive( "Streamradio_Editor_Return_Playlist", function( length )
+LIBNet.Receive("Editor_Return_Playlist", function( length )
 	local url, name, filepath = StreamRadioLib.NetReceivePlaylistEditor( )
 	if not isfunction(CallbackFunc) then return end
 
@@ -179,7 +180,7 @@ net.Receive( "Streamradio_Editor_Return_Playlist", function( length )
 	end
 end)
 
-net.Receive( "Streamradio_Editor_Error", function( length )
+LIBNet.Receive("Editor_Error", function( length )
 	local path, code = StreamRadioLib.NetReceiveEditorError( )
 	if not isfunction(CallbackFunc) then return end
 
@@ -222,39 +223,41 @@ local function CreateMainPanel( )
 	EditorPanel:Dock(FILL)
 end
 
-local function ClosePanel( ply, cmd, args )
-	if not IsValid(MainPanel) then
-		return
+do
+	local function ClosePanel( ply, cmd, args )
+		if not IsValid(MainPanel) then
+			return
+		end
+
+		StreamRadioLib.VR.CloseMenu(MainPanel)
 	end
 
-	StreamRadioLib.VR.CloseMenu(MainPanel)
+	local function OpenPanel( ply, cmd, args )
+		if not IsValid(ply) then return end
+
+		if not ply:IsAdmin() then
+			StreamRadioLib.Msg(ply, "You must be admin to use the playlist editor.")
+			return
+		end
+
+		if StreamRadioLib.VR.IsActive(ply) then
+			StreamRadioLib.Msg(ply, "The playlist editor is not available in VR.")
+			return
+		end
+
+		if not IsValid(MainPanel) then
+			CreateMainPanel()
+		end
+
+		if not IsValid(MainPanel) then
+			return
+		end
+
+		-- Open via VR lib regardless so we have smoother transitions without possible leftovers
+		StreamRadioLib.VR.MenuOpen("StreamradioPlaylistEditor", MainPanel, true)
+	end
+
+	concommand.Add("cl_streamradio_playlisteditor", OpenPanel)
+	concommand.Add("+cl_streamradio_playlisteditor", OpenPanel)
+	concommand.Add("-cl_streamradio_playlisteditor", ClosePanel)
 end
-
-local function OpenPanel( ply, cmd, args )
-	if not IsValid(ply) then return end
-
-	if not ply:IsAdmin() then
-		StreamRadioLib.Msg(ply, "You must be admin to use the playlist editor.")
-		return
-	end
-
-	if StreamRadioLib.VR.IsActive(ply) then
-		StreamRadioLib.Msg(ply, "The playlist editor is not available in VR.")
-		return
-	end
-
-	if not IsValid(MainPanel) then
-		CreateMainPanel()
-	end
-
-	if not IsValid(MainPanel) then
-		return
-	end
-
-	-- Open via VR lib regardless so we have smoother transitions without possible leftovers
-	StreamRadioLib.VR.MenuOpen("StreamradioPlaylistEditor", MainPanel, true)
-end
-
-concommand.Add("cl_streamradio_playlisteditor", OpenPanel)
-concommand.Add("+cl_streamradio_playlisteditor", OpenPanel)
-concommand.Add("-cl_streamradio_playlisteditor", ClosePanel)

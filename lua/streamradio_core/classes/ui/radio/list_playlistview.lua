@@ -82,7 +82,7 @@ function CLASS:CallErrorState()
 	if self.State.Error then
 		self:CallHook("OnError", self.Path.Value, self.Path.Type)
 	else
-		self:CallHook("OnErrorClose", self.Path.Value, self.Path.Type)
+		self:CallHook("OnErrorRelease", self.Path.Value, self.Path.Type)
 	end
 end
 
@@ -91,17 +91,25 @@ function CLASS:UpdateErrorState()
 	self.State.Error = self.tmperror or false
 end
 
+function CLASS:HasError()
+	return self.State.Error
+end
+
+function CLASS:ClearData()
+	if SERVER then
+		self.State.Error = false
+		self.tmperror = nil
+	end
+
+	BASE.ClearData(self)
+end
+
 function CLASS:BuildListInternal()
 	if CLIENT then return end
 	if not self.Network.Active then return end
 
 	self:ClearData()
 	self:ApplaDataFromDupe()
-
-	self.State.Error = false
-	self.tmperror = nil
-
-	self:QueueCall("UpdateErrorState")
 
 	if not self:IsVisible() then
 		self:UpdateButtons()
@@ -117,49 +125,39 @@ function CLASS:BuildListInternal()
 		return
 	end
 
-	self._read_playlist = nil
-	self._read_curdata = {
-		path = self.Path.Value,
-		type = self.Path.Type,
-	}
+	self.PathUid = StreamRadioLib.Uid()
+	local uid = self.PathUid
 
-	StreamRadioLib.Filesystem.Read(self.Path.Value, self.Path.Type, function(success, data)
-		if self._read_curdata.path ~= self.Path.Value then
-			return
-		end
-
-		if self._read_curdata.type ~= self.Path.Type then
+	StreamRadioLib.Filesystem.Read(self.Path.Value, self.Path.Type, function(success, playlist)
+		if uid ~= self.PathUid then
 			return
 		end
 
 		if not success then
 			self.tmperror = true
+			self:QueueCall("UpdateErrorState")
 			return
 		end
 
-		self._read_playlist = data
-		self:QueueCall("_BuildListInternalAsyc")
+		self:QueueCall("_BuildListInternalAsyc", uid, playlist or {})
 	end)
 end
 
-function CLASS:_BuildListInternalAsyc()
-	if not self._read_playlist then
+function CLASS:_BuildListInternalAsyc(uid, playlist)
+	if uid ~= self.PathUid then
 		return
 	end
-
-	if self._read_curdata.path ~= self.Path.Value then
-		return
-	end
-
-	if self._read_curdata.type ~= self.Path.Type then
-		return
-	end
-
-	self:ClearData()
-	self:QueueCall("UpdateErrorState")
 
 	self.Playlist = {}
-	for i, v in ipairs(self._read_playlist) do
+
+	local len = #playlist
+	if len <= 0 then
+		self.tmperror = true
+		self:QueueCall("UpdateErrorState")
+		return
+	end
+
+	for i, v in ipairs(playlist) do
 		local entry = {
 			name = v.name,
 			url = v.url,
@@ -173,12 +171,6 @@ function CLASS:_BuildListInternalAsyc()
 
 		self.Playlist[i] = entry
 		self:AddData(data, true)
-	end
-
-	local len = #self.Playlist
-	if len <= 0 then
-		self.tmperror = true
-		return
 	end
 
 	if len == 1 then
@@ -245,17 +237,18 @@ end
 
 function CLASS:ActivateNetworkedMode()
 	BASE.ActivateNetworkedMode(self)
+
 	if SERVER then
 		self:SetNWInt("PathType", self.Path.Type)
 		self:SetNWBool("Error", self.State.Error)
 		return
 	end
 
-	self:SetNWVarProxy("PathType", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("PathType", "Int", function(this, nwkey, oldvar, newvar)
 		self.Path.Type = newvar
 	end)
 
-	self:SetNWVarProxy("Error", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("Error", "Bool", function(this, nwkey, oldvar, newvar)
 		self.State.Error = newvar
 	end)
 
@@ -280,11 +273,9 @@ function CLASS:ApplaDataFromDupe()
 	local data = self.DupeData
 	if not data then return end
 
-	local tmp = data.Playlist or {}
-	table.SortByMember(tmp, "index", true)
-
 	self.Playlist = {}
-	for k, v in pairs(data.Playlist or {}) do
+
+	for i, v in ipairs(data.Playlist or {}) do
 		local url = string.Trim(tostring(v.url or v.uri or v.link or v.source or v.path or ""))
 		local name = string.Trim(tostring(v.name or v.title or ""))
 
@@ -300,15 +291,15 @@ function CLASS:ApplaDataFromDupe()
 			continue
 		end
 
-		local i = #self.Playlist + 1
+		local index = #self.Playlist + 1
 
 		local entry = {
 			name = name,
 			url = url,
-			index = i,
+			index = index,
 		}
 
-		self.Playlist[i] = entry
+		self.Playlist[index] = entry
 	end
 
 	self.EntryOpen = math.Clamp(data.EntryOpen or 1, 1, #self.Playlist)
@@ -319,30 +310,15 @@ function CLASS:PostDupe(ent, dupedata)
 	local path = dupedata.Path
 	local type = dupedata.PathType
 
-	self._read_curdata = {
-		path = path,
-		type = type,
-	}
+	self.PathUid = StreamRadioLib.Uid()
+	local uid = self.PathUid
 
 	StreamRadioLib.Filesystem.Read(path, type, function(success, data)
-		if self._read_curdata.path ~= path then
+		if uid ~= self.PathUid then
 			return
 		end
 
-		if self._read_curdata.type ~= type then
-			return
-		end
-
-		if not success then
-			self:SetFile("", type)
-			self:CallHook("OnInvalidDupeFilepath")
-
-			self.DupeData = dupedata
-			self:ApplaDataFromDupe()
-			return
-		end
-
-		if #data <= 0 then
+		if not success or #data <= 0 then
 			self:SetFile("", type)
 			self:CallHook("OnInvalidDupeFilepath")
 

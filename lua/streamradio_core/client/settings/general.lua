@@ -106,9 +106,9 @@ LIB.AddConVar("general", "coveredvolume", "cl_streamradio_coveredvolume", "0.33"
 	max = 1,
 })
 
-LIB.AddConVar("general", "hidecursor", "cl_streamradio_hidecursor", "0", {
-	label = "Hide cursor",
-	help = "Hides the cursor on radio GUIs when set to 1. Default: 0",
+LIB.AddConVar("general", "enable_cursor", "cl_streamradio_enable_cursor", "1", {
+	label = "Show cursor",
+	help = "Shows the cursor on radio GUIs when set to 1. Default: 1",
 	type = "bool",
 })
 
@@ -148,6 +148,18 @@ local function BuildMenuPanel(CPanel)
 		return
 	end
 
+	CPanel:Button(
+		"Clear Client Stream Cache",
+		"cl_streamradio_cacheclear"
+	)
+
+	CPanel:Button(
+		"Clear Server Stream Cache (Admin only!)",
+		"sv_streamradio_cacheclear"
+	)
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
+
 	for i, v in ipairs(LIB.GetConVarListByNamespace("general")) do
 		if not IsValid(v) then continue end
 
@@ -158,20 +170,9 @@ local function BuildMenuPanel(CPanel)
 	end
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
+
 	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenToolButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetPlaylistEditorButton())
-
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
-
-	CPanel:Button(
-		"Clear Client Stream Cache",
-		"cl_streamradio_cacheclear"
-	)
-
-	CPanel:Button(
-		"Clear Server Stream Cache (Admin only!)",
-		"sv_streamradio_cacheclear"
-	)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 	CPanel:AddPanel(StreamRadioLib.Menu.GetFAQButton())
@@ -210,10 +211,6 @@ end
 
 function StreamRadioLib.RenderTargetFPS()
 	return LIB.GetConVarValue("rendertarget_fps")
-end
-
-function StreamRadioLib.IsCursorHidden()
-	return LIB.GetConVarValue("hidecursor")
 end
 
 function StreamRadioLib.Is3DSound()

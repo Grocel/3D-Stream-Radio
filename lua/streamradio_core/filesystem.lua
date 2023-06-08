@@ -895,7 +895,6 @@ function LIB.Exists(vpath, filetype)
 	end
 
 	if not LIB.IsValidFilepath(vpath) then
-		callback(false, nil)
 		return false
 	end
 
@@ -1071,29 +1070,31 @@ function LIB.GuessType(vpath)
 	return nil
 end
 
-local function ListFS()
-	MsgN("List of loaded filesystem")
+do
+	local function ListFS()
+		MsgN("List of loaded filesystem")
 
-	local lineFormat = "%5s | %25s | %10s | %7s"
-	local topLine = string.format(lineFormat, "ID", "Name", "Type", "Active")
+		local lineFormat = "%5s | %25s | %10s | %7s"
+		local topLine = string.format(lineFormat, "ID", "Name", "Type", "Active")
 
-	MsgN(string.format(lineFormat, "ID", "Name", "Type", "Active"))
-	MsgN(string.rep("-", #topLine))
+		MsgN(string.format(lineFormat, "ID", "Name", "Type", "Active"))
+		MsgN(string.rep("-", #topLine))
 
-	for id, fs in ipairs(Filesystem.id) do
-		if not fs then continue end
-		if fs.id == g_GenericID then continue end
-		if fs.type == g_GenericID then continue end
+		for id, fs in ipairs(Filesystem.id) do
+			if not fs then continue end
+			if fs.id == g_GenericID then continue end
+			if fs.type == g_GenericID then continue end
 
 
-		local isActive = getFS(id) ~= nil
-		local line = string.format(lineFormat, fs.id, fs.name, fs.type, isActive and "yes" or "no")
+			local isActive = getFS(id) ~= nil
+			local line = string.format(lineFormat, fs.id, fs.name, fs.type, isActive and "yes" or "no")
 
-		MsgN(line)
+			MsgN(line)
+		end
 	end
-end
 
-concommand.Add( "info_streamradio_playlist_filesystem_list", ListFS)
+	concommand.Add( "info_streamradio_playlist_filesystem_list", ListFS)
+end
 
 local function updateBlacklistFromString(backlist)
 	backlist = tostring(backlist or "")

@@ -1,3 +1,8 @@
+if not istable(CLASS) then
+	StreamRadioLib.ReloadClasses()
+	return
+end
+
 local tostring = tostring
 local tonumber = tonumber
 local type = type
@@ -17,23 +22,9 @@ local CLIENT = CLIENT
 local EmptyVector = Vector()
 local catchAndErrorNoHalt = StreamRadioLib.CatchAndErrorNoHalt
 
-
 local BASS3 = BASS3 or {}
 
-StreamRadioLib.STREAM_PLAYMODE_STOP = 0
-StreamRadioLib.STREAM_PLAYMODE_PAUSE = 1
-StreamRadioLib.STREAM_PLAYMODE_PLAY = 2
-StreamRadioLib.STREAM_PLAYMODE_PLAY_RESTART = 3
-
-StreamRadioLib.STREAM_URLTYPE_FILE = 0
-StreamRadioLib.STREAM_URLTYPE_CACHE = 1
-StreamRadioLib.STREAM_URLTYPE_ONLINE = 2
-StreamRadioLib.STREAM_URLTYPE_ONLINE_NOCACHE = 3
-
-if not istable(CLASS) then
-	StreamRadioLib.ReloadClasses()
-	return
-end
+local LIBNetwork = StreamRadioLib.Network
 
 local BASE = CLASS:GetBaseClass()
 
@@ -83,9 +74,9 @@ function CLASS:Create()
 	self.ChannelChanged = false
 
 	if CLIENT then
-		self.CV_Volume = StreamRadioLib.Settings.GetConVar("volume")
-		if IsValid(self.CV_Volume) then
-			self.CV_Volume:SetEvent("OnChange", self:GetID(), function()
+		self.ConVarGlobalVolume = StreamRadioLib.Settings.GetConVar("volume")
+		if IsValid(self.ConVarGlobalVolume) then
+			self.ConVarGlobalVolume:SetEvent("OnChange", self:GetID(), function()
 				self:UpdateChannelVolume()
 			end)
 		end
@@ -296,6 +287,8 @@ function CLASS:Create()
 	end
 
 	if SERVER then
+		LIBNetwork.AddNetworkString("clientstate")
+
 		self:NetReceive("clientstate", function(this, id, len, ply)
 			local bufferlen = net.ReadUInt(16)
 
@@ -339,23 +332,23 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	self:SetNWVarProxy("Volume", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("Volume", "Float", function(this, nwkey, oldvar, newvar)
 		self.Volume.SVMul = newvar
 	end)
 
-	self:SetNWVarProxy("URL", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("URL", "String", function(this, nwkey, oldvar, newvar)
 		self.URL.extern = newvar
 	end)
 
-	self:SetNWVarProxy("PlayMode", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("PlayMode", "Int", function(this, nwkey, oldvar, newvar)
 		self.State.PlayMode = newvar
 	end)
 
-	self:SetNWVarProxy("Loop", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("Loop", "Bool", function(this, nwkey, oldvar, newvar)
 		self.State.Loop = newvar
 	end)
 
-	self:SetNWVarProxy("Name", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("Name", "String", function(this, nwkey, oldvar, newvar)
 		self.State.Name = newvar
 	end)
 
@@ -416,7 +409,6 @@ function CLASS:NetworkClientState()
 		for i, v in pairs(sendbuffer) do
 			local key = v.key
 			local value = v.value
-			local key_index = v.key_index
 
 			net.WriteUInt(v.key_index, 4)
 
@@ -620,6 +612,8 @@ end
 function CLASS:SuperThink()
 	self:CalcTime()
 
+	local masterLength = self:GetMasterLength()
+
 	self.State.Ended = self:HasEnded()
 	self.State.Seeking = self:_IsSeekingInternal()
 	self.State.Length = self:GetLength()
@@ -633,7 +627,15 @@ function CLASS:SuperThink()
 		else
 			local timeB = self:GetNWFloat("MasterTime", 0)
 			local dt = math.abs(timeA - timeB)
-			local maxDt = engine.TickInterval() * 4
+			local tickTime = engine.TickInterval()
+
+			-- add random noise to avoid uneven network load
+			local random = math.random() * 0.2
+			local maxDt = 0.4 + random
+
+			if masterLength > 0 then
+				maxDt = math.min(math.max(masterLength / 4, tickTime * 4), maxDt)
+			end
 
 			if dt >= maxDt then
 				self:SetNWFloat("MasterTime", timeA)
@@ -701,7 +703,7 @@ end
 function CLASS:UpdateChannelVolume()
 	if SERVER then return end
 	if not self.Valid then return end
-	if not IsValid( self.CV_Volume ) then return end
+	if not IsValid( self.ConVarGlobalVolume ) then return end
 	if not IsValid( self.Channel ) then return end
 
 	local boost3d = self:Is3DChannel() and 2.00 or 1
@@ -713,7 +715,7 @@ function CLASS:UpdateChannelVolume()
 	local volume = 0
 
 	if not MuteSlide then
-		volume = SVvol * CLvol * self.CV_Volume:GetValue() * boost3d
+		volume = SVvol * CLvol * self.ConVarGlobalVolume:GetValue() * boost3d
 	end
 
 	-- Max 5000% normal volume on all cases.
@@ -806,8 +808,8 @@ end
 function CLASS:Remove()
 	self:RemoveChannel(true)
 
-	if IsValid(self.CV_Volume) then
-		self.CV_Volume:RemoveEvent("OnChange", self:GetID())
+	if IsValid(self.ConVarGlobalVolume) then
+		self.ConVarGlobalVolume:RemoveEvent("OnChange", self:GetID())
 	end
 
 	BASE.Remove(self)
@@ -1514,17 +1516,17 @@ function CLASS:GetMasterTime()
 		local loop = self:GetLoop()
 
 		local offset = thistime - timestamp
-		local calctime = time + offset
-
-		if loop and len > 0 then
-			return calctime % len
-		end
+		local calctime = math.max(time + offset, 0)
 
 		if len > 0 then
+			if loop then
+				calctime = calctime % len
+			end
+
 			calctime = math.min(calctime, len)
 		end
 
-		return math.max(calctime, 0)
+		return calctime
 	end
 
 	return self:GetNWFloat("MasterTime", 0)
@@ -1558,10 +1560,7 @@ function CLASS:GetTime()
 		time = time + self.TimeOffset
 	end
 
-	if time < 0 then
-		time = 0
-	end
-
+	time = math.max(time, 0)
 	return time
 end
 
@@ -1591,7 +1590,7 @@ function CLASS:SetTime(time, force)
 
 	if not IsValid(self.Channel) then return end
 
-	if self:IsBlockStreamed() then
+	if not self:CanSeek() then
 		return
 	end
 
@@ -1601,9 +1600,7 @@ end
 function CLASS:_SetTimeInternal(time)
 
 	time = tonumber(time) or 0
-	if time < 0 then
-		time = 0
-	end
+	time = math.max(time, 0)
 
 	local length = self:GetLength()
 
@@ -1614,7 +1611,7 @@ function CLASS:_SetTimeInternal(time)
 
 	self.TimeOffset = 0
 
-	if self:IsBlockStreamed() then
+	if not self:CanSeek() then
 		return
 	end
 
@@ -1622,15 +1619,10 @@ function CLASS:_SetTimeInternal(time)
 	self._isseeking = true
 
 	if self:GetLoop() then
-		self._targettime = time % length
-		self:_SetTimeToTargetInternal()
-
-		return
+		time = time % length
 	end
 
-	if time > length then
-		time = length
-	end
+	time = math.min(time, length)
 
 	self._targettime = time
 	self:_SetTimeToTargetInternal()
@@ -1642,7 +1634,7 @@ function CLASS:_SetTimeToTargetInternal()
 
 	self:TimerRemove("SetTimeToTargetInternal")
 
-	if self:IsBlockStreamed() then
+	if not self:CanSeek() then
 		return
 	end
 
@@ -1651,66 +1643,89 @@ function CLASS:_SetTimeToTargetInternal()
 		return
 	end
 
-	-- avoid game hiccup during track seeking
-	self:TimerUtil("SetTimeToTargetInternal", 0.001, function()
+	local seakToFunc = function()
 		if not IsValid(self.Channel) then return true end
 		if not self._targettime then return true end
 
-		if self:IsBlockStreamed() then
+		if not self:CanSeek() then
 			return true
 		end
 
+		local length = self:GetLength()
+
 		local thistime = self.Channel:GetTime()
+		thistime = math.Clamp(thistime, 0, length)
+
 		local targettime = self._targettime
+		targettime = math.Clamp(targettime, 0, length)
 
-		if thistime == targettime then return true end
-
-		local time = 0
-		local step = 10
-
-		if thistime < targettime then
-			time = math.min(thistime + step, targettime)
-		else
-			time = math.max(thistime - step, targettime)
+		if thistime == targettime then
+			return true
 		end
 
-		self.Channel:SetTime(time)
-		if time == targettime then return true end
+		-- an attempt to ease it a bit on the performance impact
+		local random = math.random() * 2
+		local step = math.Clamp(StreamRadioLib.RealTimeFps() * 0.03 + random, 2, 15)
+		local time = math.Approach(thistime, targettime, step)
+
+		time = math.Clamp(time, 0, length)
+
+		-- set the time in non-decode mode, so we keep sane frame rates
+		self.Channel:SetTime(time, true)
+
+		if time == targettime then
+			return true
+		end
 
 		return false
-	end)
+	end
+
+	-- avoid game hiccup during track seeking
+	self:TimerUtil("SetTimeToTargetInternal", 0.001, seakToFunc)
+	seakToFunc()
 end
 
 function CLASS:SyncTime()
 	if not self.Valid then return end
 	if StreamRadioLib.GameIsPaused() then return end
-	if not self:IsPlayMode() then return end
+	if self:IsStopMode() then return end
 
 	local maxdelta = 1.5
 
 	local time = self:GetMasterTime()
 
-	if self:IsEndless() then
-		return self:_SetTimeInternal(time)
-	end
-
 	local length = self:GetLength()
-
 	local curtime = self:GetTime()
 	local loop = self:GetLoop()
-	local maxStartDelta = engine.TickInterval() * 4
 
-	if length <= maxdelta and time > maxStartDelta then
-		return
+	if length > 0 then
+		local tickLen = engine.TickInterval()
+		local minDelta = tickLen * 2
+		local maxStartDelta = tickLen * 4
+
+		if length <= maxStartDelta then
+			-- never time synchronize extremely short sounds
+			return
+		end
+
+		if length <= maxdelta and time > maxStartDelta then
+			-- prevent permanent seeking loop for very short sounds (length less then 1.5s)
+			-- <maxStartDelta> makes sure all clients start at the same time
+			-- but ignore further synchronisations past <maxStartDelta>
+
+			return
+		end
+
+		-- limit <maxdelta> to the length minus a small margin
+		maxdelta = math.min(maxdelta, math.max(length - minDelta, maxStartDelta))
 	end
-
-	maxdelta = math.min(maxdelta, length)
 
 	local maxdelta_half = maxdelta / 2
 	local mintime = time - maxdelta_half
 	local maxtime = time + maxdelta_half
 
-	if loop then
+	if loop and length > 0 then
+		-- make sure we wrap the time around start and end currently
 		mintime = (length + mintime) % length
 		maxtime = (length + maxtime) % length
 	end
@@ -1719,6 +1734,7 @@ function CLASS:SyncTime()
 	maxtime = math.max(maxtime, 0)
 
 	if maxtime > mintime then
+		-- classic in between check
 		if curtime < mintime then
 			return self:_SetTimeInternal(time)
 		end
@@ -1731,6 +1747,7 @@ function CLASS:SyncTime()
 	end
 
 	if curtime < mintime and curtime > maxtime then
+		-- in between check that wraps around looped time positions
 		return self:_SetTimeInternal(time)
 	end
 end
@@ -1785,8 +1802,7 @@ function CLASS:_IsSeekingInternal()
 		return self.Channel:IsSeeking()
 	end
 
-	if self:IsEndless() then return false end
-	if self:IsBlockStreamed() then return false end
+	if not self:CanSeek() then return false end
 
 	local targettime = self._targettime
 	if not targettime then return false end
@@ -1995,6 +2011,19 @@ function CLASS:IsBlockStreamed()
 	if not IsValid( self.Channel ) then return false end
 
 	return self.Channel:IsBlockStreamed( )
+end
+
+function CLASS:CanSeek()
+	if not self.Valid then return false end
+	if not IsValid( self.Channel ) then return false end
+
+	if self:IsEndless() then return false end
+	if self:IsBlockStreamed() then return false end
+
+	local minLen = engine.TickInterval() * 4
+	if self:GetMasterLength() <= minLen then return false end
+
+	return true
 end
 
 function CLASS:IsLooping()

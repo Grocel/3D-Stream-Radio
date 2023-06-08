@@ -79,7 +79,8 @@ function CLASS:Render()
 		self.debugtexttab[12] = "Panel Info:"
 		self.debugtexttab[13] = tostring(aimedpanel)
 		self.debugtexttab[14] = string.format("Name Hierarchy:    %s", aimedpanel:GetName())
-		self.debugtexttab[15] = string.format("Skin ID Hierarchy: %s", aimedpanel:GetSkinIdentifyerHierarchy())
+		self.debugtexttab[15] = string.format("NW Name Hierarchy: %s", aimedpanel:GetNWName())
+		self.debugtexttab[16] = string.format("Skin ID Hierarchy: %s", aimedpanel:GetSkinIdentifyerHierarchy())
 	else
 		self.bgwidth = 0
 		self.debugtexttab[11] = nil

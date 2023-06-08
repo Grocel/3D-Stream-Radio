@@ -13,85 +13,80 @@ local g_mat_forward = StreamRadioLib.GetPNGIcon("control_end")
 local g_mat_volumedown = StreamRadioLib.GetPNGIcon("sound_delete")
 local g_mat_volumeup = StreamRadioLib.GetPNGIcon("sound_add")
 
-local function Timeformat(f, u)
-	f = f or {}
-	u = u or 0
+local g_mat_playback_modes = {
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_NONE] = StreamRadioLib.GetPNGIcon("arrow_not_refresh", true),
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_SONG] = StreamRadioLib.GetPNGIcon("arrow_refresh"),
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST] = StreamRadioLib.GetPNGIcon("table_refresh"),
+}
 
-	local ms = f.ms or 0
-	local s = f.s or 0
-	local m = f.m or 0
-	local rh = f.h or 0
+local g_tooltip_playback_modes = {
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_NONE] = "Change loop mode\n(currently: No loop)",
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_SONG] = "Change loop mode\n(currently: Song loop)",
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST] = "Change loop mode\n(currently: Playlist loop)",
+}
+
+local g_next_playback_modes = {
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_NONE] = StreamRadioLib.PLAYBACK_LOOP_MODE_SONG,
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_SONG] = StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST,
+	[StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST] = StreamRadioLib.PLAYBACK_LOOP_MODE_NONE,
+}
+
+local function FormatTime(seconds)
+	seconds = tonumber(seconds or 0) or 0
+
+	local rs, ms = math.modf(seconds)
+	ms = math.floor(ms * 100)
+
+	local s = rs % 60
+	local m = math.floor((rs / 60) % 60)
+
+	local rh = math.floor(rs / 3600)
 	local h = rh % 24
 	local d = math.floor(rh / 24)
-
-	if u <= 0 then
-		return nil
-	end
-
-	if u <= 3 then
-		return m, s, ms
-	end
-
-	if u == 4 then
-		return h, m, s, ms
-	end
 
 	return d, h, m, s, ms
 end
 
+local function GetTimeFormated(seconds, timeScale)
+	seconds = tonumber(seconds or 0) or 0
+	timeScale = tonumber(timeScale or 0) or 0
 
-local function GetTimeformat(timef, lenf)
-	lenf = lenf or timef or {}
-
-	local m = lenf.m or 0
-	local rh = lenf.h or 0
-	local h = rh % 24
-	local d = math.floor(rh / 24)
-
-	if d <= 0 then
-		if h <= 0 then
-			if m >= 10 then
-				return "%02i:%02i.%02i", 3
-			end
-
-			return "%01i:%02i.%02i", 3
-		end
-
-		if h >= 10 then
-			return "%02i:%02i:%02i.%02i", 4
-		end
-
-		return "%01i:%02i:%02i.%02i", 4
+	if timeScale <= 0 then
+		timeScale = seconds
 	end
 
-	if d >= 100 then
-		return "%03i:%02i:%02i:%02i.%02i", 5
+	local d, h, m, s, ms = FormatTime(seconds)
+
+	local scale_1m = 60
+	local scale_10m = scale_1m * 10
+	local scale_1h = scale_1m * 60
+	local scale_10h = scale_1h * 10
+	local scale_1d = scale_1h * 24
+
+	if timeScale < scale_1h then
+		return string.format("%01i:%02i.%02i", m, s, ms)
 	end
 
-	if d >= 10 then
-		return "%02i:%02i:%02i:%02i.%02i", 5
+	if timeScale < scale_1d then
+		return string.format("%01i:%02i:%02i", h, m, s)
 	end
 
-	return "%01i:%02i:%02i:%02i.%02i", 5
+	return string.format("%01i:%02i:%02i:%02i", d, h, m, s)
 end
 
 local function FormatTimeleft(time, len)
 	time = time or 0
 	len = len or 0
 
-	local timef = string.FormattedTime(time)
+	local timef = GetTimeFormated(time, len)
 	local lenf = nil
 
 	if len > 0 then
-		lenf = string.FormattedTime(len)
+		lenf = GetTimeFormated(len)
 	end
 
-	local format, units = GetTimeformat(timef, lenf)
-	timef = string.format(format, Timeformat(timef, units))
-
 	if lenf then
-		lenf = string.format(format, Timeformat(lenf, units))
-		return timef .. " / " .. lenf
+		return string.format("%s / %s" , timef, lenf)
 	end
 
 	return timef
@@ -105,6 +100,7 @@ function CLASS:Create()
 	self.PlayPauseButton = self:AddPanelByClassname("button", true)
 	self.PlayPauseButton:SetIcon(g_mat_play)
 	self.PlayPauseButton:SetName("play")
+	self.PlayPauseButton:SetNWName("pl")
 	self.PlayPauseButton:SetSkinIdentifyer("button")
 	self.PlayPauseButton.DoClick = function()
 		if not IsValid(self.StreamOBJ) then return end
@@ -116,15 +112,15 @@ function CLASS:Create()
 			return
 		end
 
-		self:CallHook("OnPlay")
-		self.StreamOBJ:Play(self.StreamOBJ:HasEnded())
+		self:TriggerPlay()
 	end
 
 	self.BackButton = self:AddPanelByClassname("button", true)
 	self.BackButton:SetIcon(g_mat_back)
 	self.BackButton:SetName("back")
+	self.BackButton:SetNWName("bk")
 	self.BackButton:SetSkinIdentifyer("button")
-	self.BackButton:SetToolTip("Go to previous playlist track")
+	self.BackButton:SetTooltip("Go to previous playlist track")
 	self.BackButton.DoClick = function()
 		self:CallHook("OnPlaylistBack")
 	end
@@ -132,8 +128,9 @@ function CLASS:Create()
 	self.ForwardButton = self:AddPanelByClassname("button", true)
 	self.ForwardButton:SetIcon(g_mat_forward)
 	self.ForwardButton:SetName("forward")
+	self.ForwardButton:SetNWName("fw")
 	self.ForwardButton:SetSkinIdentifyer("button")
-	self.ForwardButton:SetToolTip("Go to next playlist track")
+	self.ForwardButton:SetTooltip("Go to next playlist track")
 	self.ForwardButton.DoClick = function()
 		self:CallHook("OnPlaylistForward")
 	end
@@ -141,8 +138,9 @@ function CLASS:Create()
 	self.StopButton = self:AddPanelByClassname("button", true)
 	self.StopButton:SetIcon(g_mat_stop)
 	self.StopButton:SetName("stop")
+	self.StopButton:SetNWName("sp")
 	self.StopButton:SetSkinIdentifyer("button")
-	self.StopButton:SetToolTip("Stop playback")
+	self.StopButton:SetTooltip("Stop playback")
 	self.StopButton.DoClick = function()
 		if not IsValid(self.StreamOBJ) then return end
 		self:CallHook("OnStop")
@@ -152,8 +150,9 @@ function CLASS:Create()
 	self.VolumeDownButton = self:AddPanelByClassname("button", true)
 	self.VolumeDownButton:SetIcon(g_mat_volumedown)
 	self.VolumeDownButton:SetName("volumedown")
+	self.VolumeDownButton:SetNWName("vdn")
 	self.VolumeDownButton:SetSkinIdentifyer("button")
-	self.VolumeDownButton:SetToolTip("Decrease volume")
+	self.VolumeDownButton:SetTooltip("Decrease volume")
 	self.VolumeDownButton.OnMousePressed = function()
 		if not IsValid(self.StreamOBJ) then return end
 
@@ -168,6 +167,7 @@ function CLASS:Create()
 	self.VolumeUpButton = self:AddPanelByClassname("button", true)
 	self.VolumeUpButton:SetIcon(g_mat_volumeup)
 	self.VolumeUpButton:SetName("volumeup")
+	self.VolumeUpButton:SetNWName("vup")
 	self.VolumeUpButton:SetSkinIdentifyer("button")
 	self.VolumeUpButton:SetTooltip("Increase volume")
 	self.VolumeUpButton.OnMousePressed = function()
@@ -212,6 +212,18 @@ function CLASS:Create()
 	self.VolumeDownButton.OnMouseReleased = self.VolumeUpButton.OnMouseReleased
 	self.VolumeDownButton.Think = self.VolumeUpButton.Think
 
+	self.PlaybackLoopModeButton = self:AddPanelByClassname("button", true)
+	self.PlaybackLoopModeButton:SetName("playback-mode")
+	self.PlaybackLoopModeButton:SetNWName("pm")
+	self.PlaybackLoopModeButton:SetSkinIdentifyer("button")
+
+	self.PlaybackLoopModeButton.DoClick = function()
+		local loopMode = self._currentLoopMode or StreamRadioLib.PLAYBACK_LOOP_MODE_NONE
+		local newLoopMode = g_next_playback_modes[loopMode] or StreamRadioLib.PLAYBACK_LOOP_MODE_NONE
+
+		self:CallHook("OnPlaybackLoopModeChange", newLoopMode)
+	end
+
 	self.Buttons = {}
 	table.insert(self.Buttons, self.PlayPauseButton)
 	table.insert(self.Buttons, self.BackButton)
@@ -219,9 +231,11 @@ function CLASS:Create()
 	table.insert(self.Buttons, self.StopButton)
 	table.insert(self.Buttons, self.VolumeDownButton)
 	table.insert(self.Buttons, self.VolumeUpButton)
+	table.insert(self.Buttons, self.PlaybackLoopModeButton)
 
 	self.PlayBar = self:AddPanelByClassname("progressbar", true)
 	self.PlayBar:SetName("progressbar")
+	self.PlayBar:SetNWName("pbar")
 	self.PlayBar:SetSkinIdentifyer("progressbar")
 	self.PlayBar.FractionChangeText = function(this, v)
 		if not IsValid(self.StreamOBJ) then return end
@@ -232,10 +246,6 @@ function CLASS:Create()
 
 		if self.StreamOBJ:IsBuffering() then
 			return "Buffering..."
-		end
-
-		if self.StreamOBJ:IsSeeking() then
-			return "Seeking..."
 		end
 
 		if self.StreamOBJ:IsStopMode() then
@@ -263,8 +273,11 @@ function CLASS:Create()
 	self.PlayBar.OnFractionChangeEdit = function(this, v)
 		if not IsValid(self.StreamOBJ) then return end
 
+		local noise = math.random() * 0.00001
 		local len = self.StreamOBJ:GetMasterLength()
-		self.StreamOBJ:SetTime(len * v, true)
+
+		-- Set a fake value that is minimal off target to force a change detection when the right one is set
+		self.StreamOBJ:SetTime(len * v - noise, true)
 	end
 
 	self.State = self:CreateListener({
@@ -278,14 +291,24 @@ function CLASS:Create()
 			self.ForwardButton:SetVisible(v)
 		end
 
+		self:UpdatePlaybackLoopMode(self._currentLoopMode)
+
 		self:SetNWBool(k, v)
 		self:ApplyNetworkVars()
 		self:InvalidateLayout()
 	end)
 
+	self:UpdatePlaybackLoopMode()
+	self:UpdatePlayBar()
 
 	self.PlayBar:SetSize(1,1)
 	self:QueueCall("ActivateNetworkedMode")
+
+	if CLIENT then
+		self:StartSuperThink()
+	end
+
+	self:InvalidateLayout()
 end
 
 function CLASS:PerformLayout(...)
@@ -374,18 +397,61 @@ function CLASS:Remove()
 		self.StreamOBJ:RemoveEvent("OnTrackEnd", self:GetID())
 		self.StreamOBJ:RemoveEvent("OnVolumeChange", self:GetID())
 		self.StreamOBJ:RemoveEvent("OnPlayModeChange", self:GetID())
+
+		if CLIENT then
+			self.StreamOBJ:RemoveEvent("OnSeekingStart", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnSeekingEnd", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnMute", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnClose", self:GetID())
+
+			self.StreamOBJ:RemoveEvent("OnSearch", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnConnect", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnError", self:GetID())
+		end
 	end
 
 	BASE.Remove(self)
 end
 
+function CLASS:UpdateButtons()
+	local StreamOBJ = self.StreamOBJ
+	if not IsValid(StreamOBJ) then return end
+
+	local isPlayMode = StreamOBJ:IsPlayMode()
+	local isStopMode = StreamOBJ:IsStopMode()
+	local syncMode = self:GetSyncMode()
+
+	if IsValid(self.PlayPauseButton) then
+		self.PlayPauseButton:SetIcon(isPlayMode and g_mat_pause or g_mat_play)
+		self.PlayPauseButton:SetTooltip(isPlayMode and "Pause playback" or "Start playback")
+		self.PlayPauseButton:SetDisabled(syncMode)
+	end
+
+	if IsValid(self.StopButton) then
+		self.StopButton:SetDisabled(isStopMode or syncMode)
+	end
+end
+
+function CLASS:UpdatePlayBar()
+	if SERVER then return end
+
+	if not IsValid(self.PlayBar) then
+		return
+	end
+
+	if not self.PlayBar:IsVisible() then
+		return
+	end
+
+	self.PlayBar:UpdateText()
+end
+
 function CLASS:SetStream(stream)
 	self.StreamOBJ = stream
-	self:UpdateFromStream()
 
-	if IsValid(self.PlayBar) and self.PlayBar:IsVisible() then
-		self.PlayBar:UpdateText()
-	end
+	self:UpdateFromStream()
+	self:UpdateButtons()
+	self:UpdatePlayBar()
 
 	if not IsValid(self.StreamOBJ) then return end
 
@@ -393,7 +459,12 @@ function CLASS:SetStream(stream)
 		if not IsValid(self) then return end
 		if not IsValid(self.StreamOBJ) then return end
 
+		self:QueueCall("UpdatePlayBar")
+		self:QueueCall("UpdateButtons")
+
+		if self:GetSyncMode() then return end
 		if not self.State.PlaylistEnabled then return end
+		if self._currentLoopMode ~= StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST then return end
 
 		self:CallHook("OnPlaylistForward")
 		self.StreamOBJ:Play()
@@ -414,21 +485,51 @@ function CLASS:SetStream(stream)
 	local function OnPlayModeChange(this, mode)
 		if not IsValid(self) then return end
 
-		local isPlayMode = self.StreamOBJ:IsPlayMode()
-		local isStopMode = self.StreamOBJ:IsStopMode()
+		local StreamOBJ = self.StreamOBJ
+		if not IsValid(StreamOBJ) then return end
+
+		local isPlayMode = StreamOBJ:IsPlayMode()
+		local isStopMode = StreamOBJ:IsStopMode()
 
 		if IsValid(self.PlayPauseButton) then
 			self.PlayPauseButton:SetIcon(isPlayMode and g_mat_pause or g_mat_play)
-			self.PlayPauseButton:SetToolTip(isPlayMode and "Pause playback" or "Start playback")
+			self.PlayPauseButton:SetTooltip(isPlayMode and "Pause playback" or "Start playback")
 		end
 
 		if IsValid(self.StopButton) then
-			self.StopButton:SetDisabled(isStopMode or self._syncmode)
+			self.StopButton:SetDisabled(isStopMode or self:GetSyncMode())
 		end
+
+		self:QueueCall("UpdatePlayBar")
+		self:QueueCall("UpdateButtons")
 	end
 
 	self.StreamOBJ:SetEvent("OnVolumeChange", self:GetID(), OnVolumeChange)
 	self.StreamOBJ:SetEvent("OnPlayModeChange", self:GetID(), OnPlayModeChange)
+
+	if CLIENT then
+		local function UpdatePlayBar()
+			if not IsValid(self) then
+				return false
+			end
+
+			self:QueueCall("UpdateButtons")
+			self:QueueCall("UpdatePlayBar")
+
+			return true
+		end
+
+		self.StreamOBJ:SetEvent("OnSeekingStart", self:GetID(), UpdatePlayBar)
+		self.StreamOBJ:SetEvent("OnSeekingEnd", self:GetID(), UpdatePlayBar)
+		self.StreamOBJ:SetEvent("OnMute", self:GetID(), UpdatePlayBar)
+		self.StreamOBJ:SetEvent("OnClose", self:GetID(), UpdatePlayBar)
+
+		self.StreamOBJ:SetEvent("OnDownload", self:GetID(), UpdatePlayBar)
+		self.StreamOBJ:SetEvent("OnRetry", self:GetID(), UpdatePlayBar)
+		self.StreamOBJ:SetEvent("OnSearch", self:GetID(), UpdatePlayBar)
+		self.StreamOBJ:SetEvent("OnConnect", self:GetID(), UpdatePlayBar)
+		self.StreamOBJ:SetEvent("OnError", self:GetID(), UpdatePlayBar)
+	end
 
 	OnVolumeChange(self.StreamOBJ, self.StreamOBJ:GetVolume())
 	OnPlayModeChange(self.StreamOBJ)
@@ -439,51 +540,116 @@ function CLASS:GetStream()
 end
 
 function CLASS:UpdateFromStream()
-	if not IsValid(self.StreamOBJ) then return end
+	local StreamOBJ = self.StreamOBJ
+	if not IsValid(StreamOBJ) then return end
 
-	local len = self.StreamOBJ:GetLength()
-	local time = self.StreamOBJ:GetTime()
+	local len = StreamOBJ:GetLength()
+	local time = StreamOBJ:GetTime()
+
+	local isEndlessOrNoStream = StreamOBJ:IsEndless() or StreamOBJ:IsLoading() or StreamOBJ:GetError() ~= 0 or StreamOBJ:GetMuted()
 
 	if IsValid(self.PlayBar) and self.PlayBar:IsVisible() then
-		if
-			self.StreamOBJ:IsEndless() or self.StreamOBJ:IsLoading() or
-			self.StreamOBJ:GetError() ~= 0 or self.StreamOBJ:GetMuted()
-		then
+		if isEndlessOrNoStream then
 			self.PlayBar:SetFraction(0)
 			self.PlayBar:SetAllowFractionEdit(false)
 			self.PlayBar:SetDisabled(self:GetSyncMode())
 		else
 			self.PlayBar:SetFraction(time / len)
-			self.PlayBar:SetAllowFractionEdit(not self.StreamOBJ:IsBlockStreamed())
-			self.PlayBar:SetDisabled(self:GetSyncMode() or self.StreamOBJ:IsBlockStreamed())
+			self.PlayBar:SetAllowFractionEdit(StreamOBJ:CanSeek())
+			self.PlayBar:SetDisabled(self:GetSyncMode() or not StreamOBJ:CanSeek())
 		end
-
-		self.PlayBar:UpdateText()
 	end
 end
 
+function CLASS:ShouldPerformRerender()
+	if SERVER then return false end
+	if not IsValid(self.StreamOBJ) then return false end
+
+	if not self.StreamOBJ:IsPlaying() then
+		return false
+	end
+
+	return true
+end
+
+function CLASS:SuperThink()
+	if SERVER then return end
+	if not IsValid(self.StreamOBJ) then return end
+
+	if not self:IsSeen() then return end
+	if not self:IsVisible() then return end
+
+	self:UpdateFromStream()
+
+	if not self:ShouldPerformRerender() then return end
+
+	self:UpdatePlayBar()
+	self:PerformRerender(true)
+end
+
 function CLASS:EnablePlaylist(bool)
-	if CLIENT then return end
 	self.State.PlaylistEnabled = bool
 end
 
-function CLASS:IsPlaylistEnabled(bool)
-	if CLIENT then return end
+function CLASS:IsPlaylistEnabled()
 	return self.State.PlaylistEnabled or false
+end
+
+function CLASS:TriggerPlay()
+	if not IsValid(self.StreamOBJ) then return end
+	local isPlayMode = self.StreamOBJ:IsPlayMode()
+
+	if isPlayMode then
+		return
+	end
+
+	self:CallHook("OnPlay")
+	self.StreamOBJ:Play(self.StreamOBJ:HasEnded())
+end
+
+function CLASS:UpdatePlaybackLoopMode(loopMode)
+	loopMode = loopMode or StreamRadioLib.PLAYBACK_LOOP_MODE_NONE
+	self._currentLoopMode = loopMode
+
+	if IsValid(self.PlaybackLoopModeButton) then
+		self.PlaybackLoopModeButton:SetIcon(g_mat_playback_modes[loopMode])
+		self.PlaybackLoopModeButton:SetTooltip(g_tooltip_playback_modes[loopMode])
+
+		local antiSpamTime = 1
+
+		self.PlaybackLoopModeButton:SetDisabled(true)
+
+		self:TimerOnce("PlaybackLoopModeButtonAntiSpam", antiSpamTime, function()
+			if not IsValid(self.PlaybackLoopModeButton) then
+				return
+			end
+
+			self.PlaybackLoopModeButton:SetDisabled(false)
+		end)
+	end
+
+	local StreamOBJ = self.StreamOBJ
+
+	if not IsValid(StreamOBJ) then
+		return
+	end
+
+	if not StreamOBJ:HasEnded() then
+		local time = StreamOBJ:GetMasterTime()
+
+		-- make sure we reapply the time between mode changes, so it prevents jumping
+		StreamOBJ:SetTime(time, true)
+	else
+		if loopMode ~= StreamRadioLib.PLAYBACK_LOOP_MODE_NONE then
+			self:TriggerPlay()
+		end
+	end
 end
 
 function CLASS:SetSyncMode(bool)
 	self._syncmode = bool or false
 
 	if not IsValid(self.StreamOBJ) then return end
-
-	if IsValid(self.PlayPauseButton) then
-		self.PlayPauseButton:SetDisabled(bool)
-	end
-
-	if IsValid(self.StopButton) then
-		self.StopButton:SetDisabled(self.StreamOBJ:IsStopMode() and bool)
-	end
 
 	if IsValid(self.BackButton) then
 		self.BackButton:SetDisabled(bool)
@@ -493,13 +659,20 @@ function CLASS:SetSyncMode(bool)
 		self.ForwardButton:SetDisabled(bool)
 	end
 
+	if IsValid(self.PlaybackLoopModeButton) then
+		self.PlaybackLoopModeButton:SetDisabled(bool)
+	end
+
 	if IsValid(self.PlayBar) then
 		self.PlayBar:SetDisabled(bool)
 	end
+
+	self:UpdateButtons()
+	self:UpdatePlayBar()
 end
 
 function CLASS:GetSyncMode()
-	return self._syncmode or  false
+	return self._syncmode or false
 end
 
 function CLASS:ActivateNetworkedMode()
@@ -510,7 +683,7 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	self:SetNWVarProxy("PlaylistEnabled", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("PlaylistEnabled", "Bool", function(this, nwkey, oldvar, newvar)
 		self.State.PlaylistEnabled = newvar
 	end)
 end

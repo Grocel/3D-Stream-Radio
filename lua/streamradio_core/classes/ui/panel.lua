@@ -82,6 +82,10 @@ function CLASS:Create()
 				self:StopListenRecursive()
 			end
 		end
+
+		if k == "Tooltip" then
+			self:UpdateTooltip(v)
+		end
 	end)
 
 	self._ChildrenPanels = {}
@@ -103,7 +107,7 @@ function CLASS:Create()
 		self.Colors = self:CreateListener({
 			Main = Color(255,255,255)
 		}, function(...)
-			self:_PerformRerenderInternal()
+			self:QueueCall("PerformRerender")
 		end)
 	end
 
@@ -149,10 +153,6 @@ function CLASS:InvalidateLayout(layoutnow, nochildren)
 	self:QueueCall("PerformLayout", nochildren)
 end
 
-function CLASS:_PerformRerenderInternal()
-	self:QueueCall("PerformRerender")
-end
-
 function CLASS:PerformRerender(force)
 	if not force and not self._rendered then return end
 	self._rendered = false
@@ -172,7 +172,7 @@ function CLASS:CursorChangedInternal(nochildren)
 	self:DelCacheValue("GetPanelsAtCursor")
 	self:DelCacheValue("GetTopmostPanelAtCursor")
 
-	self:_OpenToolTipPanel()
+	self:_OpenTooltipPanel()
 
 	if nochildren then return end
 
@@ -938,37 +938,48 @@ function CLASS:CalcSuperParent()
 	return self.SuperParent
 end
 
-function CLASS:SetToolTip(text)
+function CLASS:SetTooltip(text)
 	if SERVER then return end
-	self.Layout.ToolTip = tostring(text or "")
+	self.Layout.Tooltip = tostring(text or "")
 end
 
-function CLASS:GetToolTip()
+function CLASS:GetTooltip()
 	if SERVER then return "" end
-	return self.Layout.ToolTip or ""
+	return self.Layout.Tooltip or ""
 end
 
--- Alias
-CLASS.SetTooltip = CLASS.SetToolTip
-CLASS.GetTooltip = CLASS.GetToolTip
-
-function CLASS:GetToolTipPanel()
+function CLASS:GetTooltipPanel()
 	if SERVER then return nil end
 
 	local sp = self:GetSuperParent()
-	return sp.ToolTip
+	return sp.Tooltip
 end
 
-function CLASS:_OpenToolTipPanel()
+function CLASS:UpdateTooltip(text)
+	if SERVER then return nil end
+
+	local sp = self:GetSuperParent()
+	if not IsValid(sp) then return end
+	if not IsValid(sp.Tooltip) then return end
+	if not sp.Tooltip:IsVisible() then return end
+	if not sp.UpdateTooltip then return end
+
+	local onpanel = self:IsCursorOnPanel()
+	if not onpanel then return end
+
+	return sp:UpdateTooltip(text)
+end
+
+function CLASS:_OpenTooltipPanel()
 	if SERVER then return end
 
-	local text = self:GetToolTip()
+	local text = self:GetTooltip()
 	if text == "" then return end
 
 	local sp = self:GetSuperParent()
 	if not IsValid(sp) then return end
-	if not IsValid(sp.ToolTip) then return end
-	if not sp.OpenToolTipDelay then return end
+	if not IsValid(sp.Tooltip) then return end
+	if not sp.OpenTooltipDelay then return end
 
 	local onpanel = self:IsCursorOnPanel()
 
@@ -978,20 +989,20 @@ function CLASS:_OpenToolTipPanel()
 	if onpanel == oldonpanel then return end
 
 	if not onpanel then
-		sp:CloseToolTip()
+		sp:CloseTooltip()
 		return
 	end
 
 
-	sp:CloseToolTip()
-	sp:OpenToolTipDelay(text, 0.75, function()
-		local text = self:GetToolTip()
+	sp:CloseTooltip()
+	sp:OpenTooltipDelay(text, 0.75, function()
+		local text = self:GetTooltip()
 		if text == "" then return false end
 
 		local onpanel = self:IsCursorOnPanel()
 
 		if not onpanel then
-			sp:CloseToolTip()
+			sp:CloseTooltip()
 		end
 
 		return onpanel
@@ -1135,77 +1146,6 @@ function CLASS:GetCursorRelative()
 	return cx - posx, cy - posy
 end
 
-function CLASS:GetEntity()
-	local superparent = self:GetSuperParent()
-	return superparent.Entity
-end
-
-function CLASS:SetEntity(ent)
-	self:ApplyHierarchy()
-
-	local superparent = self:GetSuperParent()
-	local oldent = self:GetEntity()
-	local name = self:GetName()
-
-	if IsValid(oldent) and oldent._3dstreamradio_classobjs then
-		oldent._3dstreamradio_classobjs[name] = nil
-	end
-
-	superparent.Entity = ent
-	self:RegisterForDupe()
-	self:ApplyNetworkedMode()
-end
-
-function CLASS:GetNameWithoutHierarchy()
-	return self.Name or ""
-end
-
-function CLASS:SetName(name)
-	self:ApplyHierarchy()
-
-	name = tostring(name or "")
-	name = string.gsub(name, "[%/%\\%s]", "_")
-
-	local ent = self:GetEntity()
-	local oldname = self:GetName()
-
-	if IsValid(ent) and ent._3dstreamradio_classobjs then
-		ent._3dstreamradio_classobjs[oldname] = nil
-	end
-
-	self.Name = name
-	self:CalcName()
-
-	local parent = self:GetParent()
-	if IsValid(parent) then
-		parent._panelmap = parent._panelmap or {}
-		parent._panelmap.names = parent._panelmap.names or {}
-		parent._panelmap.names[oldname] = nil
-		parent._panelmap.names[name] = self
-	end
-
-	self:RegisterForDupe()
-	self:ApplyNetworkedMode()
-end
-
-function CLASS:GetName()
-	return self.HierarchyName or ""
-end
-
-function CLASS:ApplyHierarchy()
-	self:CalcSuperParent()
-	self:CalcName()
-	self:CalcSkinIdentifyer()
-end
-
-function CLASS:CalcName()
-	local hierarchy = self:CalcHierarchy("GetNameWithoutHierarchy")
-	local name = table.concat(hierarchy, "/")
-
-	self.HierarchyName = name
-	return self.HierarchyName
-end
-
 function CLASS:CalcHierarchy(func)
 	local thisfunc = self:GetFunction(func)
 	if not thisfunc then return end
@@ -1224,14 +1164,112 @@ function CLASS:CalcHierarchy(func)
 	return hierarchy
 end
 
-function CLASS:CalcSkinIdentifyer()
-	local hierarchy = self:CalcHierarchy("GetSkinIdentifyer")
-	table.remove(hierarchy, 1)
+function CLASS:ApplyHierarchy()
+	self:CalcSuperParent()
+	self:CalcName()
+	self:CalcNWName()
+	self:CalcSkinIdentifyer()
+end
 
-	local name = table.concat(hierarchy, "/")
+function CLASS:GetEntity()
+	local superparent = self:GetSuperParent()
+	return superparent.Entity
+end
 
-	self.HierarchySkinIdentifyer = name
-	return self.HierarchySkinIdentifyer
+function CLASS:SetEntity(ent)
+	self:ApplyHierarchy()
+
+	local superparent = self:GetSuperParent()
+	local oldent = self:GetEntity()
+	local name = self:GetName()
+	local nwname = self:GetNWName()
+
+	if IsValid(oldent) then
+		if oldent._3dstreamradio_classobjs then
+			oldent._3dstreamradio_classobjs[name] = nil
+		end
+
+		if oldent._3dstraemradio_classobjs_nw_register then
+			oldent._3dstraemradio_classobjs_nw_register[nwname] = nil
+		end
+	end
+
+	superparent.Entity = ent
+	self:RegisterForDupe()
+	self:ApplyNetworkedMode()
+end
+
+function CLASS:SetName(name)
+	self:ApplyHierarchy()
+
+	name = tostring(name or "")
+	name = string.gsub(name, "[%/%\\%s]", "_")
+
+	local ent = self:GetEntity()
+	local oldname = self:GetName()
+
+	if IsValid(ent) then
+		if ent._3dstreamradio_classobjs then
+			ent._3dstreamradio_classobjs[oldname] = nil
+		end
+	end
+
+	self.Name = name
+	self:CalcName()
+
+	local parent = self:GetParent()
+	if IsValid(parent) then
+		parent._panelmap = parent._panelmap or {}
+		parent._panelmap.names = parent._panelmap.names or {}
+		parent._panelmap.names[oldname] = nil
+		parent._panelmap.names[name] = self
+	end
+
+	self:RegisterForDupe()
+end
+
+function CLASS:GetNameWithoutHierarchy()
+	return self.Name or ""
+end
+
+function CLASS:GetName()
+	return self.HierarchyName or ""
+end
+
+function CLASS:SetNWName(nwname)
+	self:ApplyHierarchy()
+
+	nwname = tostring(nwname or "")
+	nwname = string.gsub(nwname, "[%/%\\%s]", "_")
+
+	local ent = self:GetEntity()
+	local oldnwname = self:GetNWName()
+
+	if IsValid(ent) then
+		if ent._3dstraemradio_classobjs_nw_register then
+			ent._3dstraemradio_classobjs_nw_register[oldnwname] = nil
+		end
+	end
+
+	self.NWName = nwname
+	self:CalcNWName()
+
+	local parent = self:GetParent()
+	if IsValid(parent) then
+		parent._panelmap = parent._panelmap or {}
+		parent._panelmap.nwnames = parent._panelmap.nwnames or {}
+		parent._panelmap.nwnames[nwname] = self
+	end
+
+	self:ApplyNetworkedMode()
+end
+
+function CLASS:GetNWNameWithoutHierarchy()
+	return self.NWName or ""
+end
+
+function CLASS:GetNWName()
+	return self.HierarchyNWName or ""
 end
 
 function CLASS:SetSkinIdentifyer(name)
@@ -1251,8 +1289,42 @@ function CLASS:SetSkinIdentifyer(name)
 	self:CalcSkinIdentifyer()
 end
 
+function CLASS:GetSkinIdentifyerHierarchy()
+	if not self.HierarchySkinIdentifyer then
+		return self:CalcSkinIdentifyer()
+	end
+
+	return self.HierarchySkinIdentifyer
+end
+
 function CLASS:GetSkinIdentifyer(name)
 	return self.SkinName or ""
+end
+
+function CLASS:CalcName()
+	local hierarchy = self:CalcHierarchy("GetNameWithoutHierarchy")
+	local name = table.concat(hierarchy, "/")
+
+	self.HierarchyName = name
+	return self.HierarchyName
+end
+
+function CLASS:CalcNWName()
+	local hierarchy = self:CalcHierarchy("GetNWNameWithoutHierarchy")
+	local name = table.concat(hierarchy, "/")
+
+	self.HierarchyNWName = name
+	return self.HierarchyNWName
+end
+
+function CLASS:CalcSkinIdentifyer()
+	local hierarchy = self:CalcHierarchy("GetSkinIdentifyer")
+	table.remove(hierarchy, 1)
+
+	local name = table.concat(hierarchy, "/")
+
+	self.HierarchySkinIdentifyer = name
+	return self.HierarchySkinIdentifyer
 end
 
 function CLASS:IsSkinAble()
@@ -1265,14 +1337,6 @@ end
 
 function CLASS:SetSkinAble(bool)
 	self.SkinAble = bool or false
-end
-
-function CLASS:GetSkinIdentifyerHierarchy()
-	if not self.HierarchySkinIdentifyer then
-		return self:CalcSkinIdentifyer()
-	end
-
-	return self.HierarchySkinIdentifyer
 end
 
 function CLASS:_SetSkinAfterAddedPanel()

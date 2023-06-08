@@ -3,6 +3,8 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBNetwork = StreamRadioLib.Network
+
 local BASE = CLASS:GetBaseClass()
 
 local g_mat_closebutton = StreamRadioLib.GetPNGIcon("door_in")
@@ -13,6 +15,7 @@ function CLASS:Create()
 	self.HeaderPanel = self:AddPanelByClassname("shadow_panel", true)
 	self.HeaderPanel:SetSize(1, 40)
 	self.HeaderPanel:SetName("header")
+	self.HeaderPanel:SetNWName("hdr")
 	self.HeaderPanel:SetSkinIdentifyer("header")
 
 	self.HeaderText = self.HeaderPanel:CreateText("label_fade")
@@ -21,11 +24,13 @@ function CLASS:Create()
 	self.SpectrumPanel = self:AddPanelByClassname("radio/gui_player_spectrum", true)
 	self.SpectrumPanel:SetSize(1, 1)
 	self.SpectrumPanel:SetName("spectrum")
+	self.SpectrumPanel:SetNWName("spc")
 	self.SpectrumPanel:SetSkinIdentifyer("spectrum")
 
 	self.VolumePanel = self.SpectrumPanel:AddPanelByClassname("shadow_panel")
 	self.VolumePanel:SetSize(1, 60)
 	self.VolumePanel:SetName("volume")
+	self.VolumePanel:SetNWName("vol")
 	self.VolumePanel:SetSkinIdentifyer("volume")
 	self.VolumePanel:SetShadowWidth(0)
 	self.VolumePanel:SetColor(Color(128, 128, 128, 160))
@@ -35,6 +40,7 @@ function CLASS:Create()
 
 	self.VolumeBar = self.VolumePanel:AddPanelByClassname("progressbar", true)
 	self.VolumeBar:SetName("progressbar")
+	self.VolumeBar:SetNWName("bar")
 	self.VolumeBar:SetSkinIdentifyer("bar")
 	self.VolumeBar:SetAllowFractionEdit(true)
 	self.VolumeBar:SetShadowWidth(0)
@@ -56,6 +62,7 @@ function CLASS:Create()
 	self.ControlPanel = self:AddPanelByClassname("radio/gui_player_controls", true)
 	self.ControlPanel:SetSize(1, 1)
 	self.ControlPanel:SetName("controls")
+	self.ControlPanel:SetNWName("ctrl")
 	self.ControlPanel:SetSkinIdentifyer("controls")
 
 	self.ControlPanel.OnPlaylistBack = function()
@@ -66,30 +73,47 @@ function CLASS:Create()
 		self:CallHook("OnPlaylistForward")
 	end
 
-	self.Errorbox = self.SpectrumPanel:AddPanelByClassname("radio/gui_errorbox")
-	self.Errorbox:SetName("error")
-	self.Errorbox:SetSkinIdentifyer("error")
-	self.Errorbox.OnClose = function()
-		if not IsValid(self.StreamOBJ) then return end
-		if not self.State then return end
-
-		if not self.State.Error then return end
-		if self.State.Error == 0 then return end
-
-		self.State.Error = 0
-		self:ResetStream()
+	self.ControlPanel.OnPlaybackLoopModeChange = function(this, newLoopMode)
+		self:CallHook("OnPlaybackLoopModeChange", newLoopMode)
 	end
 
-	self.Errorbox:SetZPos(100)
-	self.Errorbox:Close()
+	if CLIENT then
+		self.Errorbox = self.SpectrumPanel:AddPanelByClassname("radio/gui_errorbox")
+		self.Errorbox:SetName("error")
+		self.Errorbox:SetNWName("err")
+		self.Errorbox:SetSkinIdentifyer("error")
 
-	if self.Errorbox.CloseButton then
-		self.Errorbox.CloseButton:Remove()
-		self.Errorbox.CloseButton = nil
+		self.Errorbox.OnRetry = function()
+			if not IsValid(self.Errorbox) then
+				return
+			end
+
+			self.Errorbox:Close()
+		end
+
+		self.Errorbox.OnClose = function()
+			if not IsValid(self.StreamOBJ) then return end
+			if not self.State then return end
+
+			if not self.State.Error then return end
+			if self.State.Error == 0 then return end
+
+			self.State.Error = 0
+			self:ResetStream()
+		end
+
+		self.Errorbox:SetZPos(100)
+		self.Errorbox:Close()
+
+		if self.Errorbox.CloseButton then
+			self.Errorbox.CloseButton:Remove()
+			self.Errorbox.CloseButton = nil
+		end
 	end
 
 	self.CloseButton = self:AddPanelByClassname("button", true)
 	self.CloseButton:SetName("backbutton")
+	self.CloseButton:SetNWName("bk")
 	self.CloseButton:SetSkinIdentifyer("button")
 	self.CloseButton:SetIcon(g_mat_closebutton)
 	self.CloseButton:SetAlign(TEXT_ALIGN_RIGHT)
@@ -113,31 +137,26 @@ function CLASS:Create()
 		self.State = self:CreateListener({
 			Error = 0,
 		}, function(this, k, v)
-			if not IsValid(self.StreamOBJ) then return end
 			local err = tonumber(v or 0) or 0
-			local haserror = err ~= 0
+			local url = nil
 
-			self.State.Error = err
-
-			if haserror then
-				self.Errorbox:SetErrorCode(err, self.StreamOBJ:GetURL())
-				self.Errorbox:Open()
-			else
-				self.Errorbox:Close()
+			if IsValid(self.StreamOBJ) then
+				url = self.StreamOBJ:GetURL()
 			end
 
-			self:InvalidateLayout()
+			self.Errorbox:SetErrorCode(err, url)
 		end)
 	end
 
 	if SERVER then
-		self:NetReceive("streamreset_sv", function(this, id, len, ply)
+		LIBNetwork.AddNetworkString("streamreset_on_sv")
+		LIBNetwork.AddNetworkString("streamreset_on_cl")
+
+		self:NetReceive("streamreset_on_sv", function(this, id, len, ply)
 			self:ResetStream()
 		end)
 	else
-		self:StartSuperThink()
-
-		self:NetReceive("streamreset_cl", function(this, id, len, ply)
+		self:NetReceive("streamreset_on_cl", function(this, id, len, ply)
 			self:ResetStream(true)
 		end)
 	end
@@ -146,9 +165,12 @@ end
 function CLASS:Remove()
 	if IsValid(self.StreamOBJ) then
 		self.StreamOBJ:RemoveEvent("OnVolumeChange", self:GetID())
-		self.StreamOBJ:RemoveEvent("OnConnect", self:GetID())
-		self.StreamOBJ:RemoveEvent("OnError", self:GetID())
-		self.StreamOBJ:RemoveEvent("OnSearch", self:GetID())
+
+		if CLIENT then
+			self.StreamOBJ:RemoveEvent("OnConnect", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnError", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnSearch", self:GetID())
+		end
 	end
 
 	BASE.Remove(self)
@@ -157,9 +179,9 @@ end
 function CLASS:ResetStream(nosend)
 	if not nosend then
 		if SERVER then
-			self:NetSend("streamreset_cl")
+			self:NetSend("streamreset_on_cl")
 		else
-			self:NetSend("streamreset_sv")
+			self:NetSend("streamreset_on_sv")
 			return
 		end
 	end
@@ -212,7 +234,7 @@ function CLASS:SetStream(stream)
 			if not self.State then return end
 			if not IsValid(self.Errorbox) then return end
 
-			-- self.State.Error = 0
+			self.State.Error = 0
 		end)
 
 		self.StreamOBJ:SetEvent("OnConnect", self:GetID(), function()
@@ -245,20 +267,6 @@ function CLASS:Think()
 	if not self:IsVisible() then return end
 
 	self:UpdateFromStream()
-end
-
-function CLASS:SuperThink()
-	if SERVER then return end
-	if not IsValid(self.StreamOBJ) then return end
-
-	if not self:IsSeen() then return end
-	if not self:IsVisible() then return end
-
-	if IsValid(self.ControlPanel) then
-		self.ControlPanel:UpdateFromStream()
-	end
-
-	self:PerformRerender(true)
 end
 
 function CLASS:UpdateFromStream()
@@ -415,6 +423,10 @@ end
 
 function CLASS:IsPlaylistEnabled()
 	return self.ControlPanel:IsPlaylistEnabled()
+end
+
+function CLASS:UpdatePlaybackLoopMode(...)
+	self.ControlPanel:UpdatePlaybackLoopMode(...)
 end
 
 function CLASS:SetSyncMode(bool)

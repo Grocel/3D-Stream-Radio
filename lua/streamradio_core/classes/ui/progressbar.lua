@@ -26,7 +26,7 @@ function CLASS:Create()
 			self:CallHook("OnFractionChange", v)
 			self:UpdateText()
 
-			self:SetNWFloat(k, v)
+			self:SetNWFloat("Fraction", v)
 			self:InvalidateLayout(true)
 		end
 
@@ -71,10 +71,21 @@ function CLASS:Create()
 
 		self.Colors = self.Colors + function(this, k, v)
 			if k == "Main" then
-				self.Colors.Secondary = Color(v.r * 0.65, v.g * 0.65, v.b * 0.65, v.a * 0.75)
-			else
-				self:QueueCall("UpdateColor")
+				self.Colors.Secondary = Color(
+					v.r * 0.65,
+					v.g * 0.65,
+					v.b * 0.65,
+					v.a * 0.75
+				)
+
+				return
 			end
+
+			if k == "Secondary" then
+				return
+			end
+	
+			self:QueueCall("UpdateColor")
 		end
 	end
 
@@ -104,6 +115,7 @@ function CLASS:UpdateColor()
 
 	if self:IsDisabled() then
 		self.Colors.Main = self.Colors.Disabled
+
 		if IsValid(self.TextPanel) then
 			self.TextPanel:SetColor(self.Colors.DisabledText)
 		end
@@ -111,24 +123,22 @@ function CLASS:UpdateColor()
 		return
 	end
 
-	if self.Progress.AllowEdit then
-		if self:IsCursorOnPanel() then
-			self.Colors.Main = self.Colors.Hover
+	if self.Progress.AllowEdit and self:IsCursorOnPanel() then
+		self.Colors.Main = self.Colors.Hover
 
-			if IsValid(self.TextPanel) then
-				self.TextPanel:SetColor(self.Colors.HoverText)
-			end
-
-			return
+		if IsValid(self.TextPanel) then
+			self.TextPanel:SetColor(self.Colors.HoverText)
 		end
+
+		return
 	end
 
 	self.Colors.Main = self.Colors.NoHover
+
 	if IsValid(self.TextPanel) then
 		self.TextPanel:SetColor(self.Colors.NoHoverText)
 	end
 end
-
 
 function CLASS:Render()
 	local x, y = self:GetRenderPos()
@@ -139,7 +149,6 @@ function CLASS:Render()
 	local col2 = self.Colors.Secondary or color_white
 
 	local fraction1 = self.Progress.Fraction
-	local fraction2 = 1 - fraction1
 
 	if ShadowWidth <= 0 then
 		surface.SetDrawColor(col1)
@@ -162,7 +171,7 @@ function CLASS:Render()
 	surface.DrawRect(x, y, sw * fraction1, sh)
 end
 
-function CLASS:DoEditProgress()
+function CLASS:DoEditProgress(force)
 	if self:IsDisabled() then
 		return
 	end
@@ -186,6 +195,7 @@ function CLASS:DoEditProgress()
 	end
 
 	fraction = self:CallHook("OnFractionChangeEdit", fraction) or fraction
+
 	self:SetFraction(fraction)
 end
 
@@ -312,11 +322,11 @@ function CLASS:ActivateNetworkedMode()
 		return
 	end
 
-	self:SetNWVarProxy("Fraction", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("Fraction", "Float", function(this, nwkey, oldvar, newvar)
 		self:SetFraction(newvar)
 	end)
 
-	self:SetNWVarProxy("AllowEdit", function(this, nwkey, oldvar, newvar)
+	self:SetNWVarCallback("AllowEdit", "Bool", function(this, nwkey, oldvar, newvar)
 		self:SetAllowFractionEdit(newvar)
 	end)
 

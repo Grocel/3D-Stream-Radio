@@ -2,6 +2,10 @@ AddCSLuaFile()
 
 DEFINE_BASECLASS("base_anim")
 
+local StreamRadioLib = StreamRadioLib
+local LIBNetwork = StreamRadioLib.Network
+local LIBWire = StreamRadioLib.Wire
+
 local WireLib = WireLib
 
 local IsValid = IsValid
@@ -28,7 +32,7 @@ local CLIENT = CLIENT
 
 ENT.__IsRadio = true
 ENT.__IsLibLoaded = StreamRadioLib and StreamRadioLib.Loaded
-ENT.__IsWiremodLoaded = ENT.__IsLibLoaded and StreamRadioLib.HasWiremod()
+ENT.__IsWiremodLoaded = ENT.__IsLibLoaded and LIBWire.HasWiremod()
 
 ENT.Editable = false
 ENT.Spawnable = false
@@ -41,7 +45,7 @@ function ENT:AddDTNetworkVar(datatype, name, ...)
 		return
 	end
 
-	return StreamRadioLib.Network.AddDTNetworkVar(self, datatype, name, ...)
+	return LIBNetwork.AddDTNetworkVar(self, datatype, name, ...)
 end
 
 function ENT:SetupDataTables()
@@ -49,7 +53,7 @@ function ENT:SetupDataTables()
 		return
 	end
 
-	StreamRadioLib.Network.SetupDataTables(self)
+	LIBNetwork.SetupDataTables(self)
 end
 
 function ENT:SetAnim( Animation, Frame, Rate )
@@ -162,6 +166,7 @@ function ENT:GetOrCreateStream()
 	end)
 
 	stream:SetName("stream")
+	stream:SetNWName("str")
 	stream:SetEntity(self)
 	stream:ActivateNetworkedMode()
 	stream:OnClose()
@@ -172,16 +177,19 @@ end
 
 function ENT:StreamOnConnect()
 	self:CheckTransmitState()
+
 	return true
 end
 
 function ENT:StreamOnSearch()
 	self:CheckTransmitState()
+
 	return true
 end
 
 function ENT:StreamOnRetry()
 	self:CheckTransmitState()
+
 	return true
 end
 
@@ -257,7 +265,11 @@ function ENT:GetSoundPosAng()
 	return pos, ang
 end
 
-function ENT:DistanceToPlayer(ply, pos1, pos2)
+function ENT:DistanceToEntity(ent, pos1, pos2)
+	if not self.__IsLibLoaded then
+		return 0
+	end
+
 	if not pos1 then
 		pos1 = self:GetSoundPosAng()
 	end
@@ -266,15 +278,46 @@ function ENT:DistanceToPlayer(ply, pos1, pos2)
 		return pos2:Distance(pos1)
 	end
 
-	if self.__IsLibLoaded then
-		pos2 = StreamRadioLib.GetCameraPos(ply)
-	end
+	pos2 = StreamRadioLib.GetCameraPos(ent)
 
 	if not pos2 then
 		return 0
 	end
 
 	return pos2:Distance(pos1)
+end
+
+function ENT:DistToSqrToEntity(ent, pos1, pos2)
+	if not self.__IsLibLoaded then
+		return 0
+	end
+
+	if not pos1 then
+		pos1 = self:GetSoundPosAng()
+	end
+
+	if pos2 then
+		return pos2:DistToSqr(pos1)
+	end
+
+	pos2 = StreamRadioLib.GetCameraPos(ent)
+
+	if not pos2 then
+		return 0
+	end
+
+	return pos2:DistToSqr(pos1)
+end
+
+function ENT:CheckDistanceToEntity(ent, maxDist, pos1, pos2)
+	local maxDistSqr = maxDist * maxDist
+	local distSqr = self:DistToSqrToEntity(ent, pos1, pos2)
+
+	if distSqr > maxDistSqr then
+		return false
+	end
+
+	return true
 end
 
 function ENT:Initialize()
@@ -287,7 +330,6 @@ function ENT:Initialize()
 	end
 
 	self:GetOrCreateStream()
-
 	self:CheckTransmitState()
 end
 
@@ -305,14 +347,26 @@ function ENT:IsMutedForPlayer(ply)
 		return true
 	end
 
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
+	end
+
+	if not IsValid(ply) then return true end
+	if not ply:IsPlayer() then return true end
+	if ply:IsBot() then return true end
+
 	if StreamRadioLib.IsMuted(ply) then
 		return true
 	end
 
-	local playerdist = self:DistanceToPlayer(ply)
 	local mutedist = math.min(self:GetRadius() + 1000, StreamRadioLib.GetMuteDistance(ply))
+	local camPos = nil
 
-	if playerdist >= mutedist then
+	if CLIENT then
+		camPos = StreamRadioLib.GetCameraViewPos(ply)
+	end
+
+	if not self:CheckDistanceToEntity(ply, mutedist, nil, camPos) then
 		return true
 	end
 
@@ -403,7 +457,7 @@ function ENT:FastThink()
 		return
 	end
 
-	StreamRadioLib.Network.Pull(self)
+	LIBNetwork.Pull(self)
 
 	if SERVER then
 		if self.__IsWiremodLoaded then

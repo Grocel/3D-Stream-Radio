@@ -29,7 +29,7 @@ local g_font_template = {
 	outline = false
 }
 
-local LoadingMat = StreamRadioLib.GetPNG("loading")
+local LoadingMat = StreamRadioLib.GetCustomPNG("loading")
 
 local pi = math.pi
 local color_gray = Color( 160, 160, 160, 180 )
@@ -45,7 +45,7 @@ function LIB.Loading( x, y, w, h, color, cycles )
 		cycles = 5
 	end
 
-	local time = CurTime( )
+	local time = RealTime( )
 	local midw = w / 2
 	local midh = h / 2
 	local cw = w / cycles * 2

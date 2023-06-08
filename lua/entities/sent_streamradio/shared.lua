@@ -1,6 +1,9 @@
 AddCSLuaFile()
 DEFINE_BASECLASS( "base_streamradio_gui" )
 
+local StreamRadioLib = StreamRadioLib
+local LIBNetwork = StreamRadioLib.Network
+
 ENT.Spawnable = false
 ENT.AdminOnly = false
 ENT.Editable = true
@@ -20,6 +23,7 @@ function ENT:SetupDataTables( )
 	self:AddDTNetworkVar("Bool", "WireMode")
 	self:AddDTNetworkVar("Bool", "ToolMode")
 	self:AddDTNetworkVar("Entity", "LastUser")
+	self:AddDTNetworkVar("Entity", "LastUsingEntity")
 	self:AddDTNetworkVar("Entity", "MasterRadio")
 
 	local adv_wire = nil
@@ -44,7 +48,7 @@ function ENT:SetupDataTables( )
 			category = "Stream",
 			title = "Volume",
 			type = "Float",
-			order = 1,
+			order = 20,
 			min = 0,
 			max = 1,
 		}
@@ -56,7 +60,7 @@ function ENT:SetupDataTables( )
 			category = "Stream",
 			title = "Radius",
 			type = "Int",
-			order = 2,
+			order = 21,
 			min = 0,
 			max = 5000,
 		}
@@ -68,19 +72,99 @@ function ENT:SetupDataTables( )
 			category = "Stream",
 			title = "Enable 3D sound",
 			type = "Boolean",
-			order = 3
+			order = 22
 		}
 	})
 
 	self:AddDTNetworkVar("Bool", "Loop", {
 		KeyName = "Loop",
 		Edit = {
-			category = "Stream",
-			title = "Enable loop",
+			category = "Loop",
+			title = "Enable song loop",
 			type = "Boolean",
-			order = 4
+			order = 30
 		}
 	})
+
+	self:AddDTNetworkVar( "Bool", "PlaylistLoop", {
+		KeyName = "PlaylistLoop",
+		Edit = {
+			category = "Loop",
+			title = "Enable playlist loop",
+			type = "Boolean",
+			order = 31
+		}
+	})
+
+	LIBNetwork.SetDTVarCallback(self, "Loop", function(this, name, oldv, newv)
+		if not IsValid(self) then return end
+
+		if newv then
+			self:SetPlaylistLoop(false)
+		end
+
+		self:MarkForUpdatePlaybackLoopMode()
+	end)
+
+	LIBNetwork.SetDTVarCallback(self, "PlaylistLoop", function(this, name, oldv, newv)
+		if not IsValid(self) then return end
+
+		if newv then
+			self:SetLoop(false)
+		end
+
+		self:MarkForUpdatePlaybackLoopMode()
+	end)
+end
+
+function ENT:GetPlaybackLoopMode()
+	local loop = self:GetLoop()
+	local playlistLoop = self:GetPlaylistLoop()
+
+	if loop then
+		return StreamRadioLib.PLAYBACK_LOOP_MODE_SONG
+	end
+
+	if playlistLoop then
+		return StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST
+	end
+
+	return StreamRadioLib.PLAYBACK_LOOP_MODE_NONE
+end
+
+function ENT:SetPlaybackLoopMode(loopMode)
+	if CLIENT then return end
+
+	self:SetLoop(false)
+	self:SetPlaylistLoop(false)
+
+	if loopMode == StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST then
+		self:SetPlaylistLoop(true)
+	elseif loopMode == StreamRadioLib.PLAYBACK_LOOP_MODE_SONG then
+		self:SetLoop(true)
+	end
+
+	self:MarkForUpdatePlaybackLoopMode()
+end
+
+function ENT:MarkForUpdatePlaybackLoopMode()
+	self._callUpdatePlaybackLoopMode = true
+end
+
+function ENT:UpdatePlaybackLoopMode()
+	self._callUpdatePlaybackLoopMode = nil
+
+	local loopMode = self:GetPlaybackLoopMode()
+
+	if IsValid(self.GUI_Main) then
+		self.GUI_Main:UpdatePlaybackLoopMode(loopMode)
+	end
+
+	self.OnUpdatePlaybackLoopMode(loopMode)
+end
+
+function ENT:OnUpdatePlaybackLoopMode(loopMode)
+	-- Override me
 end
 
 function ENT:GetMasterRadioRecursive()
@@ -89,12 +173,8 @@ function ENT:GetMasterRadioRecursive()
 		return nil
 	end
 
-	if IsValid(self._supermasterradio) then
-		if self._supermasterradio.__IsRadio then
-			if IsValid(self._supermasterradio.StreamObj) then
-				return self._supermasterradio
-			end
-		end
+	if IsValid(self._supermasterradio) and self._supermasterradio.__IsRadio and IsValid(self._supermasterradio.StreamObj) then
+		return self._supermasterradio
 	end
 
 	self._supermasterradio = nil
@@ -174,7 +254,7 @@ function ENT:IsMutedForPlayer(ply)
 
 	for slave, v in pairs(slaves) do
 		if not IsValid(slave) then continue end
-		if not slave:IsMutedForPlayer() then return false end
+		if not slave:IsMutedForPlayer(ply) then return false end
 	end
 
 	return true
@@ -195,7 +275,7 @@ function ENT:OnGUIShowCheck(ply)
 	return false
 end
 
-function ENT:OnGUIInteractionCheck(ply, tr, pressed)
+function ENT:OnGUIInteractionCheck(ply, trace, userEntity)
 	local masterradio = self:GetMasterRadioRecursive()
 	if not masterradio then return true end
 
@@ -225,10 +305,10 @@ function ENT:MasterRadioSyncThink()
 			if IsValid(self.GUI_Main) then
 				self.GUI_Main:SetSyncMode(false)
 			end
+		end
 
-			if self._StopInternal then
-				self:_StopInternal()
-			end
+		if self._StopInternal then
+			self:_StopInternal()
 		end
 
 		if IsValid(oldmasterradio) and oldmasterradio.slavesradios then
@@ -248,9 +328,12 @@ function ENT:MasterRadioSyncThink()
 	if not masterradio then return end
 
 	local this_st = self.StreamObj
-	local master_st = masterradio.StreamObj
+	if not IsValid(this_st) then return end
 
-	self:SetLoop(masterradio:GetLoop())
+	local master_st = masterradio.StreamObj
+	if not IsValid(master_st) then return end
+
+	self:SetPlaybackLoopMode(masterradio:GetPlaybackLoopMode())
 
 	local name = master_st:GetStreamName()
 	local url = master_st:GetURL()
@@ -261,20 +344,19 @@ function ENT:MasterRadioSyncThink()
 		statechange = true
 	end
 
-	if url ~= this_st:GetURL() then
+	if url ~= this_st:GetURL() or statechange then
 		this_st:SetURL(url)
+		this_st:Update()
 		statechange = true
 	end
 
 	this_st:SetPlayingState(playingstate)
 
-	if statechange then
-		if IsValid(self.GUI_Main) then
-			self.GUI_Main:SetSyncMode(true)
+	if statechange and IsValid(self.GUI_Main) then
+		self.GUI_Main:SetSyncMode(true)
 
-			self.GUI_Main:EnablePlaylist(false)
-			self.GUI_Main:Play(name, url)
-		end
+		self.GUI_Main:EnablePlaylist(false)
+		self.GUI_Main:Play(name, url)
 	end
 
 	if SERVER then
@@ -313,6 +395,14 @@ function ENT:MasterRadioSyncThink()
 	end
 
 	self._supermasterradio = nil
+end
+
+function ENT:PlaybackLoopModeThink()
+	if not self._callUpdatePlaybackLoopMode then
+		return
+	end
+
+	self:UpdatePlaybackLoopMode()
 end
 
 function ENT:PanelThink()
@@ -364,6 +454,13 @@ function ENT:StreamStopAnimModel()
 end
 
 function ENT:OnSetupModelSetup()
+	if IsValid(self.GUI_Main) then
+		self.GUI_Main.OnPlaybackLoopModeChange = function(this, newLoopMode)
+			if not IsValid(self) then return end
+			self:SetPlaybackLoopMode(newLoopMode)
+		end
+	end
+
 	self.AnimStopped = nil
 	self:StreamStopAnimModel()
 end

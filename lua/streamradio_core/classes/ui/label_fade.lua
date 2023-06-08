@@ -4,20 +4,6 @@ if not istable(CLASS) then
 end
 
 local BASE = CLASS:GetBaseClass()
-local changehooks = {
-	Text = "OnTextChange",
-	Font = "OnFontChange",
-	AlignX = "OnAlignChange",
-	AlignY = "OnAlignChange",
-}
-
-local function normalize_text(text)
-	text = tostring(text or "")
-	text = string.gsub(text, "[\r\n]", "" )
-	text = string.gsub(text, "\t", "    " )
-
-	return text
-end
 
 function CLASS:Create()
 	BASE.Create(self)
@@ -42,6 +28,8 @@ function CLASS:Create()
 				self:SwitchText()
 			end
 		end
+
+		self:StartSuperThink()
 	end
 
 	self.TextList = {}
@@ -115,7 +103,6 @@ function CLASS:GetPhase()
 
 	local fadeinend = fadetime
 	local fadeoutstart = fadeinend + staytime
-	local fadeoutend = staytime + fadetime
 
 	if time < fadeinend then
 		return math.Clamp(time / fadetime, 0, 1)
@@ -165,6 +152,16 @@ function CLASS:SetList(textlist)
 	self:SwitchText()
 end
 
+function CLASS:ShouldPerformRerender()
+	if SERVER then return false end
+
+	local phase = self:GetPhase()
+	if phase >= 1 then return false end
+	if phase <= 0 then return false end
+
+	return true
+end
+
 function CLASS:SuperThink()
 	if SERVER then return end
 
@@ -172,14 +169,14 @@ function CLASS:SuperThink()
 	if not self:IsVisible() then return end
 
 	self:CalcTime()
+	self.TextData.TextIndex = self:GetIndex()
+
+	if not self:ShouldPerformRerender() then return end
+
 	self:PerformRerender(true)
 end
 
 function CLASS:Render()
-	self:CalcTime()
-
-	self.TextData.TextIndex = self:GetIndex()
-
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
 

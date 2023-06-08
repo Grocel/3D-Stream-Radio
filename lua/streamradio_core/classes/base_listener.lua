@@ -3,6 +3,9 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBNetwork = StreamRadioLib.Network
+local LIBNet = StreamRadioLib.Net
+
 local BASE = CLASS:GetBaseClass()
 
 local g_listeners = CLASS:GetGlobalVar("base_listener_listeners", {})
@@ -13,7 +16,7 @@ CLASS:SetGlobalVar("base_listener_super_listeners", g_super_listeners)
 
 local g_hookname = "3dstreamradio_classsystem_listen"
 local g_super_hookname = g_hookname .. "_fast"
-local g_networkhookname = "3dstreamradio_classsystem_listen"
+local g_networkhookname = "classsystem_listen"
 local g_listengroups = SERVER and 6 or 4
 local g_lastgroup = 1
 local g_hookruns = false
@@ -125,36 +128,37 @@ local function g_superlistenfunc()
 	end
 end
 
-if SERVER then
-	util.AddNetworkString(g_networkhookname)
-end
+LIBNetwork.AddNetworkString(g_networkhookname)
 
-net.Receive(g_networkhookname, function(len, ply)
+LIBNet.Receive(g_networkhookname, function(len, ply)
 	if SERVER and not IsValid(ply) then
 		return
 	end
 
 	local nwent = net.ReadEntity()
-	local name = StreamRadioLib.Net.ReceiveStringHash()
-	local id = StreamRadioLib.Net.ReceiveStringHash() or ""
+	local nwname = LIBNet.ReceiveIdentifier()
+	local id = LIBNet.ReceiveIdentifier()
 
 	if not IsValid(nwent) then return end
-	if not name then return end
+	if not nwname then return end
+	if not id then return end
+
+	if nwname == "" then return end
 	if id == "" then return end
 
 	if not nwent._3dstraemradio_classobjs_nw_register then return end
 
-	local this = nwent._3dstraemradio_classobjs_nw_register[name]
+	local this = nwent._3dstraemradio_classobjs_nw_register[nwname]
 	if not IsValid(this) then
 		if this then
-			nwent._3dstraemradio_classobjs_nw_register[name] = nil
+			nwent._3dstraemradio_classobjs_nw_register[nwname] = nil
 		end
 
 		return
 	end
 
 	if not this._netreceivefuncs then
-		nwent._3dstraemradio_classobjs_nw_register[name] = nil
+		nwent._3dstraemradio_classobjs_nw_register[nwname] = nil
 		return
 	end
 
@@ -163,8 +167,8 @@ net.Receive(g_networkhookname, function(len, ply)
 		return
 	end
 
-	local thisname = this:GetName()
-	if name ~= thisname then
+	local thisnwname = this:GetNWName()
+	if nwname ~= thisnwname then
 		return
 	end
 
@@ -191,6 +195,7 @@ function CLASS:Create()
 	self._netreceivefuncs = {}
 	self.CanListen = true
 	self.Entity = nil
+	self.NWName = ''
 
 	self.Network = self:CreateListener({
 		Active = false,
@@ -678,20 +683,16 @@ function CLASS:SetName(name)
 		if ent._3dstreamradio_classobjs then
 			ent._3dstreamradio_classobjs[oldname] = nil
 		end
-
-		if ent._3dstraemradio_classobjs_nw_register then
-			ent._3dstraemradio_classobjs_nw_register[oldname] = nil
-		end
 	end
 
 	self.Name = name
 	self:RegisterForDupe()
-	self:ApplyNetworkedMode()
 end
 
 function CLASS:SetEntity(ent)
 	local oldent = self:GetEntity()
 	local name = self:GetName()
+	local nwname = self:GetNWName()
 
 	if IsValid(oldent) then
 		if oldent._3dstreamradio_classobjs then
@@ -699,7 +700,7 @@ function CLASS:SetEntity(ent)
 		end
 
 		if oldent._3dstraemradio_classobjs_nw_register then
-			oldent._3dstraemradio_classobjs_nw_register[name] = nil
+			oldent._3dstraemradio_classobjs_nw_register[nwname] = nil
 		end
 	end
 
@@ -712,32 +713,58 @@ function CLASS:GetEntity()
 	return self.Entity
 end
 
-for k, v in pairs(StreamRadioLib.Network) do
-	if not string.find(k, "^[G|S]etNW") then continue end
+function CLASS:SetNWName(nwname)
+	nwname = tostring(nwname or "")
+	nwname = string.gsub(nwname, "[%/%\\%s]", "_")
 
-	if not v then continue end
-	if k == "SetNWVarProxy" then continue end
-	if k == "SetNWHashProxy" then continue end
+	local ent = self:GetEntity()
+	local oldnwname = self:GetNWName()
 
-	CLASS[k] = function(this, key, value, ...)
-		if not this.Valid then return value end
-		local ent = this:GetEntity()
-		if not IsValid(ent) then return value end
-
-		local prefix = this:GetName()  .. "/"
-		key = prefix .. tostring(key or "")
-
-		local r = v(ent, key, value, ...)
-
-		if r == nil then
-			r = value
+	if IsValid(ent) then
+		if ent._3dstraemradio_classobjs_nw_register then
+			ent._3dstraemradio_classobjs_nw_register[oldnwname] = nil
 		end
+	end
 
-		return r
+	self.NWName = nwname
+	self:ApplyNetworkedMode()
+end
+
+function CLASS:GetNWName(name)
+	return self.NWName or ""
+end
+
+do
+	local loopThis = function(k, v)
+		if not string.find(k, "^[G|S]etNW") then return end
+
+		if not v then return end
+		if k == "SetNWVarCallback" then return end
+
+		CLASS[k] = function(this, key, value, ...)
+			if not this.Valid then return value end
+			local ent = this:GetEntity()
+			if not IsValid(ent) then return value end
+
+			local prefix = this:GetNWName()  .. "/"
+			key = prefix .. tostring(key or "")
+
+			local r = v(ent, key, value, ...)
+
+			if r == nil then
+				r = value
+			end
+
+			return r
+		end
+	end
+
+	for k, v in pairs(LIBNetwork) do
+		loopThis(k, v)
 	end
 end
 
-function CLASS:SetNWVarProxy(key, func, ...)
+function CLASS:SetNWVarCallback(key, datatype, func, ...)
 	if not self.Valid then return end
 	local ent = self:GetEntity()
 	if not IsValid(ent) then return end
@@ -745,7 +772,7 @@ function CLASS:SetNWVarProxy(key, func, ...)
 	func = self:GetFunction(func)
 	assert(func, "argument #2 must be a function!")
 
-	local prefix = self:GetName()  .. "/"
+	local prefix = self:GetNWName() .. "/"
 	key = prefix .. tostring(key or "")
 
 	local proxyfunc = function(this, nwkey, ...)
@@ -761,36 +788,20 @@ function CLASS:SetNWVarProxy(key, func, ...)
 		return unpack(ret)
 	end
 
-	return StreamRadioLib.Network.SetNWVarProxy(ent, key, proxyfunc, ...)
-end
-
-function CLASS:SetNWHashProxy(key, func, ...)
-	if not self.Valid then return end
-	local ent = self:GetEntity()
-	if not IsValid(ent) then return end
-
-	func = self:GetFunction(func)
-	assert(func, "argument #2 must be a function!")
-
-	local prefix = self:GetName()  .. "/"
-	key = prefix .. tostring(key or "")
-
-	local proxyfunc = function(this, nwkey, ...)
-		if not IsValid(self) then return end
-		if not self.Network.Active then return end
-
-		nwkey = string.gsub(nwkey, "^" .. string.PatternSafe(prefix), "", 1 )
-		return func(self, nwkey, ...)
-	end
-
-	return StreamRadioLib.Network.SetNWHashProxy(ent, key, proxyfunc, ...)
+	return LIBNetwork.SetNWVarCallback(ent, datatype, key, proxyfunc, ...)
 end
 
 function CLASS:NetReceive(id, func)
 	id = tostring(id or "")
 	if id == "" then return end
 
-	StreamRadioLib.Net.ToHash(id)
+	local nwname = self:GetNWName()
+
+	if nwname and nwname ~= "" then
+		LIBNetwork.AddNetworkString(nwname)
+	end
+
+	LIBNetwork.AddNetworkString(id)
 	self._netreceivefuncs[id] = func
 end
 
@@ -801,18 +812,20 @@ function CLASS:NetSend(id, func, send, ...)
 	if id == "" then return end
 
 	local ent = self:GetEntity()
-	local name = self:GetName()
+	local nwname = self:GetNWName()
 
 	if not IsValid(ent) then return end
-	if not name then return end
+	if not nwname then return end
+	if nwname == "" then return end
 
-	id = tostring(id or "")
+	LIBNetwork.AddNetworkString(nwname)
+	LIBNetwork.AddNetworkString(id)
 
-	net.Start(g_networkhookname, false)
+	LIBNet.Start(g_networkhookname, false)
 
 	net.WriteEntity(ent)
-	StreamRadioLib.Net.SendStringHash(name)
-	StreamRadioLib.Net.SendStringHash(id)
+	LIBNet.SendIdentifier(nwname)
+	LIBNet.SendIdentifier(id)
 
 	func = self:GetFunction(func)
 	if func then
@@ -859,24 +872,24 @@ function CLASS:ActivateNetworkedMode()
 		self._nw_applycall = nil
 	end
 
-	local name = self:GetName()
+	local nwname = self:GetNWName()
+	LIBNetwork.AddNetworkString(nwname)
+
 	local ent = self:GetEntity()
-	StreamRadioLib.Net.ToHash(name)
 
 	if not IsValid(ent) then
 		return
 	end
 
 	ent._3dstraemradio_classobjs_nw_register = ent._3dstraemradio_classobjs_nw_register or {}
-	ent._3dstraemradio_classobjs_nw_register[name] = self
+	ent._3dstraemradio_classobjs_nw_register[nwname] = self
 end
 
 function CLASS:DeactivateNetworkedMode()
 	self.Network.Active = false
 
-	local name = self:GetName()
+	local nwname = self:GetNWName()
 	local ent = self:GetEntity()
-	StreamRadioLib.Net.ToHash(name)
 
 	if not IsValid(ent) then
 		return
@@ -886,7 +899,7 @@ function CLASS:DeactivateNetworkedMode()
 		return
 	end
 
-	ent._3dstraemradio_classobjs_nw_register[name] = nil
+	ent._3dstraemradio_classobjs_nw_register[nwname] = nil
 end
 
 function CLASS:PostDupeInternal(ent, name, data)

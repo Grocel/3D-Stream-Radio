@@ -7,7 +7,7 @@ end
 RADIOFS.name = "M3U"
 RADIOFS.type = "m3u"
 RADIOFS.extension = "m3u"
-RADIOFS.icon = StreamRadioLib.GetPNGIcon("page")
+RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = 10000
 RADIOFS.default = true

@@ -17,6 +17,12 @@ LIB.AddConVar("vr", "vr_enable_trigger", "cl_streamradio_vr_enable_trigger", "1"
 	userdata = true,
 })
 
+LIB.AddConVar("vr", "vr_enable_cursor", "cl_streamradi_vr_enable_cursor", "1", {
+	label = "Show cursor in VR",
+	help = "Shows the cursor on radio GUIs in VR when set to 1. Default: 1",
+	type = "bool",
+})
+
 local function BuildMenuPanel(CPanel)
 	if not IsValid(CPanel) then return end
 
@@ -28,11 +34,11 @@ local function BuildMenuPanel(CPanel)
 
 	if not StreamRadioLib or not StreamRadioLib.Loaded then
 		local errorlabel = vgui.Create("DLabel")
-
 		errorlabel:SetDark(false)
 		errorlabel:SetHighlight(true)
 		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis menu could not be loaded.")
 		errorlabel:SizeToContents()
+
 		CPanel:AddPanel(errorlabel)
 
 		return
@@ -40,11 +46,11 @@ local function BuildMenuPanel(CPanel)
 
 	if not StreamRadioLib.VR.IsInstalled() then
 		local errorlabel = vgui.Create("DLabel")
-
 		errorlabel:SetDark(false)
 		errorlabel:SetHighlight(true)
 		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. "\nVRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
 		errorlabel:SizeToContents()
+
 		CPanel:AddPanel(errorlabel)
 
 		CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())

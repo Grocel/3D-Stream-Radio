@@ -13,6 +13,7 @@ function CLASS:Create()
 	self.TextPanel:SetSize(350, 1)
 	self.TextPanel:SetAlign(TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self.TextPanel:SetName("text")
+	self.TextPanel:SetNWName("txt")
 	self.TextPanel:SetSkinIdentifyer("text")
 	self.TextPanel:SetStartLine(0)
 

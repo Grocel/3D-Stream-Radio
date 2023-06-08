@@ -1,10 +1,12 @@
+local StreamRadioLib = StreamRadioLib or {}
+local LIBNet = StreamRadioLib.Net
+
 local string = string
 local math = math
 local table = table
 local vgui = vgui
-local surface = surface
 local net = net
-local StreamRadioLib = StreamRadioLib or {}
+
 local IsValid = IsValid
 local unpack = unpack
 local Derma_Query = Derma_Query
@@ -451,7 +453,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 
 		MenuItem:SetImage("icon16/folder_add.png")
 
-		--Copy/Paste (Todo)
+		-- Copy/Paste -- @TODO
 		--[[
 			if (filetype ~= StreamRadioLib.TYPE_FOLDER and not newfile) then
 				MenuItem = Menu:AddOption("Copy", function()
@@ -2009,7 +2011,7 @@ function PANEL:SetPath( filepath, filetype, force, nofullclear )
 		local ListenID = StreamRadioLib.Editor.ListenToPath( filepath )
 		StreamRadioLib.Editor.SetCallback( self.Callback, self )
 
-		net.Start( "Streamradio_Editor_Request_Files" )
+		LIBNet.Start( "Editor_Request_Files" )
 			StreamRadioLib.NetSendFileEditor( filepath, "", filetype or StreamRadioLib.TYPE_FOLDER, ListenID )
 		net.SendToServer( )
 	end

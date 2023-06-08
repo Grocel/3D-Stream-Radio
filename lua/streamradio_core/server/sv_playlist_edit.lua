@@ -1,15 +1,10 @@
 StreamRadioLib.Editor = StreamRadioLib.Editor or {}
 local LIB = StreamRadioLib.Editor
+local LIBNet = StreamRadioLib.Net
 
 local pairs = pairs
-local type = type
 local IsValid = IsValid
-local file = file
-local table = table
 local string = string
-local util = util
-local player = player
-local ents = ents
 local net = net
 local ListenPath = ""
 
@@ -17,12 +12,14 @@ function LIB.GetPath( )
 	return ListenPath
 end
 
-local function StopLoading( ply, cmd, args )
-	if ( IsValid( ply ) and not ply:IsAdmin( ) ) then return end
-	LIB.Reset( ply )
-end
+do
+	local function StopLoading( ply, cmd, args )
+		if ( IsValid( ply ) and not ply:IsAdmin( ) ) then return end
+		LIB.Reset( ply )
+	end
 
-concommand.Add( "sv_streamradio_playlisteditor_reset", StopLoading )
+	concommand.Add( "sv_streamradio_playlisteditor_reset", StopLoading )
+end
 
 local OK_CODES = {
 	[StreamRadioLib.EDITOR_ERROR_OK] = true,
@@ -45,7 +42,7 @@ local function EditorLog(ply, msgstring, ...)
 end
 
 local function EditorError( ply, path, code )
-	net.Start( "Streamradio_Editor_Error" )
+	LIBNet.Start("Editor_Error")
 	StreamRadioLib.NetSendEditorError( path, code )
 
 	if ( IsValid( ply ) ) then
@@ -195,7 +192,7 @@ function LIB.OpenFolder( ply, path )
 			if not IsValid(ply) then return false end
 			if not istable(v) then return true end
 
-			net.Start("Streamradio_Editor_Return_Files")
+			LIBNet.Start("Editor_Return_Files")
 				StreamRadioLib.NetSendFileEditor(v.path, v.file, v.type, ListenPath)
 			net.Send(ply)
 		end, function()
@@ -225,7 +222,7 @@ function LIB.OpenFile( ply, path, type )
 			if not IsValid(ply) then return false end
 			if not istable(v) then return true end
 
-			net.Start("Streamradio_Editor_Return_Playlist")
+			LIBNet.Start("Editor_Return_Playlist")
 				StreamRadioLib.NetSendPlaylistEditor( v.url, v.name, ListenPath )
 			net.Send(ply)
 		end, function()
@@ -234,7 +231,7 @@ function LIB.OpenFile( ply, path, type )
 	end)
 end
 
-net.Receive( "Streamradio_Editor_Request_Files", function( len, ply )
+LIBNet.Receive( "Editor_Request_Files", function( len, ply )
 	if not IsValid(ply) then return false end
 	if not ply:IsAdmin() then return false end
 	local path, name, type, parentpath = StreamRadioLib.NetReceiveFileEditor( )
@@ -247,7 +244,7 @@ net.Receive( "Streamradio_Editor_Request_Files", function( len, ply )
 	end
 end )
 
-net.Receive( "Streamradio_Editor_Request_Playlist", function( len, ply )
+LIBNet.Receive( "Editor_Request_Playlist", function( len, ply )
 	if not IsValid(ply) then return end
 	if not ply:IsAdmin() then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_NOADMIN) end
 

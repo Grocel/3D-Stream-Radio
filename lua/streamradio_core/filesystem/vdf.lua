@@ -7,7 +7,7 @@ end
 RADIOFS.name = "VDF"
 RADIOFS.type = "vdf"
 RADIOFS.extension = "vdf"
-RADIOFS.icon = StreamRadioLib.GetPNGIcon("table")
+RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = 1000
 
