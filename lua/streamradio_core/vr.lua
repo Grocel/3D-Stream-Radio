@@ -358,7 +358,7 @@ function LIB.RenderMenu(panel)
 
 			vrmod.MenuRenderStart(uid)
 
-			StreamRadioLib.CatchAndErrorNoHalt(function()
+			StreamRadioLib.CatchAndErrorNoHaltWithStack(function()
 				mainPanel:PaintManual()
 			end)
 

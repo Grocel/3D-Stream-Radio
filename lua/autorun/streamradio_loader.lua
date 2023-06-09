@@ -486,14 +486,14 @@ end
 local outdated = false
 
 if CLIENT then
-	if Gmodversion < 220608 and Gmodversion > 5 then
+	if Gmodversion < 220713 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "Your GMod-Client (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Client!"
 		outdated = true
 
 		ErrorNoHalt(AddonPrefix .. StreamRadioLib.ErrorString .. "\n")
 	end
 else
-	if Gmodversion < 220608 and Gmodversion > 5 then
+	if Gmodversion < 220713 and Gmodversion > 5 then
 		StreamRadioLib.ErrorString = "The GMod-Server (Version: " .. Gmodversion .. ") is too old!\nPlease update the GMod-Server!"
 		outdated = true
 

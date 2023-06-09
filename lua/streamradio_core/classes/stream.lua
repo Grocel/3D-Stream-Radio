@@ -20,7 +20,7 @@ local SERVER = SERVER
 local CLIENT = CLIENT
 
 local EmptyVector = Vector()
-local catchAndErrorNoHalt = StreamRadioLib.CatchAndErrorNoHalt
+local catchAndErrorNoHaltWithStack = StreamRadioLib.CatchAndErrorNoHaltWithStack
 
 local BASS3 = BASS3 or {}
 
@@ -1235,7 +1235,7 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, noBlock, retrycount)
 	end
 
 	local safeCallback = function(...)
-		catchAndErrorNoHalt(callback, ...)
+		catchAndErrorNoHaltWithStack(callback, ...)
 	end
 
 	if not URLonline then
@@ -1871,6 +1871,7 @@ function CLASS:GetType()
 end
 
 function CLASS:SetVolume( volume )
+	if CLIENT then return end
 	if not self.Valid then return end
 	self.Volume.SVMul = volume or 1
 end

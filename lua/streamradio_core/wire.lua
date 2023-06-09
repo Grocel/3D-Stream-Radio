@@ -191,7 +191,7 @@ function LIB.WireUserTrace(ent)
 
 	-- prevent the cache from overflowing
 	if g_WireUserTraceCacheCount > 1024 then
-		g_WireUserTraceCache = {}
+		table.Empty(g_WireUserTraceCache)
 		g_WireUserTraceCacheCount = 0
 	end
 

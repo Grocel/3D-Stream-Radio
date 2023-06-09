@@ -104,6 +104,11 @@ function CLASS:Create()
 	self.Errorbox:SetNWName("err")
 	self.Errorbox:SetSkinIdentifyer("error")
 
+	if IsValid(self.Errorbox.CloseButton) and CLIENT then
+		-- The error box is handled on the server, so the client shouldn't touch it.
+		self.Errorbox.CloseButton.DoClick = nil
+	end
+
 	self.Errorbox.OnCloseClick = function()
 		self:GoUpPath()
 	end

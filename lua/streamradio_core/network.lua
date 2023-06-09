@@ -301,7 +301,7 @@ local function pullNWVars(ent)
 		local newvalue = LIB.GetNWVar(ent, data.datatype, name)
 
 		if oldvalue == newvalue then return end
-		StreamRadioLib.CatchAndErrorNoHalt(data.callback, ent, name, oldvalue, newvalue)
+		StreamRadioLib.CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
 
 		NW.Names[name].oldvalue = newvalue
 	end
@@ -326,7 +326,7 @@ local function pullDTVars(ent)
 		local newvalue = LIB.GetDTNetworkVar(ent, name)
 
 		if oldvalue == newvalue then return end
-		StreamRadioLib.CatchAndErrorNoHalt(data.callback, ent, name, oldvalue, newvalue)
+		StreamRadioLib.CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
 
 		NW.Names[name].oldvalue = newvalue
 	end

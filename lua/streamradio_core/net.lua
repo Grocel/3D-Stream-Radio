@@ -82,7 +82,7 @@ function LIB.SendIdentifier(identifier)
 		identifierId = LIBNetwork.NetworkStringToID(identifier)
 
 		if identifierId == 0 then
-			ErrorNoHaltWithStack("Identifier '" .. identifier .. "' was not added via util.AddNetworkString() yet.")
+			StreamRadioLib.ErrorNoHaltWithStack("Identifier '" .. identifier .. "' was not added via util.AddNetworkString() yet.")
 		end
 	end
 

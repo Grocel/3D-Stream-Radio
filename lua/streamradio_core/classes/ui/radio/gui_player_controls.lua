@@ -154,6 +154,7 @@ function CLASS:Create()
 	self.VolumeDownButton:SetSkinIdentifyer("button")
 	self.VolumeDownButton:SetTooltip("Decrease volume")
 	self.VolumeDownButton.OnMousePressed = function()
+		if CLIENT then return end
 		if not IsValid(self.StreamOBJ) then return end
 
 		local newvol = self.StreamOBJ:GetVolume()
@@ -171,6 +172,7 @@ function CLASS:Create()
 	self.VolumeUpButton:SetSkinIdentifyer("button")
 	self.VolumeUpButton:SetTooltip("Increase volume")
 	self.VolumeUpButton.OnMousePressed = function()
+		if CLIENT then return end
 		if not IsValid(self.StreamOBJ) then return end
 
 		local newvol = self.StreamOBJ:GetVolume()
@@ -270,13 +272,14 @@ function CLASS:Create()
 		return FormatTimeleft(time, len)
 	end
 
+	-- @TODO: fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT
 	self.PlayBar.OnFractionChangeEdit = function(this, v)
 		if not IsValid(self.StreamOBJ) then return end
 
 		local noise = math.random() * 0.00001
 		local len = self.StreamOBJ:GetMasterLength()
 
-		-- Set a fake value that is minimal off target to force a change detection when the right one is set
+		-- add a minimal noise to the value, so we force the change in any case
 		self.StreamOBJ:SetTime(len * v - noise, true)
 	end
 
@@ -547,6 +550,10 @@ function CLASS:UpdateFromStream()
 	local time = StreamOBJ:GetTime()
 
 	local isEndlessOrNoStream = StreamOBJ:IsEndless() or StreamOBJ:IsLoading() or StreamOBJ:GetError() ~= 0 or StreamOBJ:GetMuted()
+
+	-- @TODO: Fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT.
+	--        That's because self.PlayBar is disabled on the server as BASS streams don't exist on servers.
+	--        Thus these checks below are buggy and will be fixed some day. It is difficult to fix right now.
 
 	if IsValid(self.PlayBar) and self.PlayBar:IsVisible() then
 		if isEndlessOrNoStream then

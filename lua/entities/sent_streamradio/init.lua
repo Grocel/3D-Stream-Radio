@@ -644,7 +644,7 @@ function ENT:OnWireInputTrigger(name, value, wired)
 		end
 
 		local delta = math.abs(curtime - value)
-		local maxDelta = 0.25
+		local maxDelta = engine.TickInterval() * 4
 
 		if delta < maxDelta then
 			return

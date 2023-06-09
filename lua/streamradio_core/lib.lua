@@ -69,16 +69,21 @@ function StreamRadioLib.Log(ply, msgstring)
 	MsgN(msgstring)
 end
 
+function StreamRadioLib.ErrorNoHaltWithStack(err)
+	err = tostring(err or "")
+	ErrorNoHaltWithStack(err)
+end
+
 local catchAndNohalt = function(err)
-	local msgstring = err
+	local msgstring = tostring(err or "")
 	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
 
-	ErrorNoHalt(msgstring)
+	StreamRadioLib.ErrorNoHaltWithStack(err)
 
 	return err
 end
 
-function StreamRadioLib.CatchAndErrorNoHalt(func, ...)
+function StreamRadioLib.CatchAndErrorNoHaltWithStack(func, ...)
 	return xpcall(func, catchAndNohalt, ...)
 end
 
@@ -111,7 +116,7 @@ end
 function StreamRadioLib.Hash(str)
 	str = tostring(str or "")
 
-	local salt = "StreamRadioLib_Hash230603"
+	local salt = "StreamRadioLib_Hash230609"
 
 	local data = string.format(
 		"[%s][%s]",
@@ -329,7 +334,7 @@ function StreamRadioLib.IsSameFrame(id)
 
 		-- prevent the cache from overflowing
 		if g_LastFrameRegisterCount > 1024 then
-			g_LastFrameRegister = {}
+			table.Empty(g_LastFrameRegister)
 			g_LastFrameRegisterCount = 0
 		end
 
@@ -506,7 +511,7 @@ function StreamRadioLib.Trace(ent)
 
 	-- prevent the cache from overflowing
 	if g_PlayerTraceCacheCount > 1024 then
-		g_PlayerTraceCache = {}
+		table.Empty(g_PlayerTraceCache)
 		g_PlayerTraceCacheCount = 0
 	end
 
@@ -699,6 +704,77 @@ local function ReleaseLastRadioControl(ply, trace, userEntity)
 	if not LastRadio.Control then return end
 
 	LastRadio:Control( ply, trace, false, userEntity )
+end
+
+local g_checkPropProtectionCache = {}
+local g_checkPropProtectionCacheEmpty = true
+local g_checkPropProtectionCacheExpire = nil
+
+local function ClearCheckPropProtectionCache()
+	if g_checkPropProtectionCacheEmpty then
+		return
+	end
+
+	table.Empty(g_checkPropProtectionCache)
+
+	g_checkPropProtectionCacheEmpty = true
+	g_checkPropProtectionCacheExpire = nil
+end
+
+function StreamRadioLib.CheckPropProtectionAgainstUse(ent, ply)
+	if not IsValid( ent ) then return false end
+	if not IsValid( ply ) then return false end
+
+	if CLIENT and not ent.CPPICanUse then
+		return true
+	end
+
+	local cacheId = tostring(ent) .. "_" .. tostring(ply)
+	local now = RealTime()
+
+	-- cache the check result for a short time to avoid spam calling the hook "PlayerUse" and CPPI
+	if g_checkPropProtectionCacheExpire and g_checkPropProtectionCacheExpire <= now then
+		ClearCheckPropProtectionCache()
+	end
+
+	if g_checkPropProtectionCache[cacheId] ~= nil then
+		return g_checkPropProtectionCache[cacheId]
+	end
+
+	if g_checkPropProtectionCacheEmpty then
+		g_checkPropProtectionCacheExpire = now + 3
+		g_checkPropProtectionCacheEmpty = false
+	end
+
+	g_checkPropProtectionCache[cacheId] = false
+
+	-- Support for prop protections
+	if ent.CPPICanUse then
+		local status, use = StreamRadioLib.CatchAndErrorNoHaltWithStack(ent.CPPICanUse, ent, ply)
+
+		if not status then
+			return false
+		end
+
+		if not use then
+			return false
+		end
+	end
+
+	if SERVER then
+		local status, use = StreamRadioLib.CatchAndErrorNoHaltWithStack(hook.Run, "PlayerUse", ply, ent)
+
+		if not status then
+			return false
+		end
+
+		if not use then
+			return false
+		end
+	end
+
+	g_checkPropProtectionCache[cacheId] = true
+	return true
 end
 
 function StreamRadioLib.CanUseRadio(ply, radio, userEntity)
@@ -1080,7 +1156,10 @@ function StreamRadioLib.DeleteFolder(path)
 end
 
 StreamRadioLib.SpawnedRadios = {}
+
 local LastThink = RealTime()
+
+local g_radioCount = 0
 
 hook.Add("Think", "Streamradio_Entity_Think", function()
 	if not StreamRadioLib then return end
@@ -1091,6 +1170,7 @@ hook.Add("Think", "Streamradio_Entity_Think", function()
 	LastThink = now
 
 	StreamRadioLib.SpawnedRadios = StreamRadioLib.SpawnedRadios or {}
+	local radioCount = 0
 
 	for ent, _ in pairs(StreamRadioLib.SpawnedRadios) do
 		if not IsValid(ent) then
@@ -1103,6 +1183,8 @@ hook.Add("Think", "Streamradio_Entity_Think", function()
 			continue
 		end
 
+		radioCount = radioCount + 1
+
 		if ent.FastThink then
 			ent:FastThink()
 		end
@@ -1112,4 +1194,18 @@ hook.Add("Think", "Streamradio_Entity_Think", function()
 
 		ent:DormantThink()
 	end
+
+	g_radioCount = radioCount
+
+	if g_radioCount <= 0 then
+		ClearCheckPropProtectionCache()
+	end
 end)
+
+function StreamRadioLib.GetRadioCount()
+	return g_radioCount
+end
+
+function StreamRadioLib.HasSpawnedRadios()
+	return g_radioCount > 0
+end

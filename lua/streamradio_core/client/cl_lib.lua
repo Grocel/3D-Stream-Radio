@@ -45,15 +45,18 @@ local g_inRenderScene = false
 hook.Add( "RenderScene", "Streamradio_CamInfo", function( origin, angles, fov )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib.HasSpawnedRadios() then return end
+
+	if g_inRenderScene then return end
+	g_inRenderScene = true
 
 	if StreamRadioLib.VR.IsActive() then
 		g_camPos = nil
+		g_inRenderScene = false
+
 		return
 	end
 
-	if g_inRenderScene then return end
-
-	g_inRenderScene = true
 	g_camPos = origin
 	g_inRenderScene = false
 end )
@@ -64,6 +67,7 @@ local g_lastradio = nil
 local function ReleaseLastRadioControl()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib.HasSpawnedRadios() then return end
 
 	local ply = LocalPlayer()
 	if not IsValid( ply ) then return end
@@ -133,6 +137,7 @@ end
 hook.Add("Think", "Streamradio_Control", function( )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib.HasSpawnedRadios() then return end
 
 	local ply = LocalPlayer()
 	if not IsValid( ply ) then return end
@@ -265,7 +270,7 @@ do
 		local TestChannel = StreamRadioLib._TestChannel or StreamRadioLib.CreateOBJ("stream")
 
 		if not IsValid(TestChannel) then
-			ErrorNoHaltWithStack("Could not create the TestChannel!\n")
+			StreamRadioLib.ErrorNoHaltWithStack("Could not create the TestChannel!\n")
 			return
 		end
 

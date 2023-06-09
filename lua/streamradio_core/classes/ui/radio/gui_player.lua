@@ -53,6 +53,7 @@ function CLASS:Create()
 	end
 
 	self.VolumeBar.OnFractionChangeEdit = function(this, v)
+		if CLIENT then return end
 		if not IsValid(self.StreamOBJ) then return end
 		self.StreamOBJ:SetVolume(v)
 	end
@@ -122,6 +123,10 @@ function CLASS:Create()
 	self.CloseButton:SetSize(200, 60)
 	self.CloseButton:SetText("Back")
 	self.CloseButton.DoClick = function()
+		if CLIENT then
+			return
+		end
+
 		if self.State then
 			self.State.Error = 0
 		end

@@ -77,7 +77,7 @@ local function ErrorCheckArg( var, tright, argn, funcname, level )
 	local t = type( var )
 
 	if t ~= tright then
-		ErrorNoHaltWithStack( string.format( "bad argument #%i to '%s' (%s or nil expected, got %s)", argn, funcname, tright, t ), level or 3 )
+		StreamRadioLib.ErrorNoHaltWithStack( string.format( "bad argument #%i to '%s' (%s or nil expected, got %s)", argn, funcname, tright, t ), level or 3 )
 		return false
 	end
 
@@ -92,7 +92,7 @@ local function ErrorCheckRadioSettings( settings, argn, funcname, level )
 		local t = type( v )
 		local tright = ValidTypes[k]
 		if not tright or t == tright then continue end
-		ErrorNoHaltWithStack( string.format( "bad datatype at index '%s' of argument #%i at '%s' (%s or nil expected, got %s)", k, argn, funcname, tright, t ), level )
+		StreamRadioLib.ErrorNoHaltWithStack( string.format( "bad datatype at index '%s' of argument #%i at '%s' (%s or nil expected, got %s)", k, argn, funcname, tright, t ), level )
 
 		return false
 	end
@@ -138,7 +138,7 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 		if StreamRadioLib.Msg then
 			StreamRadioLib.Msg( ply, err )
 		else
-			ErrorNoHaltWithStack( err, 2 )
+			StreamRadioLib.ErrorNoHaltWithStack( err, 2 )
 		end
 
 		return

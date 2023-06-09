@@ -45,25 +45,6 @@ function ENT:GetDisplayPos( )
 	return pos, ang
 end
 
-function ENT:CheckPropProtection(ply)
-	-- Support for prop protections
-	if self.CPPICanUse then
-		local use = self:CPPICanUse(ply) or false
-		if not use then
-			return false
-		end
-	end
-
-	if SERVER then
-		local use = hook.Run("PlayerUse", ply, radio)
-		if not use then
-			return false
-		end
-	end
-
-	return true
-end
-
 function ENT:CanControlInternal(ply, userEntity)
 	if self:GetDisableInput() then return false end
 
@@ -71,7 +52,7 @@ function ENT:CanControlInternal(ply, userEntity)
 	if self:GetDisableDisplay() then return false end
 
 	-- Check the player for +use permission
-	if not self:CheckPropProtection(ply) then
+	if not StreamRadioLib.CheckPropProtectionAgainstUse(self, ply) then
 		return false
 	end
 
@@ -118,13 +99,22 @@ function ENT:CanControl(ply, userEntity)
 	end
 
 	local cacheId = tostring(ply) .. "_" .. tostring(userEntity)
+	local now = RealTime()
+
+	-- cache the check result for a short time to avoid running expensive functions every tick
+	if self._canControlCacheExpire and self._canControlCacheExpire <= now then
+		self._canControlCache = nil
+		self._canControlCacheExpire = nil
+	end
 
 	if self._canControlCache and self._canControlCache[cacheId] ~= nil then
 		return self._canControlCache[cacheId]
 	end
 
-	self._canControlCache = self._canControlCache or {}
-	self._canControlCache[cacheId] = nil
+	if not self._canControlCache then
+		self._canControlCache = {}
+		self._canControlCacheExpire = now + 0.25
+	end
 
 	local result = self:CanControlInternal(ply, userEntity)
 
@@ -176,7 +166,11 @@ function ENT:GetCursor( ply, trace, userEntity )
 	end
 
 	local scale = self:GetScale()
+	if scale <= 0 then return false end
+
 	local pos, ang = self:GetDisplayPos()
+	if not pos then return false end
+	if not ang then return false end
 
 	local TraceHitPos = util.IntersectRayWithPlane( trace.StartPos, trace.Normal, pos, ang:Up( ) )
 
@@ -211,7 +205,7 @@ function ENT:CallModelFunction(index, ...)
 	local status, err, a, b, c, d, e, f, g = pcall( self.ModelData[index], self.ModelData, self, ... )
 
 	if not status and err then
-		ErrorNoHalt( err .. "\n" )
+		StreamRadioLib.ErrorNoHaltWithStack( err .. "\n" )
 		return nil
 	end
 
@@ -356,9 +350,6 @@ end
 
 function ENT:FastThink()
 	BaseClass.FastThink(self)
-
-	self._canControlCache = {}
-
 	self:ControlThink(self:GetLastUser(), self:GetLastUsingEntity())
 end
 
