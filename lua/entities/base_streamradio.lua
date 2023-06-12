@@ -322,7 +322,7 @@ end
 
 function ENT:Initialize()
 	if self.__IsLibLoaded then
-		StreamRadioLib.SpawnedRadios[self] = true
+		StreamRadioLib.RegisterRadio(self)
 	end
 
 	if SERVER then
@@ -418,7 +418,7 @@ function ENT:PostFakeRemove( )
 		return nil
 	end
 
-	StreamRadioLib.SpawnedRadios[self] = true
+	StreamRadioLib.RegisterRadio(self)
 end
 
 function ENT:OnRemove()
@@ -438,7 +438,7 @@ function ENT:OnRemove()
 	end)
 
 	if self.__IsLibLoaded then
-		StreamRadioLib.SpawnedRadios[self] = nil
+		StreamRadioLib.UnregisterRadio(self)
 	end
 
 	if self.__IsWiremodLoaded and SERVER then
@@ -475,6 +475,8 @@ end
 
 function ENT:Think()
 	BaseClass.Think(self)
+
+	StreamRadioLib.RegisterRadio(self)
 
 	local curtime = CurTime()
 

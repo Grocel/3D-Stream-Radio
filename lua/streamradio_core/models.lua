@@ -133,7 +133,7 @@ local function AddMultiModels(script, modellist)
 	return true
 end
 
-function LIB.LoadModelSettings( )
+function LIB.LoadModelSettings()
 	local files = file.Find( LuaModelDirectory .. "/*", "LUA" )
 	Models = {}
 
@@ -150,7 +150,7 @@ function LIB.LoadModelSettings( )
 
 	AddMultiModels( "_nm_speakers.lua", nm_speakers )
 
-	for ent, k in pairs( StreamRadioLib.SpawnedRadios ) do
+	for index, ent in pairs(StreamRadioLib.SpawnedRadios or {}) do
 		if not IsValid(ent) then continue end
 		ent:SetUpModel()
 	end
@@ -158,7 +158,7 @@ function LIB.LoadModelSettings( )
 	collectgarbage( "collect" )
 end
 
-function LIB.GetModelSettings( model, setting )
+function LIB.GetModelSettings(model, setting)
 	if not model then return end
 	local modeldata = Models[model] or Models["default"] or {}
 	if not setting then return table.Copy(modeldata) end
@@ -169,7 +169,7 @@ end
 function LIB.RegisteredModels( )
 	local ToolModels = {}
 
-	for model, setting in pairs( Models ) do
+	for model, setting in pairs(Models) do
 		if model == "default" then continue end
 		if not StreamRadioLib.IsValidModelFile(model) then continue end
 		if setting.HiddenInTool then continue end

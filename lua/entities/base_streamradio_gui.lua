@@ -215,8 +215,14 @@ end
 function ENT:SetUpModel()
 	if not self.__IsLibLoaded then return end
 	if not IsValid(self.StreamObj) then return end
+	if self._badModel then return end
 
 	local model = self:GetModel()
+	if not StreamRadioLib.IsValidModel(model) then
+		self._badModel = true
+		return
+	end
+
 	self.ModelData = LIBModel.GetModelSettings(model)
 	local MD = self.ModelData or {}
 
@@ -254,6 +260,14 @@ function ENT:SetUpModel()
 		return
 	end
 
+	self:SetupGui()
+
+	if self.OnSetupModelSetup then
+		self:OnSetupModelSetup()
+	end
+end
+
+function ENT:SetupGui()
 	if not IsValid(self.GUI) then
 		self.GUI = StreamRadioLib.CreateOBJ("gui_controller")
 	end
@@ -299,15 +313,12 @@ function ENT:SetUpModel()
 		self:OnPlayerShown()
 	end
 
+	local model = self:GetModel()
 	self:CallModelFunction("InitializeFonts", model)
 	self:CallModelFunction("SetupGUI", self.GUI, self.GUI_Main)
 
 	self.GUI:SetSkin(LIBSkin.GetDefaultSkin())
 	self.GUI:PerformRerender(true)
-
-	if self.OnSetupModelSetup then
-		self:OnSetupModelSetup()
-	end
 end
 
 function ENT:StreamOnConnect(stream, channel, metadata)
@@ -468,6 +479,7 @@ end
 
 function ENT:Initialize()
 	BaseClass.Initialize(self)
+
 	self:SetUpModel()
 end
 
@@ -582,6 +594,7 @@ if CLIENT then
 		local ply = LocalPlayer()
 		if not self:CheckDistanceToEntity(ply, StreamRadioLib.GetDrawDistance(), nil, StreamRadioLib.GetCameraViewPos(ply)) then return end
 
+		local lastUser = self:GetLastUsingEntity()
 		local scale = self:GetScale()
 		local pos, ang = self:GetDisplayPos()
 
@@ -591,7 +604,7 @@ if CLIENT then
 		self.GUI:SetAllowCursor(StreamRadioLib.IsCursorEnabled())
 		self.GUI:SetDrawAlpha(col.a / 255)
 
-		if Cursor then
+		if Cursor or not IsValid(lastUser) then
 			self.GUI:SetCursor(CursorX or -1, CursorY or -1)
 		end
 

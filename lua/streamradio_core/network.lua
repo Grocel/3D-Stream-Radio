@@ -14,8 +14,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		nwGetter = "GetNWAngle",
-		nwSetter = "SetNWAngle",
+		nwGetter = "GetNW2Angle",
+		nwSetter = "SetNW2Angle",
 	},
 
 	["Bool"] = {
@@ -26,8 +26,8 @@ local g_types = {
 			return tobool(v)
 		end,
 		dtmaxcount = 32,
-		nwGetter = "GetNWBool",
-		nwSetter = "SetNWBool",
+		nwGetter = "GetNW2Bool",
+		nwSetter = "SetNW2Bool",
 	},
 
 	["Entity"] = {
@@ -36,8 +36,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		nwGetter = "GetNWEntity",
-		nwSetter = "SetNWEntity",
+		nwGetter = "GetNW2Entity",
+		nwSetter = "SetNW2Entity",
 	},
 
 	["Float"] = {
@@ -46,8 +46,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		nwGetter = "GetNWFloat",
-		nwSetter = "SetNWFloat",
+		nwGetter = "GetNW2Float",
+		nwSetter = "SetNW2Float",
 	},
 
 	["Int"] = {
@@ -58,8 +58,8 @@ local g_types = {
 			return math.floor(v)
 		end,
 		dtmaxcount = 32,
-		nwGetter = "GetNWInt",
-		nwSetter = "SetNWInt",
+		nwGetter = "GetNW2Int",
+		nwSetter = "SetNW2Int",
 	},
 
 	["String"] = {
@@ -68,8 +68,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 0,
-		nwGetter = "GetNWString",
-		nwSetter = "SetNWString",
+		nwGetter = "GetNW2String",
+		nwSetter = "SetNW2String",
 	},
 
 	["Vector"] = {
@@ -78,8 +78,8 @@ local g_types = {
 		end,
 		convert = nil,
 		dtmaxcount = 32,
-		nwGetter = "GetNWVector",
-		nwSetter = "SetNWVector",
+		nwGetter = "GetNW2Vector",
+		nwSetter = "SetNW2Vector",
 	},
 }
 

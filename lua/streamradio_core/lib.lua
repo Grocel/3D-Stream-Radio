@@ -1157,33 +1157,40 @@ end
 
 StreamRadioLib.SpawnedRadios = {}
 
-local LastThink = RealTime()
+local g_lastThink = RealTime()
 
 local g_radioCount = 0
+local g_streamingRadioCount = 0
 
 hook.Add("Think", "Streamradio_Entity_Think", function()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 
 	local now = RealTime()
-	if (now - LastThink) < 0.01 then return end
-	LastThink = now
+	if (now - g_lastThink) < 0.01 then return end
+	g_lastThink = now
 
 	StreamRadioLib.SpawnedRadios = StreamRadioLib.SpawnedRadios or {}
-	local radioCount = 0
 
-	for ent, _ in pairs(StreamRadioLib.SpawnedRadios) do
+	local radioCount = 0
+	local streamingRadioCount = 0
+
+	for index, ent in pairs(StreamRadioLib.SpawnedRadios) do
 		if not IsValid(ent) then
-			StreamRadioLib.SpawnedRadios[ent] = nil
+			StreamRadioLib.SpawnedRadios[index] = nil
 			continue
 		end
 
 		if not ent.__IsRadio then
-			StreamRadioLib.SpawnedRadios[ent] = nil
+			StreamRadioLib.SpawnedRadios[index] = nil
 			continue
 		end
 
 		radioCount = radioCount + 1
+
+		if ent.IsStreaming and ent:IsStreaming() then
+			streamingRadioCount = streamingRadioCount + 1
+		end
 
 		if ent.FastThink then
 			ent:FastThink()
@@ -1196,6 +1203,7 @@ hook.Add("Think", "Streamradio_Entity_Think", function()
 	end
 
 	g_radioCount = radioCount
+	g_streamingRadioCount = streamingRadioCount
 
 	if g_radioCount <= 0 then
 		ClearCheckPropProtectionCache()
@@ -1208,4 +1216,36 @@ end
 
 function StreamRadioLib.HasSpawnedRadios()
 	return g_radioCount > 0
+end
+
+function StreamRadioLib.GetStreamingRadioCount()
+	return g_streamingRadioCount
+end
+
+function StreamRadioLib.HasStreamingRadios()
+	return g_streamingRadioCount > 0
+end
+
+function StreamRadioLib.RegisterRadio(ent)
+	if not IsValid(ent) then
+		return
+	end
+
+	if not ent.__IsRadio then
+		return
+	end
+
+	StreamRadioLib.SpawnedRadios[ent:EntIndex()] = ent
+end
+
+function StreamRadioLib.UnregisterRadio(ent)
+	if not IsValid(ent) then
+		return
+	end
+
+	if not ent.__IsRadio then
+		return
+	end
+
+	StreamRadioLib.SpawnedRadios[ent:EntIndex()] = nil
 end

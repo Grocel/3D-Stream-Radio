@@ -878,6 +878,7 @@ end
 
 function CLASS:StillSearching()
 	if not self.Valid then return false end
+
 	if self.URL.extern == "" then return false end
 	if self.URL.active == "" then return false end
 	if self.URL.active ~= self.URL.extern then return false end
@@ -913,19 +914,17 @@ function CLASS:Connect()
 	return self:Reconnect()
 end
 
-function CLASS:Reconnect( timeout )
+function CLASS:Reconnect()
 	if not self:StillSearching() then
 		return false
 	end
 
-	self:TimerRemove("stream")
-
 	if StreamRadioLib.IsBlockedURLCode( self.URL.extern ) then
 		self:AcceptStream( nil, 1000 )
-		return true
+		return false
 	end
 
-	timeout = timeout or 0
+	self:TimerRemove("stream")
 
 	local playfunc = function()
 		if not self:StillSearching() then
@@ -942,11 +941,10 @@ function CLASS:Reconnect( timeout )
 		return true
 	end
 
-	if timeout <= 0 then
-		return playfunc()
-	else
-		self:TimerOnce("stream", timeout, playfunc)
-	end
+	-- Avoid many connection requests starting at once by adding a random delay
+	local loadBalanceTimeout = 0.25 + math.random() * 0.75
+
+	self:TimerOnce("stream", loadBalanceTimeout, playfunc)
 
 	return true
 end
