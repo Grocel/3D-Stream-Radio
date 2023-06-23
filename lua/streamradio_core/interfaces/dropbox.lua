@@ -19,9 +19,8 @@ Make sure your Dropbox has a valid path in it.
 }
 
 local DropboxPatterns = {
-	"dropbox%://s/(.+)",
 	"dropbox%://(.+)",
-	"/s/(.+)",
+	"com/(.+)",
 }
 
 local DropboxURLs = {
@@ -54,7 +53,7 @@ function RADIOIFACE:ParseURL(url)
 			continue
 		end
 
-		result = string.match( result, "^/s/(.+)$" ) or result
+		result = string.match( result, "^/(.+)$" ) or result
 		result = string.TrimLeft( result, "/" )
 
 		if result == "" then
@@ -67,7 +66,7 @@ function RADIOIFACE:ParseURL(url)
 	return nil
 end
 
-local g_dropbox_content_url = "https://www.dl.dropboxusercontent.com/s/";
+local g_dropbox_content_url = "https://www.dl.dropboxusercontent.com/";
 
 function RADIOIFACE:Convert(url, callback)
 	local path = self:ParseURL(url)

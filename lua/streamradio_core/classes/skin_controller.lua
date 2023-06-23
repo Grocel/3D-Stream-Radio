@@ -102,7 +102,6 @@ function CLASS:NetworkSkinInternal()
 	end
 
 	local playerlist = table.GetKeys(self.NetworkPlayerList or {})
-	local data = self.Data or {}
 
 	self.NetworkPlayerList = nil
 	if #playerlist <= 0 then return end
