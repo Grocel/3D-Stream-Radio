@@ -47,7 +47,7 @@ function CLASS:Render()
 	local tx, ty = x, y
 	local tsw, tsh = self:GetTextureSize()
 	local xalign, yalign = self.ImageData.AlignX, self.ImageData.AlignY
-	local col = self.Colors.Main
+	local colMain = self.Colors.Main or color_white
 
 	if ( xalign == TEXT_ALIGN_CENTER ) then
 		tx = x + w / 2 - tsw / 2
@@ -61,7 +61,7 @@ function CLASS:Render()
 		ty = y + h - tsh
 	end
 
-	surface.SetDrawColor( col )
+	surface.SetDrawColor( colMain:Unpack() )
 	surface.SetMaterial( mat )
 	surface.DrawTexturedRectUV( tx, ty, tsw, tsh, 0, 0, 1, 1 )
 end

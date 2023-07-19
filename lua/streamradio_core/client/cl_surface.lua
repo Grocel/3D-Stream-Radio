@@ -55,7 +55,7 @@ function LIB.Loading( x, y, w, h, color, cycles )
 		--local posang = pi * 2 / cycles * i + time
 		local cx = math.cos( pi * 2 / cycles * i + time ) * ( midw - cw / 2 ) + x - cw / 2 + midw
 		local cy = math.sin( pi * 2 / cycles * i + time ) * ( midh - cw / 2 ) + y - ch / 2 + midh
-		surface.SetDrawColor( color )
+		surface.SetDrawColor( color:Unpack() )
 		surface.DrawTexturedRect( cx, cy, cw, ch )
 	end
 end

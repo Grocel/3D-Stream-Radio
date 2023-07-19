@@ -22,22 +22,34 @@ local CLIENT = CLIENT
 local EmptyVector = Vector()
 local catchAndErrorNoHaltWithStack = StreamRadioLib.CatchAndErrorNoHaltWithStack
 
-local BASS3 = BASS3 or {}
+local BASS3 = nil
 
 local LIBNetwork = StreamRadioLib.Network
+local LIBBass = StreamRadioLib.Bass
+local LIBError = StreamRadioLib.Error
 
 local BASE = CLASS:GetBaseClass()
 
+local function LoadBass()
+	local hasBass = LIBBass.LoadDLL()
+
+	if hasBass and not BASS3 then
+		BASS3 = _G.BASS3
+	end
+
+	return hasBass
+end
+
 local function ChannelIsCacheAble( channel )
-	if ( not IsValid( channel ) ) then return false end
+	if not IsValid( channel ) then return false end
 
 	local len = channel:GetLength( )
 	return len > 0
 end
 
 local function ChannelStop( channel )
-	if ( not channel ) then
-		return nil
+	if not channel then
+		return
 	end
 
 	channel:Stop()
@@ -46,7 +58,8 @@ local function ChannelStop( channel )
 		channel:Remove( )
 	end
 
-	return nil
+	LIBBass.ClearCache()
+	return
 end
 
 local retry_errors_non3d = {
@@ -181,6 +194,8 @@ function CLASS:Create()
 		self.StateTable_r[v] = i
 	end
 
+	LIBBass.ClearCache()
+
 	self.State = self:CreateListener({
 		Error = 0,
 		PlayMode = StreamRadioLib.STREAM_PLAYMODE_STOP,
@@ -192,7 +207,7 @@ function CLASS:Create()
 		Name = "",
 		Seeking = false,
 		ValidChannel = false,
-		HasBass = CLIENT and StreamRadioLib.HasBass,
+		HasBass = CLIENT and LoadBass(),
 	}, function(this, k, v)
 		if k == "PlayMode" then
 			self:UpdateChannelPlayMode()
@@ -207,11 +222,19 @@ function CLASS:Create()
 
 		if k == "Stopped" and v then
 			self:CallHook("OnClose")
+
+			if CLIENT then
+				self.State.HasBass = LoadBass()
+			end
 		end
 
 		if k == "Muted" then
 			self:UpdateChannelMuted()
 			self:CallHook("OnMute", v)
+
+			if CLIENT then
+				self.State.HasBass = LoadBass()
+			end
 		end
 
 		if k == "Name" then
@@ -762,14 +785,14 @@ function CLASS:UpdateChannelPlayMode()
 	end
 
 	if playmode == StreamRadioLib.STREAM_PLAYMODE_PLAY_RESTART then
-		self:SetTime(0)
-		self.Channel:Play(true)
+		self:SetTime(0, true)
+		self.Channel:Play()
 		self.State.PlayMode = StreamRadioLib.STREAM_PLAYMODE_PLAY
 		return
 	end
 
 	if playmode == StreamRadioLib.STREAM_PLAYMODE_PLAY then
-		self.Channel:Play(false)
+		self.Channel:Play()
 		return
 	end
 end
@@ -836,7 +859,7 @@ function CLASS:IsLoading()
 	if not self.Valid then return false end
 	if not self:StillSearching() then return false end
 	if IsValid(self.Channel) then return false end
-	if self.State.Error ~= 0 then return false end
+	if self:HasError() then return false end
 
 	return true
 end
@@ -864,15 +887,17 @@ function CLASS:IsDownloadingToCache()
 end
 
 function CLASS:SetBASSEngineEnabled(bool)
-	if not StreamRadioLib.HasBass then
-		bool = false
+	bool = bool or false
+
+	if bool then
+		bool = LIBBass.LoadDLL()
 	end
 
-	self.State.HasBass = bool or false
+	self.State.HasBass = bool
 end
 
 function CLASS:IsBASSEngineEnabled()
-	if not StreamRadioLib.HasBass then return false end
+	if not LIBBass.HasLoadedDLL() then return false end
 	return self.State.HasBass or false
 end
 
@@ -887,7 +912,7 @@ function CLASS:StillSearching()
 	if self.State.Stopped then return false end
 
 	if IsValid(self.Channel) then return false end
-	if self.State.Error ~= 0 then return false end
+	if self:HasError() then return false end
 
 	return true
 end
@@ -1386,6 +1411,11 @@ end
 function CLASS:GetError()
 	if not self.Valid then return 0 end
 	return self.State.Error or 0
+end
+
+function CLASS:HasError()
+	if not self.Valid then return false end
+	return self:GetError() ~= LIBError.STREAM_OK
 end
 
 function CLASS:GetMetadata()
@@ -2115,50 +2145,62 @@ end
 
 local tempArray_fft = {}
 local tempArray_fftc = {}
-local powres_bass = {}
 
-if StreamRadioLib.HasBass then
-	powres_bass[0] = BASS3.ENUM.FFT_16
-	powres_bass[1] = BASS3.ENUM.FFT_16
-	powres_bass[2] = BASS3.ENUM.FFT_16
-	powres_bass[3] = BASS3.ENUM.FFT_16
-	powres_bass[4] = BASS3.ENUM.FFT_32
-	powres_bass[5] = BASS3.ENUM.FFT_64
-	powres_bass[6] = BASS3.ENUM.FFT_128
-	powres_bass[7] = BASS3.ENUM.FFT_256
-	powres_bass[8] = BASS3.ENUM.FFT_512
-	powres_bass[9] = BASS3.ENUM.FFT_1024
-	powres_bass[10] = BASS3.ENUM.FFT_2048
-	powres_bass[11] = BASS3.ENUM.FFT_4096
-	powres_bass[12] = BASS3.ENUM.FFT_8192
-	powres_bass[13] = BASS3.ENUM.FFT_16384
-	powres_bass[14] = BASS3.ENUM.FFT_32768
+local g_powres_nobass = nil
+local g_powres_bass = nil
+
+local function buildpowres()
+	if not g_powres_nobass then
+		g_powres_nobass = {}
+
+		g_powres_nobass[0] = FFT_256
+		g_powres_nobass[1] = FFT_256
+		g_powres_nobass[2] = FFT_256
+		g_powres_nobass[3] = FFT_256
+		g_powres_nobass[4] = FFT_256
+		g_powres_nobass[5] = FFT_256
+		g_powres_nobass[6] = FFT_256
+		g_powres_nobass[7] = FFT_256
+		g_powres_nobass[8] = FFT_512
+		g_powres_nobass[9] = FFT_1024
+		g_powres_nobass[10] = FFT_2048
+		g_powres_nobass[11] = FFT_2048
+		g_powres_nobass[12] = FFT_8192
+		g_powres_nobass[13] = FFT_16384
+		g_powres_nobass[14] = FFT_32768
+	end
+
+	if not g_powres_bass then
+		if BASS3 and BASS3.ENUM and BASS3.ENUM.FFT_16 then
+			g_powres_bass = {}
+
+			g_powres_bass[0] = BASS3.ENUM.FFT_16
+			g_powres_bass[1] = BASS3.ENUM.FFT_16
+			g_powres_bass[2] = BASS3.ENUM.FFT_16
+			g_powres_bass[3] = BASS3.ENUM.FFT_16
+			g_powres_bass[4] = BASS3.ENUM.FFT_32
+			g_powres_bass[5] = BASS3.ENUM.FFT_64
+			g_powres_bass[6] = BASS3.ENUM.FFT_128
+			g_powres_bass[7] = BASS3.ENUM.FFT_256
+			g_powres_bass[8] = BASS3.ENUM.FFT_512
+			g_powres_bass[9] = BASS3.ENUM.FFT_1024
+			g_powres_bass[10] = BASS3.ENUM.FFT_2048
+			g_powres_bass[11] = BASS3.ENUM.FFT_4096
+			g_powres_bass[12] = BASS3.ENUM.FFT_8192
+			g_powres_bass[13] = BASS3.ENUM.FFT_16384
+			g_powres_bass[14] = BASS3.ENUM.FFT_32768
+		end
+	end
 end
-
-local powres_nobass = {
-	[0] = FFT_256,
-	[1] = FFT_256,
-	[2] = FFT_256,
-	[3] = FFT_256,
-	[4] = FFT_256,
-	[5] = FFT_256,
-	[6] = FFT_256,
-	[7] = FFT_256,
-	[8] = FFT_512,
-	[9] = FFT_1024,
-	[10] = FFT_2048,
-	[11] = FFT_2048,
-	[12] = FFT_8192,
-	[13] = FFT_16384,
-	[14] = FFT_32768,
-}
 
 function CLASS:GetSpectrum( resolution, func, minfrq, maxfrq )
 	if not self.Valid then return false end
 	if not IsValid(self.Channel) then return false end
 	if self:IsSeeking() then return false end
 
-	local powres = self.State.HasBass and powres_bass or powres_nobass
+	buildpowres()
+
+	local powres = self.State.HasBass and g_powres_bass or g_powres_nobass
 
 	resolution = resolution or 0
 	resolution = powres[resolution]
@@ -2223,7 +2265,9 @@ function CLASS:GetSpectrumComplex( resolution, func, minfrq, maxfrq )
 	if not IsValid(self.Channel) then return false end
 	if self:IsSeeking() then return false end
 
-	local powres = self.State.HasBass and powres_bass or powres_nobass
+	buildpowres()
+
+	local powres = self.State.HasBass and g_powres_bass or g_powres_nobass
 
 	resolution = resolution or 0
 	resolution = powres[resolution]

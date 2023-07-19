@@ -133,6 +133,21 @@ function LIB.GetSpacer(height)
 	return spacer
 end
 
+function LIB.GetSpacerLine()
+	local spacer = vgui.Create("DPanel")
+
+	spacer.Paint = function( p, w, h )
+		derma.SkinHook( "Paint", "MenuSpacer", p, w, h )
+	end
+
+	spacer:DockMargin(0, 0, 0, 0)
+	spacer:DockPadding(0, 0, 0, 0)
+
+	spacer:SetHeight(1)
+
+	return spacer
+end
+
 
 function LIB.GetFAQButton()
 	local button = LIB.GetLinkButton("Open FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/368542844488661960/")

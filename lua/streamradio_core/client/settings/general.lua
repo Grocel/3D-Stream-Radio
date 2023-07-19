@@ -4,8 +4,15 @@ local LIB = StreamRadioLib.Settings
 LIB.g_CV_List["general"] = {}
 
 LIB.AddConVar("general", "mute", "cl_streamradio_mute", "0", {
-	label = "Mute radios",
+	label = "Mute all radios",
 	help = "Mutes all radios when set to 1. Default: 0",
+	type = "bool",
+	userdata = true,
+})
+
+LIB.AddConVar("general", "mute_foreign", "cl_streamradio_mute_foreign", "0", {
+	label = "Mute all radios from other players",
+	help = "Mutes all radios from other players when set to 1. Default: 0",
 	type = "bool",
 	userdata = true,
 })
@@ -94,6 +101,7 @@ LIB.AddConVar("general", "volume", "cl_streamradio_volume", "1", {
 	label = "Global volume",
 	help = "Set the global volume factor for all radios. Default: 1, Min: 0, Max: 1 or 10",
 	type = "float",
+	userdata = true,
 	min = 0,
 	max = 10,
 })
@@ -115,6 +123,12 @@ LIB.AddConVar("general", "enable_cursor", "cl_streamradio_enable_cursor", "1", {
 LIB.AddConVar("general", "no3dsound", "cl_streamradio_no3dsound", "0", {
 	label = "Disable 3D Sound",
 	help = "Disables 3D sound for all radios when set to 1. Default: 0",
+	type = "bool",
+})
+
+LIB.AddConVar("general", "bass3_enable", "cl_streamradio_bass3_enable", "1", {
+	label = "Use GM_BASS3 if installed",
+	help = "When set to 1, it uses GM_BASS3 if installed and allowed on the server. Default: 1",
 	type = "bool",
 })
 
@@ -147,6 +161,9 @@ local function BuildMenuPanel(CPanel)
 
 		return
 	end
+
+	local cvBass3Enable = LIB.GetConVar("bass3_enable")
+	cvBass3Enable:SetDisabled(not StreamRadioLib.Bass.IsInstalled())
 
 	CPanel:Button(
 		"Clear Client Stream Cache",

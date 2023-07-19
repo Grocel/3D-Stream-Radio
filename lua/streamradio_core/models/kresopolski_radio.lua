@@ -29,11 +29,11 @@ RADIOMDL.DisplayHeight, RADIOMDL.DisplayScale = RADIOMDL:GetDisplayHeight(
 
 RADIOMDL.FontSizes = {
 --  Name 	= Size,	Weight, Parentname
-	Header	= {23,	1000},
+	Header	= {20,	1000},
 	Error	= {17,	700},
-	Default	= {22,	700},
-	Tooltip	= {22,	1000},
-	Big		= {23,	700},
+	Default	= {20,	700},
+	Tooltip	= {20,	1000},
+	Big		= {20,	700},
 }
 
 function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
@@ -63,21 +63,21 @@ function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
 		StreamRadioLib.SetSkinTableProperty(modelsetup, "tooltip", "font", self.Fonts.Tooltip)
 	end
 
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/header", "sizeh", 35)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/header", "sizeh", 35)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/header", "sizeh", 27)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/header", "sizeh", 27)
 
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlists", "gridsize", {x = 3, y = 4})
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlistview", "gridsize", {x = 2, y = 4})
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlists/scrollbar", "sizew", 40)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlistview/scrollbar", "sizew", 40)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/sidebutton", "sizew", 40)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlists/scrollbar", "sizew", 30)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/list-playlistview/scrollbar", "sizew", 30)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/sidebutton", "sizew", 30)
 
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/textbox/scrollbar", "sizew", 30)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/textbox/scrollbar", "sizew", 30)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/textbox/scrollbar", "sizew", 25)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/textbox/scrollbar", "sizew", 25)
 
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/button", "sizeh", 40)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/button", "sizeh", 30)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/button", "sizeh", 30)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/button", "sizeh", 30)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/button", "sizew", 30)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/button", "sizew", 30)
 
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "cornersize", 16)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "borderwidth", 16)

@@ -105,7 +105,8 @@ function CLASS:Create()
 
 	if CLIENT then
 		self.Colors = self:CreateListener({
-			Main = Color(255,255,255)
+			Main = Color(255,255,255),
+			DrawAlpha = 1,
 		}, function(...)
 			self:QueueCall("PerformRerender")
 		end)
@@ -229,13 +230,26 @@ function CLASS:_RenderInternal()
 		return
 	end
 
+	local currentRenderAlpha = surface.GetAlphaMultiplier()
+	local drawAlpha = self:GetDrawAlpha()
+	local alpha = drawAlpha * currentRenderAlpha
+	local isTransparent = drawAlpha < 1
+
+	if isTransparent then
+		surface.SetAlphaMultiplier(alpha)
+	end
+
 	self:Render()
 	self:ForEachChild(RenderInternalPanel, true)
+
+	if isTransparent then
+		surface.SetAlphaMultiplier(currentRenderAlpha)
+	end
 
 	self._rendered = true
 end
 
-local coldebug = Color(0,0,0,200)
+local g_colDebug = Color(0,0,0,200)
 
 function CLASS:Render()
 	if not self.debugborders then return end
@@ -243,7 +257,7 @@ function CLASS:Render()
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
 
-	surface.SetDrawColor( coldebug )
+	surface.SetDrawColor( g_colDebug:Unpack() )
 	surface.DrawOutlinedRect(x, y, w, h)
 	surface.DrawOutlinedRect(x + 1, y + 1, w - 2, h - 2)
 end
@@ -890,14 +904,37 @@ end
 
 function CLASS:SetColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Main = color
 end
 
 function CLASS:GetColor()
 	if SERVER then return end
-	local col = self.Colors.Main
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Main
+	return col
+end
+
+function CLASS:SetDrawAlpha(alpha)
+	if SERVER then return end
+
+	alpha = math.Clamp(alpha, 0, 1)
+	self.Colors.DrawAlpha = alpha
+end
+
+function CLASS:GetDrawAlpha()
+	if SERVER then return end
+	local alpha = self.Colors.DrawAlpha
+
+	return alpha or 0
 end
 
 function CLASS:SetParent(panel)
@@ -1099,7 +1136,7 @@ function CLASS:IsVisible()
 		return self:SetCacheValue("IsVisible", parent:IsVisible())
 	end
 
-	return true
+	return self:SetCacheValue("IsVisible", true)
 end
 
 function CLASS:SetVisible(bool)

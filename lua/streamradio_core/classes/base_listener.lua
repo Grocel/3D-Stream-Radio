@@ -15,7 +15,6 @@ local g_super_listeners = CLASS:GetGlobalVar("base_listener_super_listeners", {}
 CLASS:SetGlobalVar("base_listener_super_listeners", g_super_listeners)
 
 local g_hookname = "3dstreamradio_classsystem_listen"
-local g_super_hookname = g_hookname .. "_fast"
 local g_networkhookname = "classsystem_listen"
 local g_listengroups = SERVER and 6 or 4
 local g_lastgroup = 1
@@ -24,6 +23,40 @@ local g_superhooksruns = false
 
 for i = 1, g_listengroups do
 	g_listeners[i] = g_listeners[i] or {}
+end
+
+local function listentogroup_loop(id, listener, thisgroup)
+	if not IsValid(listener) then
+		g_listeners[thisgroup][id] = nil
+		return
+	end
+
+	if listener._markedforremove then
+		g_listeners[thisgroup][id] = nil
+		return
+	end
+
+	if not listener.ThinkInternal then
+		g_listeners[thisgroup][id] = nil
+		return
+	end
+
+	if not listener.Created then
+		return
+	end
+
+	local listentimeout = listener._listentimeout
+	if listentimeout then
+		if listentimeout <= 0 then
+			g_listeners[thisgroup][id] = nil
+			return
+		end
+
+		listener._listentimeout = listentimeout - 1
+	end
+
+	listener:ThinkInternal()
+	return true
 end
 
 local function listentogroup()
@@ -35,37 +68,11 @@ local function listentogroup()
 		g_listeners[thisgroup] = group
 
 		for id, listener in pairs(group) do
-			if not IsValid(listener) then
-				g_listeners[thisgroup][id] = nil
-				continue
+			local hasfound = listentogroup_loop(id, listener, thisgroup)
+
+			if hasfound then
+				found = listener
 			end
-
-			if listener._markedforremove then
-				g_listeners[thisgroup][id] = nil
-				continue
-			end
-
-			if not listener.ThinkInternal then
-				g_listeners[thisgroup][id] = nil
-				continue
-			end
-
-			if not listener.Created then
-				continue
-			end
-
-			local listentimeout = listener._listentimeout
-			if listentimeout then
-				if listentimeout <= 0 then
-					g_listeners[thisgroup][id] = nil
-					continue
-				end
-
-				listener._listentimeout = listentimeout - 1
-			end
-
-			listener:ThinkInternal()
-			found = listener
 		end
 
 		g_lastgroup = thisgroup
@@ -81,9 +88,6 @@ local function listentogroup()
 end
 
 local function g_listenfunc()
-	if not StreamRadioLib then return end
-	if not StreamRadioLib.Loaded then return end
-
 	local starttime = SysTime()
 	local found = listentogroup()
 
@@ -92,40 +96,70 @@ local function g_listenfunc()
 	end
 end
 
-local function g_superlistenfunc()
-	if not StreamRadioLib then return end
-	if not StreamRadioLib.Loaded then return end
+local function superlistenfunc_loop(id, listener)
+	if not IsValid(listener) then
+		g_super_listeners[id] = nil
+		return
+	end
 
+	if listener._markedforremove then
+		g_super_listeners[id] = nil
+		return
+	end
+
+	if not isfunction(listener.SuperThink) then
+		g_super_listeners[id] = nil
+		return
+	end
+
+	if not listener.Created then
+		return
+	end
+
+	listener:SuperThink()
+	return true
+end
+
+local function g_superlistenfunc()
 	local starttime = SysTime()
 
 	local found = nil
+
 	for id, listener in pairs(g_super_listeners) do
-		if not IsValid(listener) then
-			g_super_listeners[id] = nil
-			continue
-		end
+		local hasfound = superlistenfunc_loop(id, listener)
 
-		if listener._markedforremove then
-			g_super_listeners[id] = nil
-			continue
+		if hasfound then
+			found = listener
 		end
-
-		if not isfunction(listener.SuperThink) then
-			g_super_listeners[id] = nil
-			continue
-		end
-
-		if not listener.Created then
-			continue
-		end
-
-		listener:SuperThink()
-		found = listener
 	end
 
 	if found then
 		found:SetGlobalVar("base_listener_superthinktime", SysTime() - starttime)
 	end
+end
+
+local function g_thinkfunc()
+	if not StreamRadioLib then return end
+	if not StreamRadioLib.Loaded then return end
+
+	if g_hookruns then
+		g_listenfunc()
+	end
+
+	if g_superhooksruns then
+		g_superlistenfunc()
+	end
+end
+
+local function g_register_thinkfunc()
+	if not StreamRadioLib then return end
+	if not StreamRadioLib.Loaded then return end
+
+	if g_hookruns then return end
+	if g_superhooksruns then return end
+
+	hook.Remove("Think", g_hookname)
+	hook.Add("Think", g_hookname, g_thinkfunc)
 end
 
 LIBNetwork.AddNetworkString(g_networkhookname)
@@ -522,7 +556,7 @@ function CLASS:StartListen()
 
 	if g_hookruns then return end
 
-	hook.Add("Think", g_hookname, g_listenfunc)
+	g_register_thinkfunc()
 	g_hookruns = true
 end
 
@@ -545,7 +579,7 @@ function CLASS:_StartSuperThink()
 	g_super_listeners[id] = self
 
 	if not g_superhooksruns then
-		hook.Add("Think", g_super_hookname, g_superlistenfunc)
+		g_register_thinkfunc()
 		g_superhooksruns = true
 	end
 end

@@ -1,11 +1,11 @@
 StreamRadioLib.Timer = StreamRadioLib.Timer or {}
 local LIB = StreamRadioLib.Timer
 
-local nameprefix = "3DStreamRadio_Timer_"
+local g_nameprefix = "3DStreamRadio_Timer_"
 
 function LIB.GetName(identifier)
-	local name = nameprefix .. tostring(identifier or "")
-	return name
+	identifier = g_nameprefix .. tostring(identifier or "")
+	return identifier
 end
 
 function LIB.Interval(identifier, delay, repetitions, func)
@@ -37,7 +37,7 @@ function LIB.Util(identifier, delay, func)
 		if not endtimer then return end
 
 		timer.Remove(name)
-	end) 
+	end)
 end
 
 function LIB.NextFrame(identifier, func)

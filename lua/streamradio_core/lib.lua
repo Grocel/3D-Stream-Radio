@@ -18,55 +18,14 @@ local CLIENT = CLIENT
 local BASS3 = BASS3 or {}
 local StreamRadioLib = StreamRadioLib
 
-local _, NetURL = StreamRadioLib.LoadSH('streamradio_core/neturl.lua')
+local _, NetURL = StreamRadioLib.LoadSH("streamradio_core/neturl.lua")
 StreamRadioLib.NetURL = NetURL
 
-function StreamRadioLib.Msg(ply, msgstring)
-	msgstring = tostring(msgstring or "")
-	if msgstring == "" then return end
+function StreamRadioLib.IsDebug()
+	local devconvar = GetConVar("developer")
+	if not devconvar then return end
 
-	if IsValid(ply) then
-		ply:PrintMessage(HUD_PRINTTALK, msgstring)
-	else
-		MsgN(msgstring)
-	end
-end
-
-local colorSeparator = Color(255,255,255)
-local colorDateTime = Color(180,180,180)
-local colorAddonName = Color(0,200,0)
-local colorPlayer = Color(200,200,0)
-
-function StreamRadioLib.Log(ply, msgstring)
-	msgstring = tostring(msgstring or "")
-	if msgstring == "" then return end
-
-	local playerStr = ""
-
-	if IsValid(ply) then
-		playerStr = string.format("%s - %s", tostring(ply), ply:SteamID())
-	end
-
-	local Timestamp = os.time()
-	local TimeString = os.date("%Y-%m-%d %H:%M:%S" , Timestamp)
-
-	MsgC(colorSeparator, "[")
-	MsgC(colorDateTime, TimeString)
-	MsgC(colorSeparator, "]")
-
-	MsgC(colorSeparator, "[")
-	MsgC(colorAddonName, StreamRadioLib.AddonTitle)
-	MsgC(colorSeparator, "]")
-
-	if playerStr ~= "" then
-		MsgC(colorSeparator, "[")
-		MsgC(colorPlayer, playerStr)
-		MsgC(colorSeparator, "]")
-	end
-
-	Msg(" ")
-
-	MsgN(msgstring)
+	return devconvar:GetInt() > 0
 end
 
 function StreamRadioLib.ErrorNoHaltWithStack(err)
@@ -116,7 +75,7 @@ end
 function StreamRadioLib.Hash(str)
 	str = tostring(str or "")
 
-	local salt = "StreamRadioLib_Hash230609"
+	local salt = "StreamRadioLib_Hash230628"
 
 	local data = string.format(
 		"[%s][%s]",
@@ -130,7 +89,7 @@ end
 
 local g_uid = 0
 function StreamRadioLib.Uid()
-	g_uid = (g_uid + 1) % 2 ^ 31
+	g_uid = (g_uid + 1) % (2 ^ 31 - 1)
 	return g_uid
 end
 
@@ -171,7 +130,7 @@ function StreamRadioLib.IsGUIHidden(ply)
 	return tobool(ply:GetInfo("cl_streamradio_hidegui"))
 end
 
-function StreamRadioLib.IsMuted(ply)
+function StreamRadioLib.IsMuted(ply, owner)
 	if not IsValid(ply) and CLIENT then
 		ply = LocalPlayer()
 	end
@@ -181,9 +140,20 @@ function StreamRadioLib.IsMuted(ply)
 	if ply:IsBot() then return true end
 
 	local muted = tobool(ply:GetInfo("cl_streamradio_mute"))
-
 	if muted then
 		return true
+	end
+
+	local volume = tonumber(ply:GetInfo("cl_streamradio_volume") or 0) or 0
+	if volume <= 0 then
+		return true
+	end
+
+	if IsValid(owner) and owner:IsPlayer() and not owner:IsBot() and owner ~= ply then
+		local mutedForeign = tobool(ply:GetInfo("cl_streamradio_mute_foreign"))
+		if mutedForeign then
+			return true
+		end
 	end
 
 	if SERVER then
@@ -191,7 +161,6 @@ function StreamRadioLib.IsMuted(ply)
 	end
 
 	local muteunfocused = tobool(ply:GetInfo("cl_streamradio_muteunfocused"))
-
 	if not muteunfocused then
 		return false
 	end
@@ -202,6 +171,48 @@ function StreamRadioLib.IsMuted(ply)
 
 	return true
 end
+/*
+function StreamRadioLib.IsMuted(ply, owner)
+	if not IsValid(ply) and CLIENT then
+		ply = LocalPlayer()
+	end
+
+	if not IsValid(ply) then return true end
+	if not ply:IsPlayer() then return true end
+	if ply:IsBot() then return true end
+
+	if not IsValid(owner) then return true end
+	if not owner:IsPlayer() then return true end
+	if owner:IsBot() then return true end
+
+	local mutedForeign = tobool(ply:GetInfo("cl_streamradio_mute_foreign"))
+	if not mutedForeign then
+		return false
+	end
+
+	if IsValid(owner) and owner:IsPlayer() and not owner:IsBot() and owner ~= ply then
+		local mutedForeign = tobool(ply:GetInfo("cl_streamradio_mute_foreign"))
+		if mutedForeign then
+			return true
+		end
+	end
+
+	if SERVER then
+		return false
+	end
+
+	local muteunfocused = tobool(ply:GetInfo("cl_streamradio_muteunfocused"))
+	if not muteunfocused then
+		return false
+	end
+
+	if system.HasFocus() then
+		return false
+	end
+
+	return true
+end
+*/
 
 function StreamRadioLib.HasYoutubeSupport(ply)
 	if not IsValid(ply) and CLIENT then
@@ -434,7 +445,7 @@ function StreamRadioLib.GetControlPosDir(ent)
 		pos = camera:GetPos()
 
 		-- This is not a mistake
-		-- This allowes UI clicks/use via C-Menu aim
+		-- This allows UI clicks/use via C-Menu aim
 		dir = ent:GetAimVector()
 	end
 
@@ -972,54 +983,6 @@ function StreamRadioLib.IsPlayerNetworkable(plyOrId)
 
 	return IsValid(_GetPlayerFromId(plyOrId))
 end
-
-local function toUnicode(s)
-	local s1, s2, s3, s4 = s:byte( 1, -1 )
-	s = {s1, s2, s3, s4}
-
-	local en = ""
-	for i = 1, #s do
-		local v = s[i]
-		if ( not v ) then continue end
-
-		en = en .. string.format( "%%%02X", v )
-	end
-
-	return en
-end
-
-local function URLEncode( str )
-	str = str or ""
-	if (str == "") then
-		return ""
-	end
-
-	str = string.gsub( str, "\n", "\r\n" )
-	str = string.gsub( str, "([^%w ])", toUnicode )
-	str = string.gsub( str, " ", "+" )
-
-	return str
-end
-
-local hex={}
-
-for i = 0, 255 do
-	hex[string.format( "%0x", i)] = string.char( i )
-	hex[string.format( "%0X", i)] = string.char( i )
-end
-
-local function URLDecode( str )
-	str = str or ""
-	if (str == "") then
-		return ""
-	end
-
-	str = string.gsub( str, '%%(%x%x)', hex )
-	return str
-end
-
-StreamRadioLib.URLEncode = URLEncode
-StreamRadioLib.URLDecode = URLDecode
 
 local function NormalizeOfflineFilename( path )
 	path = path or ""

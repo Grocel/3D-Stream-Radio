@@ -410,7 +410,7 @@ function CLASS:GetHashFromData(data)
 	table.insert(datastring, string.format("[%d]", #data))
 	datastring = table.concat(datastring, "\n")
 
-	local hash = StreamRadioLib.Hash(datastring)
+	local hash = LIBNetwork.Hash(datastring)
 	return hash
 end
 

@@ -236,12 +236,12 @@ do
 		if not IsValid(ply) then return end
 
 		if not ply:IsAdmin() then
-			StreamRadioLib.Msg(ply, "You must be admin to use the playlist editor.")
+			StreamRadioLib.Print.Msg(ply, "You must be admin to use the playlist editor.")
 			return
 		end
 
 		if StreamRadioLib.VR.IsActive(ply) then
-			StreamRadioLib.Msg(ply, "The playlist editor is not available in VR.")
+			StreamRadioLib.Print.Msg(ply, "The playlist editor is not available in VR.")
 			return
 		end
 

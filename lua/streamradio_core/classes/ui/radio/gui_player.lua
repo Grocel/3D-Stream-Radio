@@ -4,6 +4,7 @@ if not istable(CLASS) then
 end
 
 local LIBNetwork = StreamRadioLib.Network
+local LIBError = StreamRadioLib.Error
 
 local BASE = CLASS:GetBaseClass()
 
@@ -142,6 +143,10 @@ function CLASS:Create()
 		self.State = self:CreateListener({
 			Error = 0,
 		}, function(this, k, v)
+			if not IsValid(self.Errorbox) then
+				return
+			end
+
 			local err = tonumber(v or 0) or 0
 			local url = nil
 
@@ -175,6 +180,7 @@ function CLASS:Remove()
 			self.StreamOBJ:RemoveEvent("OnConnect", self:GetID())
 			self.StreamOBJ:RemoveEvent("OnError", self:GetID())
 			self.StreamOBJ:RemoveEvent("OnSearch", self:GetID())
+			self.StreamOBJ:RemoveEvent("OnMute", self:GetID())
 		end
 	end
 
@@ -202,7 +208,7 @@ function CLASS:SetStream(stream)
 		self.ControlPanel:SetStream(stream)
 	end
 
-	if IsValid(self.ControlPanel) then
+	if IsValid(self.SpectrumPanel) then
 		self.SpectrumPanel:SetStream(stream)
 	end
 
@@ -234,30 +240,42 @@ function CLASS:SetStream(stream)
 	end
 
 	if CLIENT then
-		self.StreamOBJ:SetEvent("OnSearch", self:GetID(), function()
+		local updateErrorState = function(err)
 			if not IsValid(self) then return end
 			if not self.State then return end
-			if not IsValid(self.Errorbox) then return end
 
-			self.State.Error = 0
+			if err == LIBError.STREAM_OK then
+				self.State.Error = LIBError.STREAM_OK
+			else
+				if IsValid(self.Errorbox) then
+					self.Errorbox:SetErrorCode(err, self.StreamOBJ:GetURL())
+				end
+
+				self.State.Error = err
+			end
+		end
+
+		self.StreamOBJ:SetEvent("OnClose", self:GetID(), function()
+			updateErrorState(LIBError.STREAM_OK)
+		end)
+
+		self.StreamOBJ:SetEvent("OnSearch", self:GetID(), function()
+			updateErrorState(LIBError.STREAM_OK)
 		end)
 
 		self.StreamOBJ:SetEvent("OnConnect", self:GetID(), function()
-			if not IsValid(self) then return end
-			if not self.State then return end
-			if not IsValid(self.Errorbox) then return end
-
-			self.State.Error = 0
+			updateErrorState(LIBError.STREAM_OK)
 		end)
 
 		self.StreamOBJ:SetEvent("OnError", self:GetID(), function(this, err)
-			if not IsValid(self) then return end
-			if not self.State then return end
-			if not IsValid(self.Errorbox) then return end
-
-			self.Errorbox:SetErrorCode(err, self.StreamOBJ:GetURL())
-			self.State.Error = err
+			updateErrorState(err)
 		end)
+
+		self.StreamOBJ:SetEvent("OnMute", self:GetID(), function()
+			updateErrorState(LIBError.STREAM_OK)
+		end)
+
+		updateErrorState(self.StreamOBJ:GetError())
 	end
 
 	self:UpdateFromStream()
@@ -275,8 +293,10 @@ function CLASS:Think()
 end
 
 function CLASS:UpdateFromStream()
-	if not IsValid(self.StreamOBJ) then return end
 	if SERVER then return end
+
+	if not IsValid(self.StreamOBJ) then return end
+	if not IsValid(self.HeaderText) then return end
 
 	local textlist = {}
 
@@ -423,14 +443,26 @@ function CLASS:PerformLayout(...)
 end
 
 function CLASS:EnablePlaylist(...)
+	if not IsValid(self.ControlPanel) then
+		return
+	end
+
 	self.ControlPanel:EnablePlaylist(...)
 end
 
 function CLASS:IsPlaylistEnabled()
+	if not IsValid(self.ControlPanel) then
+		return
+	end
+
 	return self.ControlPanel:IsPlaylistEnabled()
 end
 
 function CLASS:UpdatePlaybackLoopMode(...)
+	if not IsValid(self.ControlPanel) then
+		return
+	end
+
 	self.ControlPanel:UpdatePlaybackLoopMode(...)
 end
 

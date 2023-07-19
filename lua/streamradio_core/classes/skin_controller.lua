@@ -190,7 +190,7 @@ function CLASS:CalcHash()
 	if CLIENT then return end
 	if not self.Network.Active then return end
 
-	local hash = StreamRadioLib.Hash(self:GetSkinEncoded())
+	local hash = LIBNetwork.Hash(self:GetSkinEncoded())
 	self.Hash.value = hash or ""
 end
 

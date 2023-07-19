@@ -6,11 +6,11 @@ local LIBNet = StreamRadioLib.Net
 
 local MaxServerSpectrum = CreateConVar( "sv_streamradio_max_spectrums", "5", bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL ), "Sets the maximum count of radios that can have advanced wire outputs such as FFT spectrum or song tags. -1 = Infinite, 0 = Off, Default: 5" )
 local AllowCustomURLs = CreateConVar( "sv_streamradio_allow_customurls", "1", bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL ), "Allow or disallow custom URLs to be played. 1 = Allow, 0 = Disallow, Default: 1" )
-local RebuildCommunityPlaylists = CreateConVar( "sv_streamradio_rebuildplaylists_community_auto", "1", bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL ), "Set how the community playlists are rebuild on gamestart. 0 = Off, 1 = Rebuild only, 2 = Delete and rebuild, Default: 1" )
+local RebuildCommunityPlaylists = CreateConVar( "sv_streamradio_rebuildplaylists_community_auto", "2", bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL ), "Set how the community playlists are rebuild on server start. 0 = Off, 1 = Rebuild only, 2 = Delete and rebuild, Default: 2" )
 
 function StreamRadioLib.AllowSpectrum()
 	if not WireAddon then return false end
-	if not StreamRadioLib.HasBass then return false end
+	if not StreamRadioLib.Bass.CanLoadDLL() then return false end
 
 	local max = MaxServerSpectrum:GetInt()
 	if max == 0 then return false end

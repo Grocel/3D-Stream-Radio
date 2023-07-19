@@ -1,4 +1,6 @@
 local StreamRadioLib = StreamRadioLib or {}
+local LIBError = StreamRadioLib.Error
+
 
 local PANEL = {}
 AccessorFunc( PANEL, "m_strValue", "Value" )
@@ -242,9 +244,15 @@ function PANEL:UpdateURLState(state)
 		if err ~= 0 and url ~= "" then
 			self.URLIcon:SetImage("icon16/cross.png")
 
-			local errinfo = "\nError " .. err .. ": " .. StreamRadioLib.DecodeErrorCode(err)
-			tooltip = tooltipbase .. errinfo .. "\n\nRight click for more details."
-			tooltipurl = tooltipbase .. errinfo .. "\n\nRight click on the red cross button for more details."
+			local errorInfo = LIBError.GetStreamErrorInfo(err)
+
+			local errorName = errorInfo.name
+			local errorDescription = errorInfo.description
+
+			local errorString = string.format("Error %i (%s): %s", err, errorName, errorDescription)
+
+			tooltip = tooltipbase .. "\n" .. errorString .. "\n\nRight click for more details."
+			tooltipurl = tooltipbase .. "\n" .. errorString .. "\n\nRight click on the red cross button for more details."
 		else
 			self.URLIcon:SetImage("icon16/information.png")
 			tooltip = "The URL is empty!"

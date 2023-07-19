@@ -40,29 +40,47 @@ end
 
 function CLASS:SetForegroundColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Foreground = color
 end
 
 function CLASS:GetForegroundColor()
 	if SERVER then return end
-	local col = self.Colors.Foreground
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Foreground
+	return col
 end
 
 function CLASS:SetIconColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Icon = color
 end
 
 function CLASS:GetIconColor()
 	if SERVER then return end
-	local col = self.Colors.Icon
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Icon
+	return col
 end
 
-local function RenderSpectrumBar(index, level, bars, soundlevel, x, y, w, h, color)
+local function RenderSpectrumBar(index, level, bars, x, y, w, h, cR, cG, cB, cA)
 	if ( index > w ) then return false end
 
 	if ( bars > w ) then
@@ -80,7 +98,7 @@ local function RenderSpectrumBar(index, level, bars, soundlevel, x, y, w, h, col
 	local BarY = h + y
 	local barheight = math.floor( math.Clamp( level * h, 0, h ) )
 
-	surface.SetDrawColor( color )
+	surface.SetDrawColor( cR, cG, cB, cA )
 	surface.DrawRect( BarX, BarY - barheight, barwide, barheight )
 
 	return true
@@ -100,11 +118,13 @@ function CLASS:RenderSpectrum()
 	soundlevel = math.Clamp( soundlevel ^ 2, 0, 1 )
 	soundlevel = ( soundlevel * 0.5 ) + 0.5
 
-	color.r = color.r * soundlevel
-	color.g = color.g * soundlevel
-	color.b = color.b * soundlevel
+	local cR, cG, cB, cA = color:Unpack()
 
-	self.StreamOBJ:GetSpectrumTable(StreamRadioLib.GetSpectrumBars(), self.Spectrum, RenderSpectrumBar, soundlevel, x, y, w, h, color)
+	cR = cR * soundlevel
+	cG = cG * soundlevel
+	cB = cB * soundlevel
+
+	self.StreamOBJ:GetSpectrumTable(StreamRadioLib.GetSpectrumBars(), self.Spectrum, RenderSpectrumBar, x, y, w, h, cR, cG, cB, cA)
 end
 
 function CLASS:RenderLoader()
@@ -124,7 +144,7 @@ function CLASS:RenderLoader()
 end
 
 function CLASS:RenderIcon(icon)
-	local color = self.Colors.Icon
+	local colIcon = self.Colors.Icon or color_white
 
 	local x, y = self:GetRenderPos()
 	local p = self:GetPadding()
@@ -136,7 +156,7 @@ function CLASS:RenderIcon(icon)
 	local sqmax, sqmin = math.max(w, h), math.min(w, h)
 	local isq = math.min(sqmax * 0.125, sqmin * 0.5)
 
-	surface.SetDrawColor( color )
+	surface.SetDrawColor( colIcon:Unpack() )
 	surface.SetMaterial( icon )
 	surface.DrawTexturedRectUV( x + (w - isq) / 2, y + (h - isq) / 2, isq, isq, 0, 0, 1, 1 )
 end
@@ -199,6 +219,10 @@ function CLASS:ShouldPerformRerender()
 	if SERVER then return false end
 
 	if self.StreamOBJ:GetMuted() then
+		return false
+	end
+
+	if self.StreamOBJ:HasError() then
 		return false
 	end
 

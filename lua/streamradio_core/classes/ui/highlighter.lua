@@ -29,26 +29,44 @@ end
 
 function CLASS:SetBorderColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Border1 = color
 end
 
 function CLASS:SetBorderColor2(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Border2 = color
 end
 
 function CLASS:GetBorderColor()
 	if SERVER then return end
-	local col = self.Colors.Border1
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Border1
+	return col
 end
 
 function CLASS:GetBorderColor2()
 	if SERVER then return end
-	local col = self.Colors.Border2
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Border2
+	return col
 end
 
 function CLASS:HighlightClear()
@@ -97,15 +115,17 @@ function CLASS:RenderHighlight(panel)
 	pw = math.min(pw, spw - padding * 2)
 	ph = math.min(ph, sph - padding * 2)
 
-	surface.SetDrawColor(self.Colors.Main)
+	local colMain = self.Colors.Main or color_white
+
+	surface.SetDrawColor(colMain:Unpack())
 	surface.DrawRect(px, py, pw, ph)
 
-	local col1 = self.Colors.Border1
-	local col2 = self.Colors.Border2
+	local col1 = self.Colors.Border1 or color_white
+	local col2 = self.Colors.Border2 or color_black
 
 	for i = 1, lines do
 		local col = ((i % 2) == 0) and col2 or col1
-		surface.SetDrawColor(col)
+		surface.SetDrawColor(col:Unpack())
 
 		for j = 0, thickness - 1 do
 			local t = (i - 1) * thickness + j

@@ -355,7 +355,7 @@ function ENT:IsMutedForPlayer(ply)
 	if not ply:IsPlayer() then return true end
 	if ply:IsBot() then return true end
 
-	if StreamRadioLib.IsMuted(ply) then
+	if StreamRadioLib.IsMuted(ply, self:GetRealRadioOwner()) then
 		return true
 	end
 
@@ -375,6 +375,10 @@ end
 
 function ENT:IsMutedForAll()
 	if not self.__IsLibLoaded then
+		return true
+	end
+
+	if self:GetSVMute() then
 		return true
 	end
 
@@ -456,8 +460,6 @@ function ENT:FastThink()
 	if not self.__IsLibLoaded then
 		return
 	end
-
-	LIBNetwork.Pull(self)
 
 	if SERVER then
 		if self.__IsWiremodLoaded then

@@ -14,6 +14,8 @@ ENT.AdminOnly = false
 local ang_zero = Angle( )
 local vec_zero = Vector( )
 
+local g_displayBuildTimer = 0
+
 function ENT:SetScale(scale)
 	self.Scale = scale or 0
 end
@@ -28,7 +30,7 @@ function ENT:SetDisplayPosAng(pos, ang)
 end
 
 function ENT:GetDisplayPos( )
-	if not self:HasGUI() then return end
+	if self.NoDisplay then return end
 	if self:GetDisableDisplay() then return end
 
 	local pos = self:GetPos( )
@@ -242,29 +244,44 @@ function ENT:SetUpModel()
 
 	self:SetSoundPosAng(MD.SoundPosOffset, MD.SoundAngOffset)
 
-	if self.NoDisplay then
-		if IsValid(self.GUI_Main) then
-			self.GUI_Main:Remove()
-			self.GUI_Main = nil
-		end
+	if self.OnModelSetup then
+		self:OnModelSetup()
+	end
+end
 
-		if IsValid(self.GUI) then
-			self.GUI:Remove()
-			self.GUI = nil
-		end
+function ENT:RemoveGui()
+	local tmpGui = self.GUI
+	local tmpGuiMain = self.GUI_Main
 
-		if self.OnSetupModelSetup then
-			self:OnSetupModelSetup()
-		end
+	local hasGui = IsValid(tmpGui)
+	local hasGuiMain = IsValid(tmpGuiMain)
 
+	if (hasGui or hasGuiMain) and self.OnGUIRemove then
+		self:OnGUIRemove(tmpGui, tmpGuiMain)
+	end
+
+	self.GUI = nil
+	self.GUI_Main = nil
+
+	if hasGui then
+		tmpGui:Remove()
+		tmpGui = nil
+	end
+
+	if hasGuiMain then
+		tmpGuiMain:Remove()
+		tmpGuiMain = nil
+	end
+end
+
+function ENT:ResetGui()
+	self:RemoveGui()
+
+	if self.NoDisplay or self:GetDisableDisplay() then
 		return
 	end
 
 	self:SetupGui()
-
-	if self.OnSetupModelSetup then
-		self:OnSetupModelSetup()
-	end
 end
 
 function ENT:SetupGui()
@@ -319,6 +336,10 @@ function ENT:SetupGui()
 
 	self.GUI:SetSkin(LIBSkin.GetDefaultSkin())
 	self.GUI:PerformRerender(true)
+
+	if self.OnGUISetup then
+		self:OnGUISetup(self.GUI, self.GUI_Main)
+	end
 end
 
 function ENT:StreamOnConnect(stream, channel, metadata)
@@ -359,8 +380,34 @@ function ENT:GetGUIMain()
 	return self.GUI_Main
 end
 
+function ENT:PollGuiSetup()
+	if self.NoDisplay then
+		return
+	end
+
+	if self:GetDisableDisplay() then
+		return
+	end
+
+	if self.GUI then
+		return
+	end
+
+	if SysTime() > g_displayBuildTimer then
+		self:SetupGui()
+
+		-- delay the GUI rebuild in case many newly spawned radios are seen at once
+		g_displayBuildTimer = SysTime() + 0.2
+	end
+end
+
 function ENT:FastThink()
 	BaseClass.FastThink(self)
+
+	if SERVER then
+		self:PollGuiSetup()
+	end
+
 	self:ControlThink(self:GetLastUser(), self:GetLastUsingEntity())
 end
 
@@ -447,13 +494,23 @@ function ENT:SetupDataTables()
 		}
 	})
 
+	self:AddDTNetworkVar( "Bool", "DisableSpectrum", {
+		KeyName = "DisableSpectrum",
+		Edit = {
+			category = "GUI",
+			title = "Disable spectrum",
+			type = "Boolean",
+			order = 12
+		}
+	})
+
 	self:AddDTNetworkVar( "Bool", "EnableDebug", {
 		KeyName = "EnableDebug",
 		Edit = {
 			category = "GUI",
 			title = "Show debug panel",
 			type = "Boolean",
-			order = 12
+			order = 13
 		}
 	})
 
@@ -461,6 +518,12 @@ function ENT:SetupDataTables()
 		if not IsValid(self.GUI) then return end
 		self.GUI:SetDebug(newv)
 	end)
+
+	if CLIENT then
+		LIBNetwork.SetDTVarCallback(self, "DisableDisplay", function(this, name, oldv, newv)
+			self:RemoveGui()
+		end)
+	end
 end
 
 function ENT:IsPlaylistEnabled()
@@ -484,27 +547,8 @@ function ENT:Initialize()
 end
 
 function ENT:OnRemove()
-	local GUI_Main = self.GUI_Main
-	local GUI = self.GUI
-
 	self:CallModelFunction("OnRemove", model)
-
-	-- We run it in a timer to ensure the entity is actually gone
-	timer.Simple(0.05, function()
-		if IsValid(self) then
-			return
-		end
-
-		if IsValid(GUI_Main) then
-			GUI_Main:Remove()
-			GUI_Main = nil
-		end
-
-		if IsValid(GUI) then
-			GUI:Remove()
-			GUI = nil
-		end
-	end)
+	self:RemoveGui()
 
 	BaseClass.OnRemove(self)
 end
@@ -525,7 +569,17 @@ function ENT:OnPlayerShown()
 	-- Override me
 end
 
-function ENT:OnSetupModelSetup()
+function ENT:OnModelSetup()
+	-- Override me
+end
+
+function ENT:OnGUISetup()
+	if self._postClasssystemPasteLoadDupeOnGUISetup then
+		self:PostClasssystemPaste()
+	end
+end
+
+function ENT:OnGUIRemove()
 	-- Override me
 end
 
@@ -543,13 +597,12 @@ if CLIENT then
 	function ENT:CanSeeDisplay()
 		if not self.__IsLibLoaded then return false end
 
-		if not self:HasGUI() then return false end
+		if self.NoDisplay then return false end
 		if self:GetDisableDisplay() then return false end
 
 		local ply = LocalPlayer()
 		if StreamRadioLib.IsGUIHidden(ply) then return false end
 		if not self:OnGUIShowCheck(ply) then return false end
-
 		local scale = self:GetScale()
 		if scale <= 0 then return false end
 
@@ -569,7 +622,6 @@ if CLIENT then
 
 	function ENT:GetCurserFromLastUser()
 		if not self.__IsLibLoaded then return false end
-		if not IsValid(self.GUI) then return false end
 
 		local lastUser = self:GetLastUser()
 		local userEntity = self:GetLastUsingEntity()
@@ -585,14 +637,48 @@ if CLIENT then
 		return self:GetCursor(lastUser, nil, userEntity)
 	end
 
+	function ENT:ShouldRemoveGUI()
+		local ply = LocalPlayer()
+
+		if StreamRadioLib.IsGUIHidden(ply) then
+			return true
+		end
+
+		return false
+	end
+
 	function ENT:DrawGUI()
 		if not self.__IsLibLoaded then return end
-		if not IsValid(self.GUI) then return end
 
-		if not self:CanSeeDisplay() then return end
+		if self.NoDisplay then
+			return
+		end
 
-		local ply = LocalPlayer()
-		if not self:CheckDistanceToEntity(ply, StreamRadioLib.GetDrawDistance(), nil, StreamRadioLib.GetCameraViewPos(ply)) then return end
+		if self:GetDisableDisplay() then
+			return
+		end
+
+		if self:ShouldRemoveGUI() then
+			if self.GUI then
+				self:RemoveGui()
+			end
+
+			return
+		end
+
+		if not self:CheckDistanceToEntity(ply, StreamRadioLib.GetDrawDistance(), nil, StreamRadioLib.GetCameraViewPos(ply)) then
+			return true
+		end
+
+		self:PollGuiSetup()
+
+		if not IsValid(self.GUI) then
+			return
+		end
+
+		if not self:CanSeeDisplay() then
+			return false
+		end
 
 		local lastUser = self:GetLastUsingEntity()
 		local scale = self:GetScale()
@@ -622,7 +708,9 @@ if CLIENT then
 	function ENT:CanDrawSpectrum()
 		if not self.__IsLibLoaded then return false end
 		if not IsValid(self.GUI) then return false end
+
 		if StreamRadioLib.IsSpectrumHidden() then return false end
+		if self:GetDisableSpectrum() then return false end
 
 		if not self:CanSeeDisplay() then return false end
 
@@ -667,8 +755,20 @@ else
 	end
 
 	function ENT:PostClasssystemPaste()
-		BaseClass.PostClasssystemPaste( self )
-		if not IsValid(self.GUI) then return end
-		self.GUI:LoadFromDupe()
+		BaseClass.PostClasssystemPaste(self)
+
+		if not IsValid(self.GUI) then
+			self._postClasssystemPasteLoadDupeOnGUISetup = true
+			return
+		end
+
+		self._postClasssystemPasteLoadDupeOnGUISetup = nil
+
+		timer.Simple(0.25, function()
+			if not IsValid(self) then return end
+			if not IsValid(self.GUI) then return end
+
+			self.GUI:LoadFromDupe()
+		end)
 	end
 end

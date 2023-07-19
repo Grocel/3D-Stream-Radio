@@ -87,12 +87,15 @@ function CLASS:Render()
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
 
-	local textcol = self:GetTextColor()
+	local colText = self:GetTextColor()
+	colText = colText or color_white
+
+	local colMain = self.Colors.Main or color_black
 
 	local thickness = 2
 	local padding = 2
 
-	surface.SetDrawColor(textcol or color_white)
+	surface.SetDrawColor(colText:Unpack())
 
 	for i = 0, thickness - 1 do
 		local t = i + padding
@@ -101,7 +104,7 @@ function CLASS:Render()
 		surface.DrawOutlinedRect(x + t, y + t, w - tt, h - tt)
 	end
 
-	surface.SetDrawColor(self.Colors.Main or color_black)
+	surface.SetDrawColor(colMain:Unpack())
 	surface.DrawRect(x, y, w, h)
 
 	BASE.Render(self)

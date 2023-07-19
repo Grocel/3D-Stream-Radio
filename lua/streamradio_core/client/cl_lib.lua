@@ -13,6 +13,7 @@ local string = string
 local net = net
 
 local LIBNet = StreamRadioLib.Net
+local LIBError = StreamRadioLib.Error
 
 LIBNet.Receive("PlaylistMenu", function( length )
 	if ( not istable( StreamRadioLib ) ) then return end
@@ -291,7 +292,12 @@ do
 		end
 
 		TestChannel.OnError = function(self, err)
-			print( "OnError", self, err, StreamRadioLib.DecodeErrorCode( err ) )
+			local errorInfo = LIBError.GetStreamErrorInfo(err)
+
+			local errorName = errorInfo.name
+			local errorDescription = errorInfo.description
+
+			print("OnError", self, err, errorName, errorDescription)
 		end
 
 		StreamRadioLib._TestChannel = TestChannel

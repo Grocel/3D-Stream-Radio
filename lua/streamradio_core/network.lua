@@ -7,6 +7,11 @@ local StreamRadioLib = StreamRadioLib
 local g_addonprefix = "3DStreamRadio/"
 local g_maxIdentifierLen = 44
 
+local g_networkStack = {}
+
+local g_networkMaxStackSize = 2^16
+local g_networkStackBatchSize = 128
+
 local g_types = {
 	["Angle"] = {
 		check = function(value)
@@ -200,7 +205,7 @@ do
 		local nwGetter = dtd.nwGetter
 		local nwSetter = dtd.nwSetter
 
-		local nwGetterFunc = function(ent, key, defaultvalue, ...)
+		local nwGetterFunc = function(ent, key, defaultvalue)
 			key = LIB.TransformNWIdentifier(key)
 
 			if defaultvalue ~= nil then
@@ -208,7 +213,7 @@ do
 				defaultvalue = convertfunc and convertfunc(defaultvalue) or defaultvalue
 			end
 
-			local r = ent[nwGetter](ent, key, defaultvalue, ...)
+			local r = ent[nwGetter](ent, key, defaultvalue)
 			if r == nil and defaultvalue ~= nil then
 				r = defaultvalue
 			end
@@ -216,7 +221,7 @@ do
 			return r
 		end
 
-		local nwSetterFunc = function(ent, key, value, ...)
+		local nwSetterFunc = function(ent, key, value)
 			if CLIENT then
 				return nil
 			end
@@ -226,7 +231,8 @@ do
 
 			assert(checkfunc(value), "invalid datatype of value at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(value) .. "'")
 
-			return ent[nwSetter](ent, key, value, ...)
+			local data = {ent, ent[nwSetter], key, value}
+			table.insert(g_networkStack, data)
 		end
 
 		LIB["GetNW" .. datatype] = nwGetterFunc
@@ -288,6 +294,9 @@ function LIB.SetupDataTables(ent)
 	end
 end
 
+local StreamRadioLib_CatchAndErrorNoHaltWithStack = StreamRadioLib.CatchAndErrorNoHaltWithStack
+local StreamRadioLib_ErrorNoHaltWithStack = StreamRadioLib.ErrorNoHaltWithStack
+
 local function pullNWVars(ent)
 	local NW = ent.StreamRadioNW
 	if not NW then return end
@@ -301,7 +310,7 @@ local function pullNWVars(ent)
 		local newvalue = LIB.GetNWVar(ent, data.datatype, name)
 
 		if oldvalue == newvalue then return end
-		StreamRadioLib.CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
+		StreamRadioLib_CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
 
 		NW.Names[name].oldvalue = newvalue
 	end
@@ -326,13 +335,51 @@ local function pullDTVars(ent)
 		local newvalue = LIB.GetDTNetworkVar(ent, name)
 
 		if oldvalue == newvalue then return end
-		StreamRadioLib.CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
+		StreamRadioLib_CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
 
 		NW.Names[name].oldvalue = newvalue
 	end
 
 	for name, data in pairs(NW.Names) do
 		loopThis(name, data)
+	end
+end
+
+function LIB.PullNwStack()
+	if CLIENT then
+		return
+	end
+
+	local loopThis = function(stackItem, i)
+		if not stackItem then return end
+
+		local ent = stackItem[1]
+		local setter = stackItem[2]
+		local key = stackItem[3]
+		local value = stackItem[4]
+
+		if not IsValid(ent) then return end
+		if not setter then return end
+
+		StreamRadioLib_CatchAndErrorNoHaltWithStack(setter, ent, key, value)
+	end
+
+	local count = 0
+
+	for pointer, stackItem in pairs(g_networkStack) do
+		if pointer >= g_networkMaxStackSize then
+			StreamRadioLib_ErrorNoHaltWithStack("Network overflow, dumping stack!")
+			table.Empty(g_networkStack)
+			break
+		end
+
+		g_networkStack[pointer] = nil
+		loopThis(stackItem, pointer)
+
+		count = count + 1
+		if count >= g_networkStackBatchSize then
+			break
+		end
 	end
 end
 
@@ -456,6 +503,48 @@ function LIB.SetNWVarCallback(ent, datatype, name, func)
 	data.datatype = datatype
 	data.oldvalue = nil
 end
+
+local function hashToBin(str)
+	str = string.gsub(str, "..", function(cc)
+		local c = tonumber(cc, 16)
+
+		if c == 0 then
+			-- avoid zero termination
+			return "\\0"
+		end
+
+		return string.char(c)
+	end)
+
+	return str
+end
+
+function LIB.Hash(str)
+	local hash = StreamRadioLib.Hash(str)
+	hash = hashToBin(hash)
+
+	return hash
+end
+
+hook.Add("Tick", "Streamradio_Entity_Network_Tick", function()
+	if not StreamRadioLib then return end
+	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib.SpawnedRadios then return end
+
+	StreamRadioLib.Network.PullNwStack()
+
+	for index, ent in pairs(StreamRadioLib.SpawnedRadios) do
+		if not IsValid(ent) then
+			continue
+		end
+
+		if not ent.__IsRadio then
+			continue
+		end
+
+		StreamRadioLib.Network.Pull(ent)
+	end
+end)
 
 function LIB.Debug.DumpDTNetworkStats(ent)
 	local NW = ent.StreamRadioDT or {}

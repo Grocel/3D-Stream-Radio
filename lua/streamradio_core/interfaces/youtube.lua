@@ -7,58 +7,62 @@ end
 RADIOIFACE.name = "YouTube"
 RADIOIFACE.subinterfaces_folder = "youtube"
 
-local ERROR_DISABLED = 10000
-local ERROR_UNSUPPORTED = 10001
-local ERROR_NO_ID = 10002
+local ERROR_DISABLED = 110000
+local ERROR_UNSUPPORTED = 110001
+local ERROR_NO_ID = 110002
 
-RADIOIFACE.youtube_help_url = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/4523281307928803506/"
-local youtube_help_url = RADIOIFACE.youtube_help_url
+local youtube_help_url = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/4523281307928803506/"
 
-RADIOIFACE.Errorcodes[ERROR_UNSUPPORTED] = {
-	desc = "YouTube is not supported",
-	text = [[
+StreamRadioLib.Error.AddStreamErrorCode({
+	id = ERROR_UNSUPPORTED,
+	name = "STREAM_ERROR_YOUTUBE_UNSUPPORTED",
+	description = "[YouTube] YouTube is not supported",
+	helptext = [[
 YouTube is not supported. Please use other media sources.
 You can use a Youtube to MP3 converter, but it is not recommended.
 
 Notes:
-  - Reliable YouTube support can't be added. It is impossible.
-  - Please, don't ask me about it.
-  - View the online help link for more information.
+	- Reliable YouTube support can't be added. It is impossible.
+	- Please, don't ask me about it.
+	- View the online help link for more information.
 ]],
-	url = youtube_help_url,
-}
+	helpurl = youtube_help_url,
+})
 
-RADIOIFACE.Errorcodes[ERROR_NO_ID] = {
-	desc = "Invalid video ID",
-	text = [[
+StreamRadioLib.Error.AddStreamErrorCode({
+	id = ERROR_NO_ID,
+	name = "STREAM_ERROR_YOUTUBE_NO_ID",
+	description = "[YouTube] Invalid video ID",
+	helptext = [[
 An invalid video ID was given.
 
 Notes:
-  - Make sure you enter a YouTube URL of an existing video.
-  - Do not try to play from YouTube playlists or channels. Those are not supported.
+	- Make sure you enter a YouTube URL of an existing video.
+	- Do not try to play from YouTube playlists or channels. Those are not supported.
 ]],
-	url = youtube_help_url,
-}
+	helpurl = youtube_help_url,
+})
 
-RADIOIFACE.Errorcodes[ERROR_DISABLED] = {
-	desc = "YouTube support is not enabled",
-	text = [[
+StreamRadioLib.Error.AddStreamErrorCode({
+	id = ERROR_DISABLED,
+	name = "STREAM_ERROR_YOUTUBE_DISABLED",
+	description = "[YouTube] Invalid video ID",
+	helptext = [[
 Playback from YouTube is disabled.
 You can enable it with the tickbox below or in the Stream Radio settings.
 
 Notes:
-  - This is slow and unreliable.
-  - Use at your own risk.
+	- This is slow and unreliable.
+	- Use at your own risk.
 ]],
-	url = youtube_help_url,
+	helpurl = youtube_help_url,
 	userdata = {
 		tickbox = {
 			text = "Enable YouTube support\n(slow and unreliable!)",
 			cmd = "cl_streamradio_youtubesupport",
 		},
 	},
-}
-
+})
 
 local YoutubePatterns = {
 	"youtube%://([%w%-%_]+)",
@@ -84,9 +88,9 @@ local YoutubeURLs = {
 function RADIOIFACE:PrintError(url, code)
 	StreamRadioLib.Debug([[
 Error Converting YouTube URL: '%s'
-Code: %d, %s
+Code: %d (%s), %s
 Retrying with next module...
-]], url, code, StreamRadioLib.DecodeErrorCode(code))
+]], url, code, StreamRadioLib.Error.GetStreamErrorName(code), StreamRadioLib.Error.GetStreamErrorDescription(code))
 
 end
 

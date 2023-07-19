@@ -191,60 +191,6 @@ local function AddCommonFunctions(interface)
 		if not added then return nil end
 		return stack
 	end
-
-	function interface:GetErrorData(errorcode)
-		errorcode = tonumber(errorcode or -1) or -1
-
-		if errorcode == -1 then
-			return nil
-		end
-
-		local function geterror(this)
-			if not this then return nil end
-			if not this.Errorcodes then return nil end
-
-			local err = this.Errorcodes[errorcode]
-			if not err then return nil end
-
-			local nerr = {}
-
-			nerr.interface = self
-
-			if this ~= self then
-				nerr.subinterface = this
-			end
-
-			nerr.code = errorcode
-			nerr.desc = err.desc or ""
-			nerr.text = err.text or ""
-			nerr.url = err.url or ""
-
-			if err.userdata then
-				nerr.userdata = table.Copy(err.userdata)
-			end
-
-			return nerr
-		end
-
-		local err = geterror(self)
-		if err then
-			return err
-		end
-
-		if not self.subinterfaces then
-			return nil
-		end
-
-		for i, v in ipairs(self.subinterfaces) do
-			local err = geterror(v)
-			if not err then continue end
-
-			return err
-		end
-
-		return nil
-	end
-
 end
 
 local function AddSubInterfaces(interface)
@@ -272,8 +218,6 @@ local function AddSubInterfaces(interface)
 		RADIOIFACE.scriptpath = scriptpath
 		RADIOIFACE.scriptfile = scriptfile
 		RADIOIFACE.parent = interface
-
-		RADIOIFACE.Errorcodes = {}
 
 		AddCommonFunctions(RADIOIFACE)
 
@@ -314,7 +258,6 @@ local function AddInterface(script)
 	RADIOIFACE.scriptpath = scriptpath
 	RADIOIFACE.scriptfile = scriptfile
 
-	RADIOIFACE.Errorcodes = {}
 	RADIOIFACE.subinterfaces = {}
 
 	AddCommonFunctions(RADIOIFACE)
@@ -355,31 +298,6 @@ local function GetInterfaceFromURL(url)
 		if not v:CheckURL(url) then continue end
 
 		return v
-	end
-
-	return nil
-end
-
-function LIB.GetErrorData(errorcode)
-	errorcode = tonumber(errorcode or -1) or -1
-
-	if errorcode == -1 then
-		return nil
-	end
-
-	if err_cache[errorcode] then
-		return err_cache[errorcode]
-	end
-
-	for i, v in ipairs(Intefaces) do
-		if not v then continue end
-		if not v.GetErrorData then continue end
-
-		local err = v:GetErrorData(errorcode)
-		if not err then continue end
-
-		err_cache[errorcode] = err
-		return err
 	end
 
 	return nil

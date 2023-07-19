@@ -4,10 +4,23 @@ if not istable( RADIOIFACE ) then
 	return
 end
 
-local ERROR_NO_ID = 11000
-
 RADIOIFACE.name = "SHOUTcast"
-RADIOIFACE.subinterfaces_folder = "shoutcast"
+
+local ERROR_NO_ID = 120000
+
+StreamRadioLib.Error.AddStreamErrorCode({
+	id = ERROR_NO_ID,
+	name = "STREAM_ERROR_SHOUTCAST_NO_ID",
+	description = "[SHOUTcast] Invalid stream ID",
+	helptext = [[
+An invalid stream ID was given.
+
+Notes:
+	- Make sure you enter a URL of an existing SHOUTcast stream.
+	- The URL should look like this shoutcast://123456
+	- Only numbers are supported.
+]],
+})
 
 local ShoutcastPatterns = {
 	"shoutcast%://([%d]+)",
@@ -15,18 +28,6 @@ local ShoutcastPatterns = {
 
 local ShoutcastURLs = {
 	"shoutcast://",
-}
-
-RADIOIFACE.Errorcodes[ERROR_NO_ID] = {
-	desc = "Invalid stream ID",
-	text = [[
-An invalid stream ID was given.
-
-Notes:
-	- Make sure you enter a URL of an existing SHOUTcast stream.
-	- The URL should look like this shoutcast://123456
-	- Only numbers are supported.
-]]
 }
 
 function RADIOIFACE:CheckURL(url)

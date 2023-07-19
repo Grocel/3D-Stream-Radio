@@ -180,14 +180,16 @@ function CLASS:Render()
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
 
-	local col = self:GetTextColor()
+	local colText = self:GetTextColor()
+	local cR, cG, cB, cA = colText:Unpack()
+
+	local phase = self:GetPhase()
+	cA = cA * phase
+
 	local font = self.TextData.Font
 
-	surface.SetFont( font )
-	local phase = self:GetPhase()
-	local alpha = col.a * phase
+	surface.SetFont(font)
+	surface.SetTextColor(cR, cG, cB, cA)
 
-	col.a = alpha
-	surface.SetTextColor( col )
 	self:DrawText(self.InternalText, x, y, w, h)
 end

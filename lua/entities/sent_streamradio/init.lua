@@ -4,6 +4,7 @@ include( "shared.lua" )
 DEFINE_BASECLASS( "base_streamradio_gui" )
 
 local StreamRadioLib = StreamRadioLib
+local LIBError = StreamRadioLib.Error
 
 function ENT:InitializeModel()
 	local model = self:GetModel()
@@ -38,6 +39,9 @@ function ENT:Initialize( )
 
 	self.ActivateExtraName = ""
 
+	self:SetCLMute(false)
+	self:SetCLVolume(1)
+
 	BaseClass.Initialize( self )
 
 	if self.__IsLibLoaded then
@@ -46,6 +50,7 @@ function ENT:Initialize( )
 
 	self:AddWireInput("Play", "NORMAL")
 	self:AddWireInput("Pause", "NORMAL")
+	self:AddWireInput("Mute", "NORMAL")
 	self:AddWireInput("Volume", "NORMAL")
 	self:AddWireInput("Radius", "NORMAL")
 	self:AddWireInput("LoopMode", "NORMAL")
@@ -58,6 +63,7 @@ function ENT:Initialize( )
 	self:AddWireOutput("Play", "NORMAL")
 	self:AddWireOutput("Paused", "NORMAL")
 	self:AddWireOutput("Stopped", "NORMAL")
+	self:AddWireOutput("Muted", "NORMAL")
 	self:AddWireOutput("Volume", "NORMAL")
 	self:AddWireOutput("Radius", "NORMAL")
 
@@ -116,6 +122,7 @@ function ENT:SetSettings(settings)
 
 	self:SetStreamName(settings.StreamName or "")
 
+	self:SetSVMute(settings.StreamMute or false)
 	self:SetVolume(settings.StreamVolume or 1)
 
 	self:SetRadius(settings.Radius or 1200)
@@ -123,6 +130,7 @@ function ENT:SetSettings(settings)
 
 	self:SetDisableDisplay(settings.DisableDisplay or false)
 	self:SetDisableInput(settings.DisableInput or false)
+	self:SetDisableSpectrum(settings.DisableSpectrum or false)
 	self:SetDisableAdvancedOutputs(noadvoutputs)
 
 	if settings.PlaybackLoopMode then
@@ -149,12 +157,14 @@ function ENT:GetSettings()
 	settings.StreamUrl = self:GetStreamURL()
 	settings.StreamName = self:GetStreamName()
 
+	settings.StreamMute = self:GetSVMute()
 	settings.StreamVolume = self:GetVolume()
 	settings.Radius = self:GetRadius()
 	settings.Sound3D = self:GetSound3D()
 
 	settings.DisableDisplay = self:GetDisableDisplay()
 	settings.DisableInput = self:GetDisableInput()
+	settings.DisableSpectrum = self:GetDisableSpectrum()
 	settings.DisableAdvancedOutputs = self:GetDisableAdvancedOutputs()
 
 	settings.PlaybackLoopMode = self:GetPlaybackLoopMode()
@@ -175,7 +185,7 @@ function ENT:OnReloaded( )
 	if not self.__IsLibLoaded then return end
 
 	local ply, model, pos, ang = self.pl, self:GetModel( ), self:GetPos( ), self:GetAngles( )
-	StreamRadioLib.Msg( ply, "Reloaded " .. tostring( self ) )
+	StreamRadioLib.Print.Msg( ply, "Reloaded " .. tostring( self ) )
 	self:Remove( )
 
 	StreamRadioLib.Timedcall( function( ply, model, pos, ang )
@@ -272,6 +282,7 @@ function ENT:WiremodThink( )
 	self:TriggerWireOutput("Paused", self.StreamObj:IsPauseMode())
 	self:TriggerWireOutput("Stopped", self.StreamObj:IsStopMode())
 	self:TriggerWireOutput("Volume", self:GetVolume())
+	self:TriggerWireOutput("Muted", self:GetSVMute())
 	self:TriggerWireOutput("Radius", self:GetRadius())
 
 	self:TriggerWireOutput("LoopMode", self:GetPlaybackLoopMode())
@@ -297,14 +308,14 @@ function ENT:WiremodThink( )
 
 	self:TriggerWireOutput("This Radio", self)
 
+	local err = LIBError.STREAM_ERROR_WIRE_ADVOUT_DISABLED
+
 	if hasadvoutputs then
-		local err = self.StreamObj:GetError()
-		self:TriggerWireOutput("Error", err)
-		self:TriggerWireOutput("Error Text", StreamRadioLib.DecodeErrorCode(err))
-	else
-		self:TriggerWireOutput("Error", 500)
-		self:TriggerWireOutput("Error Text", "Advanced outputs are disabled")
+		err = self.StreamObj:GetError()
 	end
+
+	self:TriggerWireOutput("Error", err)
+	self:TriggerWireOutput("Error Text", LIBError.GetStreamErrorDescription(err))
 end
 
 function ENT:Think( )
@@ -325,19 +336,8 @@ function ENT:Think( )
 			self:SetToolMode(self.ExtraURLs.Tool ~= "")
 			self:SetWireMode(self.ExtraURLs.Wire ~= "")
 
-			if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName then
-				local name = self.ActivateExtraName
-				local urlForDisplay = self.ActivateExtraURL
-
-				if StreamRadioLib.IsBlockedURLCode(urlForDisplay) then
-					urlForDisplay = "(Blocked URL)"
-				end
-
-				if urlForDisplay ~= "" then
-					name = name .. ": " .. urlForDisplay
-				end
-
-				self:OnExtraURL(name, self.ActivateExtraURL)
+			if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName or self._ForceOnExtraURLUpdate then
+				self:OnExtraURLUpdate()
 			end
 		end
 
@@ -353,6 +353,30 @@ function ENT:Think( )
 
 	self:NextThink(CurTime() + 0.1)
 	return true
+end
+
+function ENT:OnExtraURLUpdate()
+	local name = self.ActivateExtraName
+	local urlForDisplay = self.ActivateExtraURL
+
+	if StreamRadioLib.IsBlockedURLCode(urlForDisplay) then
+		urlForDisplay = "(Blocked URL)"
+	end
+
+	if urlForDisplay ~= "" then
+		name = name .. ": " .. urlForDisplay
+	end
+
+	self:OnExtraURL(name, self.ActivateExtraURL)
+	self._ForceOnExtraURLUpdate = nil
+end
+
+function ENT:OnGUISetupServer()
+	if self:GetMasterRadioRecursive() then
+		return
+	end
+
+	self._ForceOnExtraURLUpdate = true
 end
 
 function ENT:SetToolURL(url, setmode)
@@ -524,6 +548,17 @@ function ENT:OnWireInputTrigger(name, value, wired)
 		end
 
 		self:SetMasterRadio(value or NULL)
+		return
+	end
+
+	if name == "Mute" then
+		value = tobool(value)
+
+		if not wired then
+			value = false
+		end
+
+		self:SetSVMute(value)
 		return
 	end
 

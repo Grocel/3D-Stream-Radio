@@ -1,353 +1,106 @@
-local IsValid = IsValid
-local type = type
-local Vector = Vector
-local GetViewEntity = GetViewEntity
-local unpack = unpack
-local tonumber = tonumber
-local tostring = tostring
-local Color = Color
-local LocalPlayer = LocalPlayer
-local concommand = concommand
-local hook = hook
-local math = math
-local debug = debug
-local string = string
-local vgui = vgui
-local net = net
+local LIBError = StreamRadioLib.Error
 
-local NoHelpText = [[
-There is no help text for this error.
+local g_helpPanel = StreamRadioLib.g_HelpPanel
 
-Please report this! Include the URL and the Errorcode in the report!
-]]
+if IsValid(g_helpPanel) then
+	StreamRadioLib.VR.CloseMenu(g_helpPanel)
+	g_helpPanel:Remove()
 
-NoHelpText = string.gsub(NoHelpText, "\r", "")
-NoHelpText = string.Trim(NoHelpText)
-
-local ErrorHelpPlaylistText = [[
-The Playlist file you are trying to load is invalid.
-
-This could be the problem:
-  - The playlist could not be found or read.
-  - Its format is not supported.
-  - It is broken.
-  - It is empty.
-
-Supported playlist formats:
-  M3U, PLS, VDF, JSON
-
-Playlists are located at "<path to game>/garrysmod/data/streamradio/playlists/".
-
-Hint: Use the playlist editor to make playlists.
-]]
-
-ErrorHelpPlaylistText = string.gsub(ErrorHelpPlaylistText, "\r", "")
-ErrorHelpPlaylistText = string.Trim(ErrorHelpPlaylistText)
-
-local ErrorHelps = {}
-
-ErrorHelps[-1] = {
-	text = [[
-The exact cause of this error is unknown.
-
-This error is usually caused by:
-  - Invalid file pathes or URLs without the protocol prefix such as 'http://'.
-  - Attempting to play self-looping *.WAV files.
-
-]],
-	helpurl = ""
-}
-
-ErrorHelps[0] = {
-	text = [[
-Everything should be fine. You should not see this.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[1] = {
-	text = [[
-A memory error is always bad.
-You proably ran out of it.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[2] = {
-	text = [[
-There was no file or content found at the given path.
-
-If you try to play an online file:
-  - Do not forget the protocol prefix such as 'http://'.
-  - Make sure the file exist at the given URL. It should be downloadable.
-  - Make sure the format is supported and the file is not broken. (See below.)
-
-If you try to play a local file:
-  - Make sure the file exist at the given path.
-  - Make sure the file is readable for Garry's Mod.
-  - The path must be relative your "<path to game>/garrysmod/sound/" folder. (See below.)
-  - The file must be in "<path to game>/garrysmod/sound/" folder. (See below.)
-  - You can play mounted stuff in "<path to game>/garrysmod/sound/".
-  - You can not play sound scripts or sound properties.
-  - Make sure the format is supported and the file is not broken. (See below.)
-
-Supported formats:
-  MP3, OGG, AAC, WAV, WMA, FLAC
-  *.WAV files must be not self-looping in game as the API does not support these.
-
-How local or mounted file paths work:
-  - If you have a file located "<path to game>/garrysmod/sound/mymusic/song.mp3" you access it with these urls:
-    * file://mymusic/song.mp3
-    * mymusic/song.mp3"
-
-  - For files in "<path to game>/garrysmod/sound/filename.mp3" you get them like this:
-    * file://filename.mp3
-    * filename.mp3
-
-  - Files outside the game folder are forbidden to be accessed by the game.
-  - Do not enter absolute paths.
-  - Only people who also have the same file localed there, will be able to hear the music too.
-  - Create folders if they are missing.
-]],
-	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918001392/"
-}
-
-ErrorHelps[3] = {
-	text = [[
-Something is wrong with your sound hardware or your sound drivers.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[4] = {
-	text = [[
-Your sound driver/interface was lost.
-
-To fix it you need to do this:
-- Plugin your speakers or head phones.
-- Enable the sound device.
-- Restart the game. Do not just disconnect!
-- Restart your PC, if it still not works.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[18] = {
-	text = [[
-A memory error is always bad.
-You proably ran out of it.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[21] = {
-	text = [[
-Something is wrong with your sound hardware or your sound drivers.
-It does not support 3D world sound.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[22] = {
-	text = [[
-Something is wrong with your sound hardware or your sound drivers.
-It does not support EAX-effects.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[29] = {
-	text = [[
-Something is wrong with your sound hardware. Out of memory?
-]],
-	helpurl = ""
-}
-
-ErrorHelps[32] = {
-	text = [[
-You internet connection is not working.
-Check your network devices and your firewall.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[34] = {
-	text = [[
-Something is wrong with your sound hardware or your sound drivers.
-It does not support EAX-effects.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[37] = {
-	text = [[4]],
-}
-
-ErrorHelps[39] = {
-	text = [[
-Something is wrong with your sound hardware or your sound drivers.
-DirectX seems to be outdated or not installed.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[40] = {
-	text = [[
-The connection seems being slow. Just try again in a few minutes.
-If it does not work, the server you are trying to stream from is down.
-]],
-	helpurl = ""
-}
-
-ErrorHelps[41] = {
-	text = [[
-You are trying to play something that the streaming API of GMod (and so the radio) does not support.
-
-These things will NOT work:
-  - HTML pages that play sound.
-  - Flash players/games/applications that are playing sound.
-  - Anything that requires any kind of login to access.
-  - Anything that is not public.
-  - Sound scripts or sound properties.
-  - Broken files or unsupported formats. (See below.)
-
-These things will work:
-  - URLs to sound files (aka. DIRECT download).
-  - URLs to playlist files of radio stations. If they do not offer them, you will be not able to play them.
-  - URLs inside these playlists files.
-  - Local sound files inside your "<path to game>/garrysmod/sound/" folder. Examble: "music/hl1_song10.mp3"
-  - You may have to install addional codices to your OS.
-  - Formats that are listed below.
-
-Supported formats:
-  MP3, OGG, AAC, WAV, WMA, FLAC
-  *.WAV files must be not self-looping ingame as the API does not support these.
-]],
-	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277918028290/"
-}
-
-ErrorHelps[42] = {
-	text = [[
-Something is wrong with your sound hardware or your sound drivers.
-Do you even have speakers?
-]],
-	helpurl = ""
-}
-
-ErrorHelps[44] = {
-	text = [[41]]
-}
-
-ErrorHelps[1000] = {
-	text = [[
-The server does not allow playback of custom URLs.
-You can ask an admin to enable it, but there is probably a reason why it is forbidden.
-
-All online URLs from these sources are blocked:
-  - Toolgun input
-  - Wiremod input
-  - From duplications and saves
-
-The Convar is: sv_streamradio_allow_customurls 0/1
-]],
-	helpurl = ""
-}
-
-ErrorHelps[37] = ErrorHelps[4]
-ErrorHelps[44] = ErrorHelps[41]
-
-local HelpPanel = StreamRadioLib.g_HelpPanel
-
-if IsValid(HelpPanel) then
-	StreamRadioLib.VR.CloseMenu(HelpPanel)
-	HelpPanel:Remove()
-
-	HelpPanel = nil
+	g_helpPanel = nil
 	StreamRadioLib.g_HelpPanel = nil
 end
 
-local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHelp, ErrorData )
-	ErrorHeader = ErrorHeader or ""
-	ErrorText = ErrorText or ""
-	url = url or ""
-	ErrorOnlineHelp = ErrorOnlineHelp or ""
-	ErrorData = ErrorData or {}
-
-	local tickboxdata = ErrorData.userdata or {}
-	tickboxdata = tickboxdata.tickbox
-
-	if not IsValid( HelpPanel ) then
-		local ErrorHelpFont = StreamRadioLib.Surface.AddFont(14, 1000, "Lucida Console")
-		HelpPanel = vgui.Create( "DFrame" ) -- The main frame.
-
-		HelpPanel:SetPos( 25, 25 )
-		HelpPanel:SetSize( 700, 400 )
-
-		HelpPanel:SetMinWidth( 575 )
-		HelpPanel:SetMinHeight( 200 )
-		HelpPanel:SetSizable( true )
-		HelpPanel:SetDeleteOnClose( false )
-		HelpPanel:SetVisible( false )
-		HelpPanel:SetTitle( "Stream Radio Error Information" )
-		HelpPanel:SetZPos(150)
-		HelpPanel:GetParent():SetWorldClicker( true )
-
-		HelpPanel.HelpTextPanel = vgui.Create( "Streamradio_VGUI_ReadOnlyTextEntry", HelpPanel )
-		HelpPanel.HelpTextPanel:SetDrawBorder( true )
-		HelpPanel.HelpTextPanel:SetPaintBackground( true )
-		HelpPanel.HelpTextPanel:SetVerticalScrollbarEnabled( true )
-		HelpPanel.HelpTextPanel:SetFont( ErrorHelpFont )
-		HelpPanel.HelpTextPanel:SetZPos(100)
-		HelpPanel.HelpTextPanel:SetCursor( "beam" )
-		HelpPanel.HelpTextPanel:Dock( FILL )
-
-		local ControlPanel = vgui.Create( "DPanel", HelpPanel )
-		ControlPanel:SetPaintBackground( false )
-		ControlPanel:SetTall( 30 )
-		ControlPanel:DockMargin( 0, 5, 0, 0 )
-		ControlPanel:SetZPos(200)
-		ControlPanel:Dock( BOTTOM )
-
-		local OkButton = vgui.Create( "DButton", ControlPanel )
-		OkButton:SetWide( 100 )
-		OkButton:SetText( "OK" )
-		OkButton:DockMargin( 5, 0, 0, 0 )
-		OkButton:SetZPos(300)
-		OkButton:Dock( RIGHT )
-
-		OkButton.DoClick = function( self )
-			StreamRadioLib.VR.CloseMenu(HelpPanel)
-		end
-
-		HelpPanel.CopyButton = vgui.Create( "DButton", ControlPanel )
-		HelpPanel.CopyButton:SetWide( 100 )
-		HelpPanel.CopyButton:SetText( "Copy to clipboard" )
-		HelpPanel.CopyButton:DockMargin( 5, 0, 0, 0 )
-		HelpPanel.CopyButton:SetZPos(400)
-		HelpPanel.CopyButton:Dock( RIGHT )
-
-		HelpPanel.OnlineHelpButton = StreamRadioLib.Menu.GetLinkButton("View online help")
-		HelpPanel.OnlineHelpButton:SetParent(ControlPanel)
-		HelpPanel.OnlineHelpButton:SetWide( 175 )
-		HelpPanel.OnlineHelpButton:DockMargin( 5, 0, 20, 0 )
-		HelpPanel.OnlineHelpButton:SetZPos(500)
-		HelpPanel.OnlineHelpButton:Dock( RIGHT )
-
-		HelpPanel.OptionToggleTick = vgui.Create( "DCheckBoxLabel", ControlPanel )
-		HelpPanel.OptionToggleTick:SetWide( 125 )
-		HelpPanel.OptionToggleTick:SetText( "" )
-		HelpPanel.OptionToggleTick:DockMargin( 10, 0, 0, 0 )
-		HelpPanel.OptionToggleTick:SetZPos(600)
-		HelpPanel.OptionToggleTick:Dock( LEFT )
+local function CreateErrorHelpPanel()
+	if IsValid( g_helpPanel ) then
+		return g_helpPanel
 	end
 
-	if ( not IsValid( HelpPanel ) ) then return end
-	if ( not IsValid( HelpPanel.HelpTextPanel ) ) then return end
-	if ( not IsValid( HelpPanel.CopyButton ) ) then return end
-	if ( not IsValid( HelpPanel.OnlineHelpButton ) ) then return end
-	if ( not IsValid( HelpPanel.OptionToggleTick ) ) then return end
+	local ErrorHelpFont = StreamRadioLib.Surface.AddFont(14, 1000, "Lucida Console")
+	local HelpPanel = vgui.Create( "DFrame" ) -- The main frame.
 
-	HelpPanel:SetTitle( "Stream Radio Error Information | " .. ErrorHeader )
+	HelpPanel:SetPos( 25, 25 )
+	HelpPanel:SetSize( 900, 600 )
+
+	HelpPanel:SetMinWidth( 575 )
+	HelpPanel:SetMinHeight( 200 )
+	HelpPanel:SetSizable( true )
+	HelpPanel:SetDeleteOnClose( false )
+	HelpPanel:SetVisible( false )
+	HelpPanel:SetTitle( "Stream Radio Error Information" )
+	HelpPanel:SetZPos(150)
+	HelpPanel:GetParent():SetWorldClicker( true )
+
+	HelpPanel.HelpTextPanel = vgui.Create( "Streamradio_VGUI_ReadOnlyTextEntry", HelpPanel )
+	HelpPanel.HelpTextPanel:SetDrawBorder( true )
+	HelpPanel.HelpTextPanel:SetPaintBackground( true )
+	HelpPanel.HelpTextPanel:SetVerticalScrollbarEnabled( true )
+	HelpPanel.HelpTextPanel:SetFont( ErrorHelpFont )
+	HelpPanel.HelpTextPanel:SetZPos(100)
+	HelpPanel.HelpTextPanel:SetCursor( "beam" )
+	HelpPanel.HelpTextPanel:Dock( FILL )
+
+	local ControlPanel = vgui.Create( "DPanel", HelpPanel )
+	ControlPanel:SetPaintBackground( false )
+	ControlPanel:SetTall( 30 )
+	ControlPanel:DockMargin( 0, 5, 0, 0 )
+	ControlPanel:SetZPos(200)
+	ControlPanel:Dock( BOTTOM )
+
+	local OkButton = vgui.Create( "DButton", ControlPanel )
+	OkButton:SetWide( 100 )
+	OkButton:SetText( "OK" )
+	OkButton:DockMargin( 5, 0, 0, 0 )
+	OkButton:SetZPos(300)
+	OkButton:Dock( RIGHT )
+
+	OkButton.DoClick = function( self )
+		StreamRadioLib.VR.CloseMenu(HelpPanel)
+	end
+
+	HelpPanel.CopyButton = vgui.Create( "DButton", ControlPanel )
+	HelpPanel.CopyButton:SetWide( 100 )
+	HelpPanel.CopyButton:SetText( "Copy to clipboard" )
+	HelpPanel.CopyButton:DockMargin( 5, 0, 0, 0 )
+	HelpPanel.CopyButton:SetZPos(400)
+	HelpPanel.CopyButton:Dock( RIGHT )
+
+	HelpPanel.OnlineHelpButton = StreamRadioLib.Menu.GetLinkButton("View online help")
+	HelpPanel.OnlineHelpButton:SetParent(ControlPanel)
+	HelpPanel.OnlineHelpButton:SetWide( 175 )
+	HelpPanel.OnlineHelpButton:DockMargin( 5, 0, 20, 0 )
+	HelpPanel.OnlineHelpButton:SetZPos(500)
+	HelpPanel.OnlineHelpButton:Dock( RIGHT )
+
+	HelpPanel.OptionToggleTick = vgui.Create( "DCheckBoxLabel", ControlPanel )
+	HelpPanel.OptionToggleTick:SetWide( 125 )
+	HelpPanel.OptionToggleTick:SetText( "" )
+	HelpPanel.OptionToggleTick:DockMargin( 10, 0, 0, 0 )
+	HelpPanel.OptionToggleTick:SetZPos(600)
+	HelpPanel.OptionToggleTick:Dock( LEFT )
+
+	g_helpPanel = HelpPanel
+	return HelpPanel
+end
+
+local function OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
+	header = header or ""
+	helptext = helptext or ""
+	url = url or ""
+	helpurl = helpurl or ""
+	userdata = userdata or {}
+
+	local tickboxdata = userdata.userdata or {}
+	tickboxdata = tickboxdata.tickbox
+
+	local HelpPanel = CreateErrorHelpPanel()
+
+	if not IsValid( HelpPanel ) then return end
+	if not IsValid( HelpPanel.HelpTextPanel ) then return end
+	if not IsValid( HelpPanel.CopyButton ) then return end
+	if not IsValid( HelpPanel.OnlineHelpButton ) then return end
+	if not IsValid( HelpPanel.OptionToggleTick ) then return end
+
+	HelpPanel:SetTitle( "Stream Radio Error Information | " .. header )
 
 	if not StreamRadioLib.VR.IsActive() then
 		local X, Y = HelpPanel:GetPos()
@@ -371,7 +124,7 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 		HelpPanel:GetParent():SetWorldClicker(true)
 	else
 		HelpPanel:SetPos(0, 0)
-		HelpPanel:SetSize(700, 400)
+		HelpPanel:SetSize(900, 600)
 		HelpPanel:SetSizable(false)
 		HelpPanel:SetDraggable(false)
 		HelpPanel:GetParent():SetWorldClicker(false)
@@ -384,14 +137,14 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 	)
 
 	if url ~= "" then
-		ErrorText = ErrorHeader .. "\nURL: " .. url .. "\n\n" .. ErrorText
+		helptext = string.format("%s\n\n%s\n\n%s", header, url, helptext)
 	else
-		ErrorText = ErrorHeader .. "\n\n" .. ErrorText
+		helptext = string.format("%s\n\n%s", header, helptext)
 	end
 
-	HelpPanel.HelpTextPanel:SetText( ErrorText )
+	HelpPanel.HelpTextPanel:SetText( helptext )
 
-	local CopyText = string.gsub( ErrorText or "", "\n", "\r\n" )
+	local CopyText = string.gsub( helptext or "", "\n", "\r\n" )
 	CopyText = string.Trim( CopyText )
 	HelpPanel.CopyButton:SetVisible(CopyText ~= "")
 
@@ -402,8 +155,8 @@ local function CreateErrorHelpPanel( ErrorHeader, ErrorText, url, ErrorOnlineHel
 		SetClipboardText( CopyText )
 	end
 
-	HelpPanel.OnlineHelpButton:SetVisible( ErrorOnlineHelp ~= "" )
-	HelpPanel.OnlineHelpButton:SetURL( ErrorOnlineHelp )
+	HelpPanel.OnlineHelpButton:SetVisible( helpurl ~= "" )
+	HelpPanel.OnlineHelpButton:SetURL( helpurl )
 
 	HelpPanel.OptionToggleTick:SetVisible(tickboxdata ~= nil)
 
@@ -422,34 +175,26 @@ function StreamRadioLib.ShowErrorHelp( errorcode, url )
 	errorcode = tonumber(errorcode or -1) or -1
 	if errorcode == 0 then return end
 
-	local errorheader = "Error " .. errorcode .. ": " .. StreamRadioLib.DecodeErrorCode( errorcode )
+	local errorInfo = LIBError.GetStreamErrorInfo(errorcode)
 
-	local errordata = ErrorHelps[errorcode] or {}
-	local errortext = errordata.text or ""
-	errortext = string.gsub( errortext, "\r", "" )
-	errortext = string.Trim( errortext )
+	local code = errorInfo.id
+	local name = errorInfo.name
+	local description = errorInfo.description or ""
+	local userdata = errorInfo.userdata
 
-	if errortext == "" then
-		errordata = StreamRadioLib.Interface.GetErrorData(errorcode) or {}
-		errortext = errordata.text or ""
-		errortext = string.gsub( errortext, "\r", "" )
-		errortext = string.Trim( errortext )
-	end
+	local header = string.format("Error %i (%s): %s", code, name, description)
 
-	if errortext == "" then
-		errortext = NoHelpText
-	end
+	local helptext = errorInfo.helptext or ""
+	local helpurl = errorInfo.helpurl or ""
 
-	local erroronlinehelp = errordata.helpurl or errordata.url or ""
-
-	url = url or ""
+	url = tostring(url or "")
 	if StreamRadioLib.IsBlockedURLCode(url) then
 		url = ""
 	end
 
-	CreateErrorHelpPanel( errorheader, errortext, url, erroronlinehelp, errordata )
+	OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
 end
 
 function StreamRadioLib.ShowPlaylistErrorHelp( )
-	CreateErrorHelpPanel( "Error: Invalid Playlist", ErrorHelpPlaylistText, nil, "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277917951293/" )
+	StreamRadioLib.ShowErrorHelp(LIBError.PLAYLIST_ERROR_INVALID_FILE)
 end

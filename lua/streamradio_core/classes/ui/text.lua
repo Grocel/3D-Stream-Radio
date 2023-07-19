@@ -187,11 +187,11 @@ function CLASS:Render()
 	local w, h = self:GetSize()
 
 	local xalign, yalign = self.TextData.AlignX, self.TextData.AlignY
-	local col = self.Colors.Main
+	local col = self.Colors.Main or color_black
 	local font = self.TextData.Font
-
+	
 	surface.SetFont( font )
-	surface.SetTextColor( col )
+	surface.SetTextColor( col:Unpack() )
 
 	local lines = self:GetVisibleLines()
 	local textw, texth = self:GetTextSize()

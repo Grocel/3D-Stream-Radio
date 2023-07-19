@@ -31,7 +31,7 @@ do
 		if not StreamRadioLib.Loaded then return end
 
 		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
-			StreamRadioLib.Msg( ply, "You need to be an admin to rebuild the playlists." )
+			StreamRadioLib.Print.Msg( ply, "You need to be an admin to rebuild the playlists." )
 
 			return
 		end
@@ -40,7 +40,7 @@ do
 
 		StreamRadioLib.Editor.Reset( ply )
 		local msgstring = StreamRadioLib.AddonPrefix .. "Playlists rebuilt"
-		StreamRadioLib.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, msgstring )
 	end
 
 	local function Rebuild_CommunityPlaylists( ply, cmd, args )
@@ -48,7 +48,7 @@ do
 		if not StreamRadioLib.Loaded then return end
 
 		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
-			StreamRadioLib.Msg( ply, "You need to be an admin to rebuild the community playlists." )
+			StreamRadioLib.Print.Msg( ply, "You need to be an admin to rebuild the community playlists." )
 
 			return
 		end
@@ -57,7 +57,7 @@ do
 
 		StreamRadioLib.Editor.Reset( ply )
 		local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists rebuilt"
-		StreamRadioLib.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, msgstring )
 	end
 
 	concommand.Add( "sv_streamradio_rebuildplaylists", Rebuild_Playlists )
@@ -69,7 +69,7 @@ do
 		if not StreamRadioLib.DataDirectory then return end
 
 		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
-			StreamRadioLib.Msg( ply, "You need to be an admin to reset the playlists." )
+			StreamRadioLib.Print.Msg( ply, "You need to be an admin to reset the playlists." )
 
 			return
 		end
@@ -77,12 +77,12 @@ do
 		local deleted = StreamRadioLib.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists" )
 		if not deleted then
 			local msgstring = StreamRadioLib.AddonPrefix .. "Playlists could not be rebuilt"
-			StreamRadioLib.Msg( ply, msgstring )
+			StreamRadioLib.Print.Msg( ply, msgstring )
 			return
 		end
 
 		local msgstring = StreamRadioLib.AddonPrefix .. "Playlists deleted"
-		StreamRadioLib.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, msgstring )
 		Rebuild_Playlists( ply, cmd, args )
 	end
 
@@ -92,7 +92,7 @@ do
 		if not StreamRadioLib.DataDirectory then return end
 
 		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
-			StreamRadioLib.Msg( ply, "You need to be an admin to reset the community playlists." )
+			StreamRadioLib.Print.Msg( ply, "You need to be an admin to reset the community playlists." )
 
 			return
 		end
@@ -100,12 +100,12 @@ do
 		local deleted = StreamRadioLib.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists/community" )
 		if not deleted then
 			local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists could not be rebuilt"
-			StreamRadioLib.Msg( ply, msgstring )
+			StreamRadioLib.Print.Msg( ply, msgstring )
 			return
 		end
 
 		local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists deleted"
-		StreamRadioLib.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, msgstring )
 		Rebuild_CommunityPlaylists( ply, cmd, args )
 	end
 

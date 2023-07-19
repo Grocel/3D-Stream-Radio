@@ -198,7 +198,6 @@ function CLASS:GetOptions()
 end
 
 function CLASS:SetHidden(var)
-	if self._convar then return end
 	self.hidden = var or false
 end
 
@@ -207,7 +206,6 @@ function CLASS:GetHidden()
 end
 
 function CLASS:SetDisabled(var)
-	if self._convar then return end
 	self.disabled = var or false
 end
 
@@ -216,7 +214,6 @@ function CLASS:GetDisabled()
 end
 
 function CLASS:SetPanellabel(var)
-	if self._convar then return end
 	self.panellabel = tostring(var or "")
 end
 

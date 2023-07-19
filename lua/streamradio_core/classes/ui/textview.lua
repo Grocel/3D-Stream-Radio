@@ -8,6 +8,8 @@ local BASE = CLASS:GetBaseClass()
 function CLASS:Create()
 	BASE.Create(self)
 
+	self.CanHaveLabel = false
+
 	self.TextPanel = self:AddPanelByClassname("text", true)
 	self.TextPanel:SetPos(0, 0)
 	self.TextPanel:SetAlign(TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)

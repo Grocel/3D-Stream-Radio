@@ -89,7 +89,7 @@ function CLASS:Render()
 	local bg_h = 0
 
 	surface.SetFont( "DebugFixed" )
-	surface.SetTextColor( g_textcol )
+	surface.SetTextColor( g_textcol:Unpack() )
 
 	for i, v in ipairs(self.debugtexttab) do
 		if not v then break end
@@ -101,7 +101,7 @@ function CLASS:Render()
 		end
 	end
 
-	surface.SetDrawColor( g_textcolbg )
+	surface.SetDrawColor( g_textcolbg:Unpack() )
 	surface.DrawRect( x, y, self.bgwidth + 6, bg_h + 5 )
 
 	bg_h = 0

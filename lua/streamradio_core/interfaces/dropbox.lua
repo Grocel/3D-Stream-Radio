@@ -5,18 +5,19 @@ if not istable( RADIOIFACE ) then
 end
 
 RADIOIFACE.name = "Dropbox"
-RADIOIFACE.subinterfaces_folder = "dropbox"
 RADIOIFACE.download = true
 RADIOIFACE.download_timeout = 5
 
-local ERROR_NO_PATH = 20000
+local ERROR_NO_PATH = 130000
 
-RADIOIFACE.Errorcodes[ERROR_NO_PATH] = {
-	desc = "Dropbox url has no path",
-	text = [[
+StreamRadioLib.Error.AddStreamErrorCode({
+	id = ERROR_NO_PATH,
+	name = "STREAM_ERROR_DROPBOX_NO_PATH",
+	description = "[Dropbox] Url has no path",
+	helptext = [[
 Make sure your Dropbox has a valid path in it.
 ]],
-}
+})
 
 local DropboxPatterns = {
 	"dropbox%://(.+)",

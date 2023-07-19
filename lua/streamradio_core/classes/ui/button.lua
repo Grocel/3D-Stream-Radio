@@ -320,110 +320,191 @@ end
 
 function CLASS:SetColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.NoHover = color
 end
 
 function CLASS:GetColor()
 	if SERVER then return end
-	local col = self.Colors.NoHover
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.NoHover
+	return col
 end
 
 function CLASS:SetHoverColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Hover = color
 end
 
 function CLASS:GetHoverColor()
 	if SERVER then return end
-	local col = self.Colors.Hover
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Hover
+	return col
 end
 
 function CLASS:SetDisabledColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Disabled = color
 end
 
 function CLASS:GetDisabledColor()
 	if SERVER then return end
-	local col = self.Colors.Disabled
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Disabled
+	return col
 end
 
 function CLASS:SetTextColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.NoHoverText = color
 end
 
 function CLASS:GetTextColor()
 	if SERVER then return end
-	local col = self.Colors.NoHoverText
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.NoHoverText
+	return col
 end
 
 function CLASS:SetTextHoverColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.HoverText = color
 end
 
 function CLASS:GetTextHoverColor()
 	if SERVER then return end
-	local col = self.Colors.HoverText
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.HoverText
+	return col
 end
 
 function CLASS:SetTextDisabledColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.DisabledText = color
 end
 
 function CLASS:GetTextDisabledColor()
 	if SERVER then return end
-	local col = self.Colors.DisabledText
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.DisabledText
+	return col
 end
 
 function CLASS:SetIconColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.NoHoverIcon = color
 end
 
 function CLASS:GetIconColor()
 	if SERVER then return end
-	local col = self.Colors.NoHoverIcon
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.NoHoverIcon
+	return col
 end
 
 function CLASS:SetIconHoverColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.HoverIcon = color
 end
 
 function CLASS:GetIconHoverColor()
 	if SERVER then return end
-	local col = self.Colors.HoverIcon
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.HoverIcon
+	return col
 end
 
 function CLASS:SetIconDisabledColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.DisabledIcon = color
 end
 
 function CLASS:GetIconDisabledColor()
 	if SERVER then return end
-	local col = self.Colors.DisabledIcon
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.DisabledIcon
+	return col
 end
 
 function CLASS:DoClick()

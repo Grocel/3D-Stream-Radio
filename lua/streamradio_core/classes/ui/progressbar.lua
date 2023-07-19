@@ -143,31 +143,33 @@ end
 function CLASS:Render()
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
-	local ShadowWidth = self:GetShadowWidth()
+	local shadowWidth = self:GetShadowWidth()
 
 	local col1 = self.Colors.Main or color_white
 	local col2 = self.Colors.Secondary or color_white
 
 	local fraction1 = self.Progress.Fraction
 
-	if ShadowWidth <= 0 then
-		surface.SetDrawColor(col1)
+	if shadowWidth <= 0 then
+		surface.SetDrawColor(col1:Unpack())
 		surface.DrawRect(x, y, w, h)
 
-		surface.SetDrawColor(col2)
+		surface.SetDrawColor(col2:Unpack())
 		surface.DrawRect(x, y, w * fraction1, h)
 
 		return
 	end
 
-	local sx, sy = x + ShadowWidth, y + ShadowWidth
-	local sw, sh = w - ShadowWidth, h - ShadowWidth
+	local colShadow = self.Colors.Shadow or color_black
 
-	surface.SetDrawColor(self.Colors.Shadow or color_black)
+	local sx, sy = x + shadowWidth, y + shadowWidth
+	local sw, sh = w - shadowWidth, h - shadowWidth
+
+	surface.SetDrawColor(colShadow:Unpack())
 	surface.DrawRect(sx, sy, sw, sh)
-	surface.SetDrawColor(col1)
+	surface.SetDrawColor(col1:Unpack())
 	surface.DrawRect(x, y, sw, sh)
-	surface.SetDrawColor(col2)
+	surface.SetDrawColor(col2:Unpack())
 	surface.DrawRect(x, y, sw * fraction1, sh)
 end
 
@@ -242,74 +244,128 @@ end
 
 function CLASS:SetColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.NoHover = color
 end
 
 function CLASS:GetColor()
 	if SERVER then return end
-	local col = self.Colors.NoHover
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.NoHover
+	return col
 end
 
 function CLASS:SetHoverColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Hover = color
 end
 
 function CLASS:GetHoverColor()
 	if SERVER then return end
-	local col = self.Colors.Hover
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Hover
+	return col
 end
 
 function CLASS:SetDisabledColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Disabled = color
 end
 
 function CLASS:GetDisabledColor()
 	if SERVER then return end
-	local col = self.Colors.Disabled
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Disabled
+	return col
 end
 
 function CLASS:SetTextColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.NoHoverText = color
 end
 
 function CLASS:GetTextColor()
 	if SERVER then return end
-	local col = self.Colors.NoHoverText
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.NoHoverText
+	return col
 end
 
 function CLASS:SetTextHoverColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.HoverText = color
 end
 
 function CLASS:GetTextHoverColor()
 	if SERVER then return end
-	local col = self.Colors.HoverText
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.HoverText
+	return col
 end
 
 function CLASS:SetTextDisabledColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.DisabledText = color
 end
 
 function CLASS:GetTextDisabledColor()
 	if SERVER then return end
-	local col = self.Colors.DisabledText
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.DisabledText
+	return col
 end
 
 

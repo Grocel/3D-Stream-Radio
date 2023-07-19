@@ -143,23 +143,10 @@ function LIB.Setup(toolobj)
 		local ply = self:GetOwner()
 		if not IsValid(ply) then return true end
 
-		local realpl = ent.pl
+		local radioOwner = ent:GetRealRadioOwner()
 
-		if isfunction(ent.CPPIGetOwner) then
-			-- Some authors can't follow standards...
-			local pl, id = ent:CPPIGetOwner()
-
-			if not pl or isentity( pl ) then
-				realpl = pl
-			else
-				if not id or isentity( id ) then
-					realpl = id
-				end
-			end
-		end
-
-		if not IsValid(realpl) then return true end
-		if realpl ~= ply then return false end
+		if not IsValid(radioOwner) then return true end
+		if radioOwner ~= ply then return false end
 
 		return true
 	end

@@ -22,11 +22,13 @@
         StreamUrl               String      ""              The streaming source URL.
         StreamName              String      ""              Name of the stream.
 
-        StreamVolume            number      1               0 is muted and 1 is 100% volume
+        StreamMute              boolean     false           True mutes the stream
+        StreamVolume            number      1               0 is 0% and 1 is 100% volume
         Radius                  number      1200            Number in units of the sound range
 		Sound3D                 boolean     true            True enables the 3D world sound
         DisableInput            boolean     false           True disables the radio controlling. Does not affect Wiremod controlling.
         DisableDisplay          boolean     false           True disables the radio display.
+        DisableSpectrum          boolean     false          True disables the spectrum visualization on the radio display.
         DisableAdvancedOutputs  boolean     true            True disables the Advanced Wire Outputs.
 
 		PlaybackLoopMode        number      1               Loop mode:
@@ -47,11 +49,13 @@ local ValidTypes = {
 	StreamName = "string",
 	StreamUrl = "string",
 
+	StreamMute = "boolean",
 	StreamVolume = "number",
 	Radius = "number",
 	Sound3D = "boolean",
 	DisableInput = "boolean",
 	DisableDisplay = "boolean",
+	DisableSpectrum = "boolean",
 	DisableAdvancedOutputs = "boolean",
 
 	PlaybackLoopMode = "number",
@@ -135,10 +139,8 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 
 		local err = Prefix .. "The Entity 'sent_streamradio' could not be spawned."
 
-		if StreamRadioLib.Msg then
-			StreamRadioLib.Msg( ply, err )
-		else
-			StreamRadioLib.ErrorNoHaltWithStack( err, 2 )
+		if StreamRadioLib.ErrorNoHaltWithStack then
+			StreamRadioLib.ErrorNoHaltWithStack(err)
 		end
 
 		return
@@ -180,6 +182,10 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 
 	if isfunction(ent.SetLastUser) then
 		ent:SetLastUser(ply)
+	end
+
+	if isfunction(ent.SetRadioOwner) then
+		ent:SetRadioOwner(ply)
 	end
 
 	for k, v in pairs(data) do

@@ -73,7 +73,6 @@ function CLASS:Create()
 
 	if SERVER then return end
 
-	self.Colors.DrawAlpha = 1
 	self.Colors.Cursor = Color(255, 255, 255)
 
 	self.Layout.CornerSize = 16
@@ -303,13 +302,23 @@ function CLASS:RenderSystem()
 	render.PushFilterMin(TEXFILTER.NONE)
 	render.PushFilterMag(TEXFILTER.NONE)
 
-	local alpha = self:GetDrawAlpha()
+	local currentRenderAlpha = surface.GetAlphaMultiplier()
+	local drawAlpha = self:GetDrawAlpha()
+	local alpha = drawAlpha * currentRenderAlpha
+	local isTransparent = drawAlpha < 1
+
 	local oldtune = render.GetToneMappingScaleLinear( )
 	render.SetToneMappingScaleLinear(tune_nohdr) -- Turns off hdr
 
-	surface.SetAlphaMultiplier(alpha)
+	if isTransparent then
+		surface.SetAlphaMultiplier(alpha)
+	end
+
 	catchAndErrorNoHaltWithStack(self.DrawBorder, self)
-	surface.SetAlphaMultiplier(1)
+
+	if isTransparent then
+		surface.SetAlphaMultiplier(currentRenderAlpha)
+	end
 
 	if self:HasRendertarget() then
 		surface.SetDrawColor(255, 255, 255, alpha * 255)
@@ -320,17 +329,29 @@ function CLASS:RenderSystem()
 		self.FrameTime = self._RT:ProfilerTime("Render")
 	else
 		self:ProfilerStart("Render_rtfallback")
-		surface.SetAlphaMultiplier(alpha)
+
+		if isTransparent then
+			surface.SetAlphaMultiplier(alpha)
+		end
 
 		catchAndErrorNoHaltWithStack(self._RenderInternal, self)
 
-		surface.SetAlphaMultiplier(1)
+		if isTransparent then
+			surface.SetAlphaMultiplier(currentRenderAlpha)
+		end
+
 		self.FrameTime = self:ProfilerEnd("Render_rtfallback")
 	end
 
-	surface.SetAlphaMultiplier(alpha)
+	if isTransparent then
+		surface.SetAlphaMultiplier(alpha)
+	end
+
 	catchAndErrorNoHaltWithStack(self.DrawCursor, self)
-	surface.SetAlphaMultiplier(1)
+
+	if isTransparent then
+		surface.SetAlphaMultiplier(currentRenderAlpha)
+	end
 
 	render.SetToneMappingScaleLinear(oldtune) -- Resets hdr
 
@@ -357,6 +378,7 @@ function CLASS:DrawCursor()
 
 	local cx, cy = self:GetCursor()
 	local cw, ch = self:GetCursorSize()
+	local colCursor = self.Colors.Cursor or color_white
 
 	local cu = ((cx + cw) - ax2) / cw
 	local cv = ((cy + ch) - ay2) / ch
@@ -365,7 +387,7 @@ function CLASS:DrawCursor()
 	cv = math.Clamp(1 - cv, 0, 1)
 
 	surface.SetMaterial(CursorMat)
-	surface.SetDrawColor(self.Colors.Cursor)
+	surface.SetDrawColor(colCursor:Unpack())
 	surface.DrawTexturedRectUV(cx, cy, cw * cu, ch * cv, 0, 0, cu, cv)
 end
 
@@ -571,28 +593,22 @@ end
 function CLASS:SetCursorColor(color)
 	if SERVER then return end
 
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Cursor = color
 end
 
 function CLASS:GetCursorColor()
 	if SERVER then return end
+
 	local col = self.Colors.Cursor
-
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
-end
-
-function CLASS:SetDrawAlpha(alpha)
-	if SERVER then return end
-
-	alpha = math.Clamp(alpha, 0, 1)
-	self.Colors.DrawAlpha = alpha
-end
-
-function CLASS:GetDrawAlpha()
-	if SERVER then return end
-	local alpha = self.Colors.DrawAlpha
-
-	return alpha or 0
+	return col
 end
 
 function CLASS:SetName(...)

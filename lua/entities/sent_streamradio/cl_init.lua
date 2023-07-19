@@ -78,7 +78,7 @@ function ENT:ApplyTuneSound()
 		return
 	end
 
-	if self.StreamObj:GetError() ~= 0 then
+	if self.StreamObj:HasError() then
 		self.streamswitchsound = true
 		self:StartTuneSound()
 		return
@@ -136,7 +136,7 @@ function ENT:Initialize()
 	self:MarkForUpdatePlaybackLoopMode()
 end
 
-function ENT:OnSetupModelSetup()
+function ENT:OnModelSetup()
 	self:StreamStopAnimModel()
 end
 
@@ -302,7 +302,15 @@ function ENT:IsMuted()
 	if not ply:IsPlayer() then return true end
 	if ply:IsBot() then return true end
 
-	if StreamRadioLib.IsMuted(ply) then
+	if StreamRadioLib.IsMuted(ply, self:GetRealRadioOwner()) then
+		return true
+	end
+
+	if self:GetSVMute() then
+		return true
+	end
+
+	if self:GetCLMute() then
 		return true
 	end
 
@@ -346,6 +354,7 @@ function ENT:UpdateStream()
 	self.StreamObj:Set3DFadeDistance(self.Radius / 3)
 
 	local muted = self:IsMuted()
+	local clVolume = self:GetCLVolume()
 
 	local wallvol = 0
 	local distVolume = 0
@@ -360,7 +369,7 @@ function ENT:UpdateStream()
 
 	self.PlayerDistance = playerDistance
 
-	local StreamVol = distVolume * wallvol
+	local StreamVol = distVolume * clVolume * wallvol
 
 	self.StreamObj:SetMuted(muted)
 	self.StreamObj:SetClientVolume(StreamVol)
@@ -371,7 +380,7 @@ function ENT:UpdateStream()
 		local global_vol = StreamRadioLib.GetGlobalVolume()
 		global_vol = math.Clamp(global_vol, 0, 1)
 
-		self.NoiseSound:ChangeVolume(self.StreamObj:GetVolume() * global_vol * wallvol * self.NoiseSound_vol, 0.5)
+		self.NoiseSound:ChangeVolume(self.StreamObj:GetVolume() * global_vol * clVolume * wallvol * self.NoiseSound_vol, 0.5)
 	end
 
 	self:StreamAnimModel()
@@ -410,7 +419,7 @@ function ENT:StreamAnimModel()
 		return
 	end
 
-	if stream:GetError() ~= 0 then
+	if stream:HasError() then
 		self:CallModelFunction("WhileError")
 		return
 	end

@@ -81,22 +81,26 @@ function CLASS:Render()
 
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
-	local ShadowWidth = self:GetShadowWidth()
+	local shadowWidth = self:GetShadowWidth()
 
-	if ShadowWidth <= 0 then
-		surface.SetDrawColor(self.Colors.Main or color_white)
+	local colMain = self.Colors.Main or color_white
+
+	if shadowWidth <= 0 then
+		surface.SetDrawColor(colMain:Unpack())
 		surface.DrawRect(x, y, w, h)
 
 		BASE.Render(self)
 		return
 	end
 
-	local sx, sy = x + ShadowWidth, y + ShadowWidth
-	local sw, sh = w - ShadowWidth, h - ShadowWidth
+	local sx, sy = x + shadowWidth, y + shadowWidth
+	local sw, sh = w - shadowWidth, h - shadowWidth
 
-	surface.SetDrawColor(self.Colors.Shadow or color_black)
+	local colShadow = self.Colors.Shadow or color_black
+
+	surface.SetDrawColor(colShadow:Unpack())
 	surface.DrawRect(sx, sy, sw, sh)
-	surface.SetDrawColor(self.Colors.Main or color_white)
+	surface.SetDrawColor(colMain:Unpack())
 	surface.DrawRect(x, y, sw, sh)
 
 	BASE.Render(self)
@@ -105,8 +109,11 @@ end
 function CLASS:PerformLayout(...)
 	BASE.PerformLayout(self, ...)
 
-	local text_panel = self.TextPanel
+	if not self.CanHaveLabel then
+		return
+	end
 
+	local text_panel = self.TextPanel
 	if not IsValid(text_panel) then
 		return
 	end
@@ -117,14 +124,23 @@ end
 
 function CLASS:SetShadowColor(color)
 	if SERVER then return end
+
+	color = color or {}
+	color = Color(
+		color.r or 0,
+		color.g or 0,
+		color.b or 0,
+		color.a or 0
+	)
+
 	self.Colors.Shadow = color
 end
 
 function CLASS:GetShadowColor()
 	if SERVER then return end
-	local col = self.Colors.Shadow
 
-	return Color(col.r or 0, col.g or 0, col.b or 0, col.a or 0)
+	local col = self.Colors.Shadow
+	return col
 end
 
 function CLASS:GetShadowWidth()

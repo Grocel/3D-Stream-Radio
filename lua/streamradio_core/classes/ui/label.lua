@@ -194,11 +194,11 @@ function CLASS:Render()
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
 
-	local col = self.Colors.Main
+	local col = self.Colors.Main or color_black
 	local font = self.TextData.Font
 
 	surface.SetFont( font )
-	surface.SetTextColor( col )
+	surface.SetTextColor( col:Unpack() )
 
 	self:DrawText(self.InternalText, x, y, w, h)
 end

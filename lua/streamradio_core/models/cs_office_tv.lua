@@ -70,8 +70,8 @@ function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/textbox/scrollbar", "sizew", 75)
 
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/button", "sizeh", 100)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/button", "sizeh", 100)
-	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/button", "sizeh", 100)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/player/spectrum/error/button", "sizew", 100)
+	StreamRadioLib.SetSkinTableProperty(modelsetup, "main/browser/error/button", "sizew", 100)
 
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "cornersize", 0)
 	StreamRadioLib.SetSkinTableProperty(modelsetup, "", "borderwidth", 16)

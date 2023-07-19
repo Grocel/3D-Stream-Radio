@@ -17,12 +17,14 @@ TOOL.ClientConVar["model"] = StreamRadioLib.GetDefaultModel()
 TOOL.ClientConVar["streamurl"] = ""
 TOOL.ClientConVar["play"] = "1"
 TOOL.ClientConVar["3dsound"] = "1"
+TOOL.ClientConVar["mute"] = "0"
 TOOL.ClientConVar["volume"] = "1"
 TOOL.ClientConVar["radius"] = "1200"
 TOOL.ClientConVar["playbackloopmode"] = tostring(StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST)
 
 TOOL.ClientConVar["nodisplay"] = "0"
 TOOL.ClientConVar["noinput"] = "0"
+TOOL.ClientConVar["nospectrum"] = "0"
 TOOL.ClientConVar["noadvwire"] = "1"
 
 TOOL.ClientConVar["freeze"] = "1"
@@ -52,19 +54,22 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo.desc", "Some models (usually speakers) don't have a display.\nUse this tool or Wiremod to control those.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp.desc", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
-	StreamRadioLib.Tool.AddLocale(TOOL, "play", "Play on spawn or set")
+	StreamRadioLib.Tool.AddLocale(TOOL, "play", "Play on spawn or on apply")
 	StreamRadioLib.Tool.AddLocale(TOOL, "play.desc", "If set, the radio will try to play a given URL on spawn or apply.\nThe URL can be set by this Tools or via Wiremod.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "nodisplay", "Disable display")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noadvwire", "Disable advanced wire outputs")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noadvwire.desc", "Disables the advanced wire outputs.\nIt's always disabled if Wiremod or GM_BASS3 is not installed on the Server.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noinput", "Disable control")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noinput.desc", "Disable the control of the display.\nWiremod controlling will still work.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "nospectrum", "Disable spectrum visualization")
+	StreamRadioLib.Tool.AddLocale(TOOL, "nospectrum.desc", "Disable rendering of the spectrum visualization on the display.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode", "Loop Playback:")
 	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.desc", "Set what happens after a song ends.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.option.none", "No loop")
 	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.option.song", "Loop song")
 	StreamRadioLib.Tool.AddLocale(TOOL, "playbackloopmode.option.playlist", "Loop playlist")
 	StreamRadioLib.Tool.AddLocale(TOOL, "3dsound", "Enable 3D Sound")
+	StreamRadioLib.Tool.AddLocale(TOOL, "mute", "Mute Radio")
 	StreamRadioLib.Tool.AddLocale(TOOL, "volume", "Volume:")
 	StreamRadioLib.Tool.AddLocale(TOOL, "radius", "Radius:")
 	StreamRadioLib.Tool.AddLocale(TOOL, "radius.desc", "The radius in units the radio sound volume will drop down to 0% of the volume setting.")
@@ -127,6 +132,7 @@ function TOOL:BuildToolPanel(CPanel)
 	self:AddCheckbox( CPanel, "play", true )
 	self:AddCheckbox( CPanel, "nodisplay", false )
 	self:AddCheckbox( CPanel, "noinput", true )
+	self:AddCheckbox( CPanel, "nospectrum", true )
 	self:AddCheckbox( CPanel, "noadvwire", true )
 	self:AddCheckbox( CPanel, "3dsound", false )
 
@@ -139,8 +145,11 @@ function TOOL:BuildToolPanel(CPanel)
 	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.song"), StreamRadioLib.PLAYBACK_LOOP_MODE_SONG, false, g_icon_playbackloopmode_song)
 	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.playlist"), StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST, false, g_icon_playbackloopmode_playlist)
 
-
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+
+	self:AddCheckbox( CPanel, "mute", false )
 
 	local VolumeNumSlider = self:AddNumSlider( CPanel, "volume", false )
 	VolumeNumSlider:SetMin( 0 )
@@ -152,6 +161,8 @@ function TOOL:BuildToolPanel(CPanel)
 	RadiusNumSlider:SetMax( 5000 )
 	RadiusNumSlider:SetDecimals( 0 )
 
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
 	self:AddLabel( CPanel, "spawnsettings", false )
@@ -268,12 +279,14 @@ end
 function TOOL:GetSettings()
 	local settings = {}
 
+	settings.StreamMute = self:GetClientBool("mute")
 	settings.StreamVolume = self:GetClientNumberMinMax("volume", 0, 1)
 	settings.Radius = self:GetClientNumberMinMax("radius", 0, 5000)
 	settings.PlaybackLoopMode = self:GetClientNumber("playbackloopmode", StreamRadioLib.PLAYBACK_LOOP_MODE_NONE)
 	settings.Sound3D = self:GetClientBool("3dsound")
 	settings.DisableDisplay = self:GetClientBool("nodisplay")
 	settings.DisableInput = self:GetClientBool("noinput")
+	settings.DisableSpectrum = self:GetClientBool("nospectrum")
 	settings.DisableAdvancedOutputs = self:GetClientBool("noadvwire")
 
 	return settings
@@ -288,12 +301,14 @@ function TOOL:SetSettings(settings)
 
 	self:SetClientInfo("streamurl", url)
 
+	self:SetClientBool("mute", settings.StreamMute)
 	self:SetClientNumber("volume", settings.StreamVolume or 1)
 	self:SetClientNumber("radius", settings.Radius or 1200)
 	self:SetClientNumber("playbackloopmode", settings.PlaybackLoopMode or StreamRadioLib.PLAYBACK_LOOP_MODE_NONE)
 	self:SetClientBool("3dsound", settings.Sound3D)
 	self:SetClientBool("nodisplay", settings.DisableDisplay)
 	self:SetClientBool("noinput", settings.DisableInput)
+	self:SetClientBool("nospectrum", settings.DisableSpectrum)
 	self:SetClientBool("noadvwire", settings.DisableAdvancedOutputs)
 end
 

@@ -243,7 +243,7 @@ function CLASS:Create()
 		if not IsValid(self.StreamOBJ) then return end
 
 		if self.StreamOBJ:GetMuted() then
-			return "Muted..."
+			return "Muted"
 		end
 
 		if self.StreamOBJ:IsBuffering() then
@@ -251,10 +251,10 @@ function CLASS:Create()
 		end
 
 		if self.StreamOBJ:IsStopMode() then
-			return "Stopped..."
+			return "Stopped"
 		end
 
-		if self.StreamOBJ:GetError() ~= 0 then
+		if self.StreamOBJ:HasError() then
 			return "Error!"
 		end
 
@@ -272,7 +272,7 @@ function CLASS:Create()
 		return FormatTimeleft(time, len)
 	end
 
-	-- @TODO: fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT
+	-- @TODO: Fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT
 	self.PlayBar.OnFractionChangeEdit = function(this, v)
 		if not IsValid(self.StreamOBJ) then return end
 
@@ -329,7 +329,7 @@ function CLASS:PerformLayout(...)
 	local hasplaybar = IsValid(self.PlayBar) and self.PlayBar.Layout.Visible
 	local buttons = self.Buttons or {}
 
-	for k, v in pairs(buttons) do
+	for k, v in ipairs(buttons) do
 		if not IsValid(v) then continue end
 		if not v.Layout.Visible then continue end
 
@@ -349,7 +349,7 @@ function CLASS:PerformLayout(...)
 			buttonw = (w - margin * (buttoncount - 1)) / buttoncount
 		end
 
-		for k, v in pairs(buttons) do
+		for k, v in ipairs(buttons) do
 			if not IsValid(v) then continue end
 			if not v.Layout.Visible then continue end
 
@@ -371,7 +371,7 @@ function CLASS:PerformLayout(...)
 
 		hpos = hasplaybar and buttonh + margin or 0
 
-		for k, v in pairs(buttons) do
+		for k, v in ipairs(buttons) do
 			if not IsValid(v) then continue end
 			if not v.Layout.Visible then continue end
 
@@ -549,7 +549,7 @@ function CLASS:UpdateFromStream()
 	local len = StreamOBJ:GetLength()
 	local time = StreamOBJ:GetTime()
 
-	local isEndlessOrNoStream = StreamOBJ:IsEndless() or StreamOBJ:IsLoading() or StreamOBJ:GetError() ~= 0 or StreamOBJ:GetMuted()
+	local isEndlessOrNoStream = StreamOBJ:IsEndless() or StreamOBJ:IsLoading() or StreamOBJ:HasError() or StreamOBJ:GetMuted()
 
 	-- @TODO: Fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT.
 	--        That's because self.PlayBar is disabled on the server as BASS streams don't exist on servers.
@@ -571,6 +571,22 @@ end
 function CLASS:ShouldPerformRerender()
 	if SERVER then return false end
 	if not IsValid(self.StreamOBJ) then return false end
+
+	if not IsValid(self.PlayBar) then
+		return false
+	end
+
+	if not self.PlayBar:IsVisible() then
+		return false
+	end
+
+	if self.StreamOBJ:GetMuted() then
+		return false
+	end
+
+	if self.StreamOBJ:HasError() then
+		return false
+	end
 
 	if not self.StreamOBJ:IsPlaying() then
 		return false

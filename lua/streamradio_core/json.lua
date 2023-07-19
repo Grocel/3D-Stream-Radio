@@ -6,33 +6,44 @@ function LIB.Encode(data, prettyPrint)
 		data = {data}
 	end
 
-	local data = util.TableToJSON(data, prettyPrint)
-	data = StreamRadioLib.NormalizeNewlines(data, "\n")
+	local status, json = StreamRadioLib.CatchAndErrorNoHaltWithStack(util.TableToJSON, data)
+	if not status then
+		return nil
+	end
 
-	return data
+	if not json then
+		return nil
+	end
+
+	json = StreamRadioLib.NormalizeNewlines(json, "\n")
+	return json
 end
 
-function LIB.Decode(data)
-	data = tostring(data or "")
-	data = StreamRadioLib.NormalizeNewlines(data, "\n")
+function LIB.Decode(json)
+	json = tostring(json or "")
+	json = StreamRadioLib.NormalizeNewlines(json, "\n")
 
-	data = string.gsub(data, "//.-\n" , "\n")    -- singleline comment
-	data = string.gsub(data, "/%*.-%*/" , "\n")  -- multiline comment
+	json = string.gsub(json, "//.-\n" , "\n")    -- singleline comment
+	json = string.gsub(json, "/%*.-%*/" , "\n")  -- multiline comment
 
-	data = string.gsub(data, ",([%s]*)([%]%}])","%1%2")  -- trailing comma of arrays/objects
+	json = string.gsub(json, ",([%s]*)([%]%}])","%1%2")  -- trailing comma of arrays/objects
 
-	data = string.gsub(data, "\n[%s]*","\n")     -- remove all spaces at the start of lines
-	data = string.gsub(data, "[%s\n]*\n","\n")   -- remove all empty lines and all spaces at the end of lines
-	data = string.gsub(data, "^\n","")           -- remove first empty new line
-	data = string.gsub(data, "\n$","")           -- remove last empty new line
+	json = string.gsub(json, "\n[%s]*","\n")     -- remove all spaces at the start of lines
+	json = string.gsub(json, "[%s\n]*\n","\n")   -- remove all empty lines and all spaces at the end of lines
+	json = string.gsub(json, "^\n","")           -- remove first empty new line
+	json = string.gsub(json, "\n$","")           -- remove last empty new line
 
-	data = string.Trim(data)
+	json = string.Trim(json)
 
-	if data == "" then
+	if json == "" then
 		return {}
 	end
 
-	data = util.JSONToTable(data)
+	local status, data = StreamRadioLib.CatchAndErrorNoHaltWithStack(util.JSONToTable, json)
+
+	if not status then
+		return nil
+	end
 
 	if not data then
 		return nil
@@ -44,6 +55,5 @@ function LIB.Decode(data)
 
 	return data
 end
-
 
 return LIB

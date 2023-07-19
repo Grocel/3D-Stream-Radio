@@ -38,7 +38,7 @@ local function EditorLog(ply, msgstring, ...)
 	msgstring = string.format(msgstring, ...)
 	msgstring = "PLAYLIST EDITOR - " .. msgstring
 
-	StreamRadioLib.Log(ply, msgstring)
+	StreamRadioLib.Print.Log(ply, msgstring)
 end
 
 local function EditorError( ply, path, code )

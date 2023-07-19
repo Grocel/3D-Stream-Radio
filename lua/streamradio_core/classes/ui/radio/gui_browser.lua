@@ -104,6 +104,11 @@ function CLASS:Create()
 	self.Errorbox:SetNWName("err")
 	self.Errorbox:SetSkinIdentifyer("error")
 
+	if self.Errorbox.RetryButton then
+		self.Errorbox.RetryButton:Remove()
+		self.Errorbox.RetryButton = nil
+	end
+
 	if IsValid(self.Errorbox.CloseButton) and CLIENT then
 		-- The error box is handled on the server, so the client shouldn't touch it.
 		self.Errorbox.CloseButton.DoClick = nil
@@ -111,10 +116,6 @@ function CLASS:Create()
 
 	self.Errorbox.OnCloseClick = function()
 		self:GoUpPath()
-	end
-
-	self.Errorbox.OnRetry = function()
-		self:Refresh()
 	end
 
 	self.Errorbox:SetZPos(100)
@@ -412,6 +413,43 @@ function CLASS:PlayPrevious()
 	self.ListPlaylist:PlayPrevious()
 end
 
+function CLASS:_PerformButtonLayout(buttonx, buttony)
+	if not self.SideButtons then return end
+
+	local w, h = self:GetClientSize()
+	local buttonw = 0
+
+	for k, v in ipairs(self.SideButtons) do
+		if not IsValid(v) then continue end
+		if not v.Layout.Visible then continue end
+
+		if buttonw <= 0 then
+			buttonw = v:GetWidth()
+			break
+		end
+	end
+
+	local margin = self:GetMargin()
+
+	for k, v in ipairs(self.SideButtons) do
+		if not IsValid(v) then continue end
+		if not v.Layout.Visible then continue end
+
+		local newbutteny = buttony + (buttonw + margin)
+		if newbutteny >= h then
+			v:SetPos(0, 0)
+			v:SetHeight(0)
+			continue
+		end
+
+		v:SetPos(buttonx, buttony)
+		v:SetSize(buttonw, buttonw)
+		buttony = newbutteny
+	end
+
+	return buttonw, buttony
+end
+
 function CLASS:PerformLayout(...)
 	BASE.PerformLayout(self, ...)
 
@@ -422,26 +460,18 @@ function CLASS:PerformLayout(...)
 	if not IsValid(self.WireButton) then return end
 	if not IsValid(self.ListFiles) then return end
 	if not IsValid(self.ListPlaylist) then return end
+	if not self.SideButtons then return end
 
 	local w, h = self:GetClientSize()
-	local bw = 0
-
-	for k, v in pairs(self.SideButtons) do
-		if not IsValid(v) then continue end
-		if not v.Layout.Visible then continue end
-
-		if bw <= 0 then
-			bw = v:GetWidth()
-		end
-	end
-
 	local headerw, headerh = self.HeaderPanel:GetSize()
+
+	local buttonw = self:_PerformButtonLayout(0, headerh)
 
 	local margin = self:GetMargin()
 	local listx = 0
 
-	if bw > 0 then
-		listx = bw + margin
+	if buttonw > 0 then
+		listx = buttonw + margin
 	end
 
 	local listy = headerh + margin
@@ -450,24 +480,6 @@ function CLASS:PerformLayout(...)
 	local listh = h - listy
 
 	headerw = listw
-
-	local buttony = listy
-
-	for k, v in pairs(self.SideButtons) do
-		if not IsValid(v) then continue end
-		if not v.Layout.Visible then continue end
-
-		local newbutteny = buttony + (bw + margin)
-		if newbutteny >= h then
-			v:SetPos(0, 0)
-			v:SetHeight(0)
-			continue
-		end
-
-		v:SetPos(0, buttony)
-		v:SetSize(bw, bw)
-		buttony = newbutteny
-	end
 
 	self.ListFiles:SetSize(listw, listh)
 	self.ListPlaylist:SetSize(listw, listh)

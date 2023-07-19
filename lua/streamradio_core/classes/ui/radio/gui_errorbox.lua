@@ -3,6 +3,8 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBError = StreamRadioLib.Error
+
 local BASE = CLASS:GetBaseClass()
 
 local g_mat_help = StreamRadioLib.GetPNGIcon("help")
@@ -22,9 +24,10 @@ function CLASS:Create()
 	self.BodyPanelText:SetSkinIdentifyer("textbox")
 
 	self.HelpButton = self:AddPanelByClassname("button", true)
-	self.HelpButton:SetSize(1, 40)
+	self.HelpButton:SetSize(40, 40)
 	self.HelpButton:SetIcon(g_mat_help)
-	self.HelpButton:SetText("Help")
+	self.HelpButton:SetDrawAlpha(0.5)
+	self.HelpButton:SetTooltip("Help")
 	self.HelpButton:SetName("help")
 	self.HelpButton:SetNWName("hlp")
 	self.HelpButton:SetSkinIdentifyer("button")
@@ -32,18 +35,14 @@ function CLASS:Create()
 		self:CallHook("OnHelp")
 		if SERVER then return end
 
-		if self.Error == "playlist" then
-			StreamRadioLib.ShowPlaylistErrorHelp()
-			return
-		end
-
 		StreamRadioLib.ShowErrorHelp( self.Error, self.URL )
 	end
 
 	self.CloseButton = self:AddPanelByClassname("button", true)
-	self.CloseButton:SetSize(1, 40)
+	self.CloseButton:SetSize(40, 40)
 	self.CloseButton:SetIcon(g_mat_cross)
-	self.CloseButton:SetText("Close")
+	self.CloseButton:SetDrawAlpha(0.5)
+	self.CloseButton:SetTooltip("Close")
 	self.CloseButton:SetName("close")
 	self.CloseButton:SetNWName("cls")
 	self.CloseButton:SetSkinIdentifyer("button")
@@ -53,15 +52,22 @@ function CLASS:Create()
 	end
 
 	self.RetryButton = self:AddPanelByClassname("button", true)
-	self.RetryButton:SetSize(1, 40)
+	self.RetryButton:SetSize(40, 40)
 	self.RetryButton:SetIcon(g_mat_arrow_refresh)
-	self.RetryButton:SetText("Retry")
+	self.RetryButton:SetDrawAlpha(0.5)
+	self.RetryButton:SetTooltip("Retry")
 	self.RetryButton:SetName("retry")
 	self.RetryButton:SetNWName("rty")
 	self.RetryButton:SetSkinIdentifyer("button")
 	self.RetryButton.DoClick = function()
 		self:CallHook("OnRetry")
 	end
+
+	self.SideButtons = {
+		self.CloseButton,
+		self.RetryButton,
+		self.HelpButton,
+	}
 end
 
 function CLASS:SetPlaylistError(url)
@@ -71,15 +77,20 @@ function CLASS:SetPlaylistError(url)
 		url = ""
 	end
 
-	self.Error = "playlist"
+	self.Error = LIBError.PLAYLIST_ERROR_INVALID_FILE
 	self.URL = url
+
+	local errorInfo = LIBError.GetStreamErrorInfo(self.Error)
+
+	local code = errorInfo.id
+	local name = errorInfo.name
 
 	local text
 
 	if url ~= "" then
-		text = string.format("Error: Could not open playlist:\n%s\n\nMake sure the file is valid and not Empty\n\nClick help for more details.", url)
+		text = string.format("Error: %i (%s)\n\nCould not open playlist:\n%s\n\nMake sure the file is valid and not Empty\n\nClick the '?' button for more details.", code, name, url)
 	else
-		text = "Error: Could not open playlist!\n\nMake sure the file is valid and not Empty\n\nClick help for more details."
+		text = string.format("Error: %i (%s)\n\nCould not open playlist!\n\nMake sure the file is valid and not Empty\n\nClick the '?' button for more details.", code, name)
 	end
 
 	if IsValid(self.BodyPanelText) then
@@ -100,13 +111,18 @@ function CLASS:SetErrorCode(err, url)
 	self.Error = err
 	self.URL = url
 
-	local errordesc = StreamRadioLib.DecodeErrorCode(err)
+	local errorInfo = LIBError.GetStreamErrorInfo(err)
+
+	local code = errorInfo.id
+	local name = errorInfo.name
+	local description = errorInfo.description or ""
+
 	local text
 
 	if url ~= "" then
-		text = string.format("Error: %i\n\nCould not play stream:\n%s\n\n%s\n\nClick help for more details.", err, url, errordesc)
+		text = string.format("Error: %i (%s)\n\nCould not play stream:\n%s\n\n%s\n\nClick the '?' button for more details.", code, name, url, description)
 	else
-		text = string.format("Error: %i\n\nCould not play stream!\n\n%s\n\nClick help for more details.", err, errordesc)
+		text = string.format("Error: %i (%s)\n\nCould not play stream!\n\n%s\n\nClick the '?' button for more details.", code, name, description)
 	end
 
 	if IsValid(self.BodyPanelText) then
@@ -120,70 +136,54 @@ function CLASS:SetErrorCode(err, url)
 	end
 end
 
+function CLASS:_PerformButtonLayout(buttonx, buttony)
+	if not self.SideButtons then return end
+
+	local w, h = self:GetClientSize()
+	local buttonw = 0
+
+	for k, v in ipairs(self.SideButtons) do
+		if not IsValid(v) then continue end
+		if not v.Layout.Visible then continue end
+
+		if buttonw <= 0 then
+			buttonw = v:GetWidth()
+			break
+		end
+	end
+
+	local margin = self:GetMargin()
+
+	for k, v in ipairs(self.SideButtons) do
+		if not IsValid(v) then continue end
+		if not v.Layout.Visible then continue end
+
+		local newbutteny = buttony + (buttonw + margin)
+		if newbutteny >= h then
+			v:SetPos(0, 0)
+			v:SetHeight(0)
+			continue
+		end
+
+		v:SetPos(buttonx, buttony)
+		v:SetSize(buttonw, buttonw)
+		buttony = newbutteny
+	end
+
+	return buttonw, buttony
+end
+
 function CLASS:PerformLayout(...)
 	BASE.PerformLayout(self, ...)
 
 	local w, h = self:GetClientSize()
+
 	local margin = self:GetMargin()
 
-	local bodyheight = h
-
-	local buttonh = 0
-	local buttonw = w - 100
-	local buttonc = 0
-
-	if IsValid(self.CloseButton) and self.CloseButton.Layout.Visible then
-		buttonc = buttonc + 1
-		buttonh = self.CloseButton:GetHeight()
-	end
-
-	if IsValid(self.RetryButton) and self.RetryButton.Layout.Visible then
-		buttonc = buttonc + 1
-		buttonh = self.RetryButton:GetHeight()
-	end
-
-	if IsValid(self.HelpButton) and self.RetryButton.Layout.Visible then
-		buttonc = buttonc + 1
-		buttonh = self.HelpButton:GetHeight()
-	end
-
-	if buttonc > 0 then
-		buttonw = math.max(buttonw / buttonc, buttonh * 2.5)
-	else
-		buttonw = 0
-	end
-
-	local buttonbarw = buttonw * buttonc
-	if buttonbarw > 0 then
-		buttonbarw = buttonbarw + (buttonc - 1) * margin
-	end
-
-	if buttonh > 0 then
-		bodyheight = bodyheight - buttonh - margin
-	end
-
-	local buttonx = (w - buttonbarw) / 2
-	local buttony = h - buttonh
-
-	if IsValid(self.CloseButton) and self.CloseButton.Layout.Visible then
-		self.CloseButton:SetSize(buttonw, buttonh)
-		self.CloseButton:SetPos(buttonx, buttony)
-		buttonx = buttonx + (buttonw + margin)
-	end
-
-	if IsValid(self.RetryButton) and self.RetryButton.Layout.Visible then
-		self.RetryButton:SetSize(buttonw, buttonh)
-		self.RetryButton:SetPos(buttonx, buttony)
-		buttonx = buttonx + (buttonw + margin)
-	end
-
-	if IsValid(self.HelpButton) and self.HelpButton.Layout.Visible then
-		self.HelpButton:SetSize(buttonw, buttonh)
-		self.HelpButton:SetPos(buttonx, buttony)
-	end
+	self:_PerformButtonLayout(margin, margin)
 
 	if IsValid(self.BodyPanelText) and self.BodyPanelText.Layout.Visible then
 		self.BodyPanelText:SetPos(0, 0)
-		self.BodyPanelText:SetSize(w, bodyheight)
+		self.BodyPanelText:SetSize(w, h)
 	end
 end

@@ -23,6 +23,7 @@ function ENT:SetupDataTables( )
 	self:AddDTNetworkVar("Bool", "WireMode")
 	self:AddDTNetworkVar("Bool", "ToolMode")
 	self:AddDTNetworkVar("Entity", "LastUser")
+	self:AddDTNetworkVar("Entity", "RadioOwner")
 	self:AddDTNetworkVar("Entity", "LastUsingEntity")
 	self:AddDTNetworkVar("Entity", "MasterRadio")
 
@@ -35,20 +36,30 @@ function ENT:SetupDataTables( )
 				category = "Wiremod",
 				title = "Disable advanced outputs",
 				type = "Boolean",
-				order = 99,
+				order = 70,
 			}
 		}
 	end
 
 	self:AddDTNetworkVar("Bool", "DisableAdvancedOutputs", adv_wire)
 
+	self:AddDTNetworkVar("Bool", "SVMute", {
+		KeyName = "SVMute",
+		Edit = {
+			category = "Volume",
+			title = "Entity Mute",
+			type = "Boolean",
+			order = 20
+		}
+	})
+
 	self:AddDTNetworkVar("Float", "Volume", {
 		KeyName = "Volume",
 		Edit = {
-			category = "Stream",
-			title = "Volume",
+			category = "Volume",
+			title = "Entity Volume",
 			type = "Float",
-			order = 20,
+			order = 21,
 			min = 0,
 			max = 1,
 		}
@@ -57,10 +68,10 @@ function ENT:SetupDataTables( )
 	self:AddDTNetworkVar("Int", "Radius", {
 		KeyName = "Radius",
 		Edit = {
-			category = "Stream",
+			category = "World Sound",
 			title = "Radius",
 			type = "Int",
-			order = 21,
+			order = 30,
 			min = 0,
 			max = 5000,
 		}
@@ -69,10 +80,10 @@ function ENT:SetupDataTables( )
 	self:AddDTNetworkVar("Bool", "Sound3D", {
 		KeyName = "Sound3D",
 		Edit = {
-			category = "Stream",
+			category = "World Sound",
 			title = "Enable 3D sound",
 			type = "Boolean",
-			order = 22
+			order = 31
 		}
 	})
 
@@ -82,7 +93,7 @@ function ENT:SetupDataTables( )
 			category = "Loop",
 			title = "Enable song loop",
 			type = "Boolean",
-			order = 30
+			order = 40
 		}
 	})
 
@@ -92,14 +103,65 @@ function ENT:SetupDataTables( )
 			category = "Loop",
 			title = "Enable playlist loop",
 			type = "Boolean",
-			order = 31
+			order = 41
 		}
 	})
+
+	self:AddDTNetworkVar("Bool", "CLMute", {
+		KeyName = "CLMute",
+		Edit = {
+			category = "Volume",
+			title = "Clientside Mute",
+			type = "Boolean",
+			order = 22,
+		}
+	})
+
+	self:AddDTNetworkVar("Float", "CLVolume", {
+		KeyName = "CLVolume",
+		Edit = {
+			category = "Volume",
+			title = "Clientside Volume",
+			type = "Float",
+			order = 23,
+			min = 0,
+			max = 1,
+		}
+	})
+
+	self._radio_EditValue = self._radio_EditValue or self.EditValue
+	self.EditValue = function(this, variable, value)
+		// This workaround allows for clientonly traffic on those data table vars. 
+
+		if variable == "CLMute" then
+			if SERVER then
+				return
+			end
+
+			local mute = tobool(value)
+			this:SetCLMute(mute)
+
+			return
+		end
+
+		if variable == "CLVolume" then
+			if SERVER then
+				return
+			end
+
+			local volume = tonumber(value or 0) or 0
+			this:SetCLVolume(volume)
+
+			return
+		end
+
+		return this:_radio_EditValue(variable, value)
+	end
 
 	LIBNetwork.SetDTVarCallback(self, "Loop", function(this, name, oldv, newv)
 		if not IsValid(self) then return end
 
-		if newv then
+		if newv and SERVER then
 			self:SetPlaylistLoop(false)
 		end
 
@@ -109,12 +171,29 @@ function ENT:SetupDataTables( )
 	LIBNetwork.SetDTVarCallback(self, "PlaylistLoop", function(this, name, oldv, newv)
 		if not IsValid(self) then return end
 
-		if newv then
+		if newv and SERVER then
 			self:SetLoop(false)
 		end
 
 		self:MarkForUpdatePlaybackLoopMode()
 	end)
+end
+
+function ENT:GetRealRadioOwner()
+	if isfunction(self.CPPIGetOwner) then
+		local owner = self:CPPIGetOwner()
+
+		if isentity(owner) and IsValid(owner) then
+			return owner
+		end
+	end
+
+	local owner = self:GetRadioOwner()
+	if IsValid(owner) then
+		return owner
+	end
+
+	return nil
 end
 
 function ENT:GetPlaybackLoopMode()
@@ -266,7 +345,7 @@ function ENT:OnGUIShowCheck(ply)
 
 	local master_st = masterradio.StreamObj
 
-	if master_st:GetError() ~= 0 then return true end
+	if master_st:HasError() then return true end
 	if not master_st:IsStopMode() then return true end
 	if master_st:GetURL() ~= "" then return true end
 
@@ -281,7 +360,7 @@ function ENT:OnGUIInteractionCheck(ply, trace, userEntity)
 
 	local master_st = masterradio.StreamObj
 
-	if master_st:GetError() ~= 0 then return true end
+	if master_st:HasError() then return true end
 	if not master_st:IsStopMode() then return true end
 	if master_st:GetURL() ~= "" then return true end
 
@@ -453,14 +532,26 @@ function ENT:StreamStopAnimModel()
 	self.AnimStopped = true
 end
 
-function ENT:OnSetupModelSetup()
-	if IsValid(self.GUI_Main) then
-		self.GUI_Main.OnPlaybackLoopModeChange = function(this, newLoopMode)
-			if not IsValid(self) then return end
-			self:SetPlaybackLoopMode(newLoopMode)
-		end
+function ENT:OnGUISetup()
+	BaseClass.OnGUISetup(self)
+
+	if not IsValid(self.GUI_Main) then
+		return
 	end
 
+	self.GUI_Main.OnPlaybackLoopModeChange = function(this, newLoopMode)
+		if not IsValid(self) then return end
+		self:SetPlaybackLoopMode(newLoopMode)
+	end
+
+	self:MarkForUpdatePlaybackLoopMode()
+
+	if SERVER then
+		self:OnGUISetupServer()
+	end
+end
+
+function ENT:OnModelSetup()
 	self.AnimStopped = nil
 	self:StreamStopAnimModel()
 end

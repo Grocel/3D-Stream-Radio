@@ -21,12 +21,12 @@ end
 do
 	local function Cache_Clear( ply, cmd, args )
 		if game.SinglePlayer() then
-			StreamRadioLib.Msg( ply, "A server stream cache does not exist in single player!" )
+			StreamRadioLib.Print.Msg( ply, "A server stream cache does not exist in single player!" )
 			return
 		end
 
 		if not g_isDedicatedServer then
-			StreamRadioLib.Msg( ply, "A server stream cache does not exist on listen servers!" )
+			StreamRadioLib.Print.Msg( ply, "A server stream cache does not exist on listen servers!" )
 			return
 		end
 
@@ -36,16 +36,16 @@ do
 			end
 
 			if not StreamRadioLib.DeleteFolder( MainDir ) then
-				StreamRadioLib.Msg( ply, "Server stream cache could not be cleared!" )
+				StreamRadioLib.Print.Msg( ply, "Server stream cache could not be cleared!" )
 				return
 			end
 
 			LIB.lastloaded = {}
 			LIB.forbidden = {}
 
-			StreamRadioLib.Msg( ply, "Server stream cache cleared!" )
+			StreamRadioLib.Print.Msg( ply, "Server stream cache cleared!" )
 		else
-			StreamRadioLib.Msg( ply, "You need to be an admin clear the server stream cache." )
+			StreamRadioLib.Print.Msg( ply, "You need to be an admin clear the server stream cache." )
 		end
 	end
 
@@ -58,14 +58,14 @@ do
 			end
 
 			if not StreamRadioLib.DeleteFolder( MainDir ) then
-				StreamRadioLib.Msg( ply, "Client stream cache could not be cleared!" )
+				StreamRadioLib.Print.Msg( ply, "Client stream cache could not be cleared!" )
 				return
 			end
 
 			LIB.lastloaded = {}
 			LIB.forbidden = {}
 
-			StreamRadioLib.Msg( ply, "Client stream cache cleared!" )
+			StreamRadioLib.Print.Msg( ply, "Client stream cache cleared!" )
 		end
 
 		concommand.Add( "cl_streamradio_cacheclear", Cache_Clear )
