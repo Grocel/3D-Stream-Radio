@@ -691,29 +691,33 @@ if istable(CFCHTTP) then
 	-- Handle CFC HTTP Whitelist error cases
 	-- https://github.com/CFC-Servers/cfc_cl_http_whitelist
 
-	LIB.AddStreamErrorCode({
-		id = CFCHTTP.BASS_ERROR_BLOCKED_URI,
-		name = "STREAM_ERROR_CFCHTTP_BLOCKED_URI",
-		description = "URI has been blocked by CFC HTTP Whitelist",
-		helptext = [[
+	if CFCHTTP.BASS_ERROR_BLOCKED_URI then
+		LIB.AddStreamErrorCode({
+			id = CFCHTTP.BASS_ERROR_BLOCKED_URI,
+			name = "STREAM_ERROR_CFCHTTP_BLOCKED_URI",
+			description = "URI has been blocked by CFC HTTP Whitelist",
+			helptext = [[
 The server has blocked this URL via CFC HTTP Whitelist to prevent abuse.
 You can ask an admin to whitelist the URL above in their CFC tool.
 
 Keep in mind that there is probably a reason why it is forbidden on this server.
 ]],
-	})
+		})
+	end
 
-	LIB.AddStreamErrorCode({
-		id = CFCHTTP.BASS_ERROR_BLOCKED_CONTENT,
-		name = "STREAM_ERROR_CFCHTTP_BLOCKED_CONTENT",
-		description = "Content has been blocked by CFC HTTP Whitelist",
-		helptext = [[
+	if CFCHTTP.BASS_ERROR_BLOCKED_CONTENT then
+		LIB.AddStreamErrorCode({
+			id = CFCHTTP.BASS_ERROR_BLOCKED_CONTENT,
+			name = "STREAM_ERROR_CFCHTTP_BLOCKED_CONTENT",
+			description = "Content has been blocked by CFC HTTP Whitelist",
+			helptext = [[
 The server has blocked this content via CFC HTTP Whitelist to prevent abuse.
 You can ask an admin to whitelist the content from the URL above in their CFC tool.
 
 Keep in mind that there is probably a reason why it is forbidden on this server.
 ]],
-	})
+		})
+	end
 end
 
 if CLIENT then
