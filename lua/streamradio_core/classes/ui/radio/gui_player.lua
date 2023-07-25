@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -285,11 +287,16 @@ function CLASS:GetStream()
 	return self.StreamOBJ
 end
 
-function CLASS:Think()
-	if not self:IsSeen() then return end
-	if not self:IsVisible() then return end
+if CLIENT then
+	function CLASS:Think()
+		self.thinkRate = 0.5
 
-	self:UpdateFromStream()
+		if not self:IsSeen() then return end
+		if not self:IsVisible() then return end
+
+		self.thinkRate = 0
+		self:UpdateFromStream()
+	end
 end
 
 function CLASS:UpdateFromStream()
@@ -305,7 +312,7 @@ function CLASS:UpdateFromStream()
 	local isCached = self.StreamOBJ:IsCached()
 	local url = self.StreamOBJ:GetURL()
 
-	if StreamRadioLib.IsBlockedURLCode(url) then
+	if StreamRadioLib.Util.IsBlockedURLCode(url) then
 		url = "(Blocked URL)"
 		isCached = false
 		isOnline = true
@@ -323,10 +330,10 @@ function CLASS:UpdateFromStream()
 	end
 
 	if name ~= "" then
-		textlist[#textlist + 1] = name
+		table.insert(textlist, name)
 	end
 
-	textlist[#textlist + 1] = urlprefix .. url .. urlpostfix
+	table.insert(textlist, urlprefix .. url .. urlpostfix)
 
 	local metaname = ""
 	local meta = self.StreamOBJ:GetMetadata()
@@ -352,7 +359,7 @@ function CLASS:UpdateFromStream()
 	end
 
 	if metaname ~= "" then
-		textlist[#textlist + 1] = metaname
+		table.insert(textlist, metaname)
 	end
 
 	self.HeaderText:SetList(textlist)

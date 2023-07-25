@@ -1,5 +1,10 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Wire = StreamRadioLib.Wire or {}
 local LIB = StreamRadioLib.Wire
+local LIBUtil = StreamRadioLib.Util
+
+local emptyTableSafe = LIBUtil.EmptyTableSafe
 
 local g_HasWiremod = nil
 
@@ -159,7 +164,7 @@ function LIB.WireUserTrace(ent)
 	local cacheID = tostring(ent or "")
 	local cacheItem = g_WireUserTraceCache[cacheID]
 
-	if cacheItem and StreamRadioLib.IsSameFrame("StreamRadioLib.Wire.WireUserTrace_" .. cacheID) then
+	if cacheItem and StreamRadioLib.Util.IsSameFrame("StreamRadioLib.Wire.WireUserTrace_" .. cacheID) then
 		return cacheItem
 	end
 
@@ -191,7 +196,7 @@ function LIB.WireUserTrace(ent)
 
 	-- prevent the cache from overflowing
 	if g_WireUserTraceCacheCount > 1024 then
-		table.Empty(g_WireUserTraceCache)
+		emptyTableSafe(g_WireUserTraceCache)
 		g_WireUserTraceCacheCount = 0
 	end
 

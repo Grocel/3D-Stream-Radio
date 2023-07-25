@@ -329,16 +329,9 @@ else
 		language.Add("Tool." .. _mode .. ".0", "This tool could not be loaded.")
 
 		function TOOL.BuildCPanel(CPanel)
-			local errorlabel = vgui.Create("DLabel")
-			local err = string.Trim((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\n\nThis tool could not be loaded.")
-
-			errorlabel:SetDark(false)
-			errorlabel:SetHighlight(true)
-			errorlabel:SetText(err)
-			errorlabel:SizeToContents()
-			CPanel:AddPanel(errorlabel)
-
-			return
+			if StreamRadioLib.Loader_CreateErrorPanel then
+				StreamRadioLib.Loader_CreateErrorPanel(CPanel, "This tool could not be loaded.")
+			end
 		end
 	end
 end
@@ -644,7 +637,7 @@ function TOOL:ReloadClient()
 	local entgui, ent = self:GetAimedGui()
 	if not IsValid(entgui) then return end
 
-	entgui:SetSkinOnServer(StreamRadioLib.Skin.GetDefaultSkin())
+	entgui:SetSkinOnServer(StreamRadioLib.Skin.GetDefaultSkin(), false)
 end
 
 function TOOL:Holster()

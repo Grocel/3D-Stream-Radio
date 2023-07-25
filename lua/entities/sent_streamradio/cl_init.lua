@@ -6,8 +6,10 @@ local StreamRadioLib = StreamRadioLib
 function ENT:StopTuneSound()
 	if not self.NoiseSound then return end
 
-	if IsValid(self.StreamObj) then
-		self.StreamObj:TimerRemove("tunesound")
+	local stream = self.StreamObj
+	if IsValid(streamj) then
+		stream:TimerRemove("tunesoundstart")
+		stream:TimerRemove("tunesound")
 	end
 
 	self.NoiseSound:Stop( )
@@ -17,8 +19,10 @@ end
 function ENT:FadeoutTuneSound(time)
 	if not self.NoiseSound then return end
 
-	if IsValid(self.StreamObj) then
-		self.StreamObj:TimerRemove("tunesound")
+	local stream = self.StreamObj
+	if IsValid(streamj) then
+		stream:TimerRemove("tunesoundstart")
+		stream:TimerRemove("tunesound")
 	end
 
 	if not self.NoiseSound:IsPlaying() then
@@ -29,19 +33,37 @@ function ENT:FadeoutTuneSound(time)
 end
 
 function ENT:StartTuneSound(startvol)
-	self:CreateTuneSound()
-	if not self.NoiseSound then return end
+	local stream = self.StreamObj
+	if not IsValid(stream) then return end
 
-	if IsValid(self.StreamObj) then
-		self.StreamObj:TimerRemove("tunesound")
+	if IsValid(stream) then
+		stream:TimerRemove("tunesound")
+		stream:TimerRemove("tunesoundstart")
 	end
 
-	if self.NoiseSound:IsPlaying() then
-		return
-	end
+	stream:TimerOnce("tunesoundstart", 2, function()
+		if not IsValid(self) then return end
 
-	self.NoiseSound_vol = 1
-	self.NoiseSound:PlayEx(startvol or 0, 100)
+		if IsValid(stream:GetChannel()) then
+			self:StopTuneSound()
+			return
+		end
+
+		self:CreateTuneSound()
+		if not self.NoiseSound then return end
+
+		if IsValid(stream) then
+			stream:TimerRemove("tunesound")
+			stream:TimerRemove("tunesoundstart")
+		end
+
+		if self.NoiseSound:IsPlaying() then
+			return
+		end
+
+		self.NoiseSound_vol = 1
+		self.NoiseSound:PlayEx(startvol or 0, 100)
+	end)
 end
 
 function ENT:CreateTuneSound()
@@ -59,32 +81,41 @@ function ENT:CreateTuneSound()
 end
 
 function ENT:ApplyTuneSound()
-	if not IsValid(self.StreamObj) then return end
+	local stream = self.StreamObj
+	if not IsValid(stream) then return end
 
-	local isStopMode = self.StreamObj:IsStopMode()
+	stream:TimerRemove("tunesoundstart")
+	stream:TimerRemove("tunesound")
+
+	local isStopMode = stream:IsStopMode()
 	if isStopMode then
 		self.streamswitchsound = true
 		self:StopTuneSound()
 		return
 	end
 
-	if IsValid(self.StreamObj:GetChannel()) then
+	if IsValid(stream:GetChannel()) then
 		self:FadeoutTuneSound()
 		return
 	end
 
-	if self.StreamObj:IsLoading() then
+	if stream:GetMuted() then
+		self:StopTuneSound()
+		return
+	end
+
+	if stream:IsLoading() then
 		self:StartTuneSound()
 		return
 	end
 
-	if self.StreamObj:HasError() then
+	if stream:HasError() then
 		self.streamswitchsound = true
 		self:StartTuneSound()
 		return
 	end
 
-	self.StreamObj:TimerOnce("tunesound", 0.5, function()
+	stream:TimerOnce("tunesound", 0.5, function()
 		if not IsValid(self) then return end
 		self:ApplyTuneSound()
 	end)
@@ -97,13 +128,14 @@ function ENT:Initialize()
 	self.slavesradios = {}
 	self.old = {}
 
-	if IsValid(self.StreamObj) then
-		self.StreamObj:SetEvent("OnPlayModeChange", self, function()
+	local stream = self.StreamObj
+	if IsValid(stream) then
+		stream:SetEvent("OnPlayModeChange", self, function()
 			if not IsValid(self) then return end
 			self:ApplyTuneSound()
 		end)
 
-		self.StreamObj:SetEvent("OnSearch", self, function()
+		stream:SetEvent("OnSearch", self, function()
 			if not IsValid(self) then return end
 			if not self.streamswitchsound then return end
 
@@ -112,17 +144,17 @@ function ENT:Initialize()
 			self:ApplyTuneSound()
 		end)
 
-		self.StreamObj:SetEvent("OnConnect", self, function()
+		stream:SetEvent("OnConnect", self, function()
 			if not IsValid(self) then return end
 			self:ApplyTuneSound()
 		end)
 
-		self.StreamObj:SetEvent("OnError", self, function()
+		stream:SetEvent("OnError", self, function()
 			if not IsValid(self) then return end
 			self:ApplyTuneSound()
 		end)
 
-		self.StreamObj:SetEvent("OnMute", self, function(this, muted)
+		stream:SetEvent("OnMute", self, function(this, muted)
 			if not IsValid(self) then return end
 
 			if muted then
@@ -191,7 +223,7 @@ function ENT:TraceWalls(radius)
 		return 1
 	end
 
-	local startpos = self:GetSoundPosAng()
+	local startpos = self.SoundPos
 
 	local camtrace = self:TraceToCamera(startpos)
 	if not camtrace then return 1 end
@@ -335,23 +367,25 @@ function ENT:IsMuted()
 end
 
 function ENT:UpdateStream()
-	if not IsValid(self.StreamObj) then
+	local streamObj = self.StreamObj
+
+	if not IsValid(streamObj) then
 		self:StreamStopAnimModel()
 		return
 	end
 
-	if self.StreamObj:IsStopMode() then
+	if streamObj:IsStopMode() then
 		self:StreamStopAnimModel()
 		return
 	end
 
 	local ply = LocalPlayer()
 
-	self.StreamObj:Set3D(StreamRadioLib.Is3DSound() and self:GetSound3D())
-	self.Sound3D = self.StreamObj:Get3D()
+	streamObj:Set3D(StreamRadioLib.Is3DSound() and self:GetSound3D())
+	self.Sound3D = streamObj:Get3D()
 
 	self.Radius = self:GetRadius() or 0
-	self.StreamObj:Set3DFadeDistance(self.Radius / 3)
+	streamObj:Set3DFadeDistance(self.Radius / 3)
 
 	local muted = self:IsMuted()
 	local clVolume = self:GetCLVolume()
@@ -371,8 +405,8 @@ function ENT:UpdateStream()
 
 	local StreamVol = distVolume * clVolume * wallvol
 
-	self.StreamObj:SetMuted(muted)
-	self.StreamObj:SetClientVolume(StreamVol)
+	streamObj:SetMuted(muted)
+	streamObj:SetClientVolume(StreamVol)
 
 	self.Muted = muted
 
@@ -380,7 +414,7 @@ function ENT:UpdateStream()
 		local global_vol = StreamRadioLib.GetGlobalVolume()
 		global_vol = math.Clamp(global_vol, 0, 1)
 
-		self.NoiseSound:ChangeVolume(self.StreamObj:GetVolume() * global_vol * clVolume * wallvol * self.NoiseSound_vol, 0.5)
+		self.NoiseSound:ChangeVolume(streamObj:GetVolume() * global_vol * clVolume * wallvol * self.NoiseSound_vol, 0.5)
 	end
 
 	self:StreamAnimModel()
@@ -474,15 +508,26 @@ function ENT:StreamAnimModel()
 	end
 end
 
-function ENT:Think()
-	BaseClass.Think(self)
+function ENT:FastThink()
+	BaseClass.FastThink(self)
 
-	self:PlaybackLoopModeThink()
 	self:MasterRadioSyncThink()
-	self:PanelThink()
+end
+
+function ENT:InternalThink()
+	BaseClass.InternalThink(self)
+
 	self:UpdateStream()
 
 	self:CallModelFunction("Think")
+end
+
+function ENT:InternalSlowThink()
+	BaseClass.InternalSlowThink(self)
+
+	self:PlaybackLoopModeThink()
+	self:PanelThink()
+
 	return true
 end
 

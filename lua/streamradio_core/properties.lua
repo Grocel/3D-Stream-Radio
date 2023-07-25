@@ -1,4 +1,6 @@
 
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.properties = StreamRadioLib.properties or {}
 local LIB = StreamRadioLib.properties
 

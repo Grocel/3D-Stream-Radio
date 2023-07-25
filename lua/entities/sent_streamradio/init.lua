@@ -5,12 +5,21 @@ DEFINE_BASECLASS( "base_streamradio_gui" )
 
 local StreamRadioLib = StreamRadioLib
 local LIBError = StreamRadioLib.Error
+local LIBWire = StreamRadioLib.Wire
+local LIBUtil = StreamRadioLib.Util
+
+local g_isLoaded = StreamRadioLib and StreamRadioLib.Loaded
+local g_isWiremodLoaded = g_isLoaded and LIBWire.HasWiremod()
 
 function ENT:InitializeModel()
+	if not g_isLoaded then
+		return
+	end
+
 	local model = self:GetModel()
 
-	if not StreamRadioLib.IsValidModel(model) then
-		self:SetModel(StreamRadioLib.GetDefaultModel())
+	if not StreamRadioLib.Util.IsValidModel(model) then
+		self:SetModel(StreamRadioLib.Util.GetDefaultModel())
 	end
 end
 
@@ -21,6 +30,10 @@ function ENT:Initialize( )
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetMoveType( MOVETYPE_VPHYSICS )
 	self:SetSolid( SOLID_VPHYSICS )
+
+	if not g_isLoaded then
+		return
+	end
 
 	self.old = {}
 	self.slavesradios = {}
@@ -43,10 +56,6 @@ function ENT:Initialize( )
 	self:SetCLVolume(1)
 
 	BaseClass.Initialize( self )
-
-	if self.__IsLibLoaded then
-		StreamRadioLib._AllowSpectrumCountCache = nil
-	end
 
 	self:AddWireInput("Play", "NORMAL")
 	self:AddWireInput("Pause", "NORMAL")
@@ -99,7 +108,7 @@ function ENT:Initialize( )
 end
 
 function ENT:SetSettings(settings)
-	if not self.__IsLibLoaded then return end
+	if not g_isLoaded then return end
 	settings = settings or {}
 
 	local url = settings.StreamUrl or ""
@@ -152,7 +161,7 @@ end
 
 function ENT:GetSettings()
 	local settings = {}
-	if not self.__IsLibLoaded then return settings end
+	if not g_isLoaded then return settings end
 
 	settings.StreamUrl = self:GetStreamURL()
 	settings.StreamName = self:GetStreamName()
@@ -182,7 +191,7 @@ end
 
 function ENT:OnReloaded( )
 	if not IsValid( self ) then return end
-	if not self.__IsLibLoaded then return end
+	if not g_isLoaded then return end
 
 	local ply, model, pos, ang = self.pl, self:GetModel( ), self:GetPos( ), self:GetAngles( )
 	StreamRadioLib.Print.Msg( ply, "Reloaded " .. tostring( self ) )
@@ -202,32 +211,35 @@ function ENT:OnReloaded( )
 end
 
 function ENT:UpdateVolume()
-	if not IsValid(self.StreamObj) then
+	local streamObj = self.StreamObj
+
+	if not IsValid(streamObj) then
 		return
 	end
 
 	local volume_ent = self:GetVolume()
-	local volume_stream = self.StreamObj:GetVolume()
+	local volume_stream = streamObj:GetVolume()
+	local old = self.old
 
-	if volume_ent ~= self.old.Volume_ent then
-		self.StreamObj:SetVolume(volume_ent)
+	if volume_ent ~= old.Volume_ent then
+		streamObj:SetVolume(volume_ent)
 
-		self.old.Volume_ent = volume_ent
-		self.old.Volume_stream = volume_ent
+		old.Volume_ent = volume_ent
+		old.Volume_stream = volume_ent
 		return
 	end
 
-	if volume_stream ~= self.old.Volume_stream then
+	if volume_stream ~= old.Volume_stream then
 		self:SetVolume(volume_stream)
 
-		self.old.Volume_ent = volume_stream
-		self.old.Volume_stream = volume_stream
+		old.Volume_ent = volume_stream
+		old.Volume_stream = volume_stream
 		return
 	end
 end
 
 function ENT:CanHaveSpectrum()
-	if not self.__IsWiremodLoaded then return false end
+	if not g_isWiremodLoaded then return false end
 	if not StreamRadioLib.AllowSpectrum() then return false end
 	if self:GetDisableAdvancedOutputs() then return false end
 
@@ -237,50 +249,42 @@ end
 function ENT:FastThink()
 	BaseClass.FastThink(self)
 
-	self:PlaybackLoopModeThink()
 	self:MasterRadioSyncThink()
-	self:PanelThink()
-	self:UpdateVolume()
 end
 
-function ENT:WiremodThink( )
-	if not IsValid(self.StreamObj) then return end
+function ENT:WiremodThink()
+	local streamObj = self.StreamObj
+	if not IsValid(streamObj) then return end
 
 	self._codec = self._codec or {}
-
-	self._codec[1] = self.StreamObj:GetSamplingRate()
-	self._codec[2] = self.StreamObj:GetBitsPerSample()
-	self._codec[3] = self.StreamObj:GetAverageBitRate()
-	self._codec[4] = self.StreamObj:GetType()
-
 	self._spectrum = self._spectrum or {}
 
-	local hasadvoutputs = self.StreamObj:IsBASSEngineEnabled()
+	local hasadvoutputs = streamObj:IsBASSEngineEnabled()
 
 	if self:IsConnectedOutputWire("Spectrum") or self:IsConnectedWirelink() then
 		if hasadvoutputs then
-			self.StreamObj:GetSpectrumTable(128, self._spectrum)
-			self._spectrumfilled = true
+			streamObj:GetSpectrumTable(128, self._spectrum)
 		else
-			if self._spectrumfilled then
-				self._spectrum = {}
-				self._spectrumfilled = nil
-			end
+			LIBUtil.EmptyTableSafe(self._spectrum)
 		end
 	else
-		if self._spectrumfilled then
-			self._spectrum = {}
-			self._spectrumfilled = nil
-		end
+		LIBUtil.EmptyTableSafe(self._spectrum)
 
 		if hasadvoutputs then
 			self._spectrum[1] = "Standby mode: Connect to this Output to aktivate it."
 		end
 	end
 
-	self:TriggerWireOutput("Play", self.StreamObj:IsPlayMode())
-	self:TriggerWireOutput("Paused", self.StreamObj:IsPauseMode())
-	self:TriggerWireOutput("Stopped", self.StreamObj:IsStopMode())
+	if hasadvoutputs then
+		self._codec[1] = streamObj:GetSamplingRate()
+		self._codec[2] = streamObj:GetBitsPerSample()
+		self._codec[3] = streamObj:GetAverageBitRate()
+		self._codec[4] = streamObj:GetType()
+	end
+
+	self:TriggerWireOutput("Play", streamObj:IsPlayMode())
+	self:TriggerWireOutput("Paused", streamObj:IsPauseMode())
+	self:TriggerWireOutput("Stopped", streamObj:IsStopMode())
 	self:TriggerWireOutput("Volume", self:GetVolume())
 	self:TriggerWireOutput("Muted", self:GetSVMute())
 	self:TriggerWireOutput("Radius", self:GetRadius())
@@ -290,68 +294,74 @@ function ENT:WiremodThink( )
 	self:TriggerWireOutput("LoopsPlaylist", self:GetPlaylistLoop())
 	self:TriggerWireOutput("PlaylistAvailable", self:IsPlaylistEnabled())
 
-	self:TriggerWireOutput("Time", self.StreamObj:GetMasterTime())
-	self:TriggerWireOutput("Length", self.StreamObj:GetMasterLength())
-	self:TriggerWireOutput("Ended", self.StreamObj:HasEnded())
+	self:TriggerWireOutput("Time", streamObj:GetMasterTime())
+	self:TriggerWireOutput("Length", streamObj:GetMasterLength())
+	self:TriggerWireOutput("Ended", streamObj:HasEnded())
 	self:TriggerWireOutput("3D Sound", self:GetSound3D())
-	self:TriggerWireOutput("Stream Name", self.StreamObj:GetStreamName())
-	self:TriggerWireOutput("Stream URL", self.StreamObj:GetURL())
+	self:TriggerWireOutput("Stream Name", streamObj:GetStreamName())
+	self:TriggerWireOutput("Stream URL", streamObj:GetURL())
 
 	self:TriggerWireOutput("Advanced Outputs", hasadvoutputs)
-	self:TriggerWireOutput("Playing", self.StreamObj:IsPlaying())
-	self:TriggerWireOutput("Loading", self.StreamObj:IsLoading() or self.StreamObj:IsBuffering() or self.StreamObj:IsSeeking())
+	self:TriggerWireOutput("Playing", streamObj:IsPlaying())
+	self:TriggerWireOutput("Loading", streamObj:IsLoading() or streamObj:IsBuffering() or streamObj:IsSeeking())
 
 	self:TriggerWireOutput("Tag", {}) -- @TODO
 	self:TriggerWireOutput("Codec", self._codec)
 	self:TriggerWireOutput("Spectrum", self._spectrum)
-	self:TriggerWireOutput("Sound Level", self.StreamObj:GetAverageLevel())
+	self:TriggerWireOutput("Sound Level", streamObj:GetAverageLevel())
 
 	self:TriggerWireOutput("This Radio", self)
 
 	local err = LIBError.STREAM_ERROR_WIRE_ADVOUT_DISABLED
 
 	if hasadvoutputs then
-		err = self.StreamObj:GetError()
+		err = streamObj:GetError()
 	end
 
 	self:TriggerWireOutput("Error", err)
 	self:TriggerWireOutput("Error Text", LIBError.GetStreamErrorDescription(err))
 end
 
-function ENT:Think( )
-	BaseClass.Think( self )
+function ENT:InternalThink( )
+	BaseClass.InternalThink( self )
 
-	if self.__IsLibLoaded then
-		if not self:GetMasterRadioRecursive() then
-			local oldActivateURL = self.ActivateExtraURL or ""
-			local oldActivateName = self.ActivateExtraName or ""
+	self:UpdateVolume()
+end
 
-			self.ExtraURLs.Tool = self.ExtraURLs.Tool or ""
-			self.ExtraURLs.Wire = self.ExtraURLs.Wire or ""
-			self.ExtraURLs.Mode = self.ExtraURLs.Mode or ""
+function ENT:InternalSlowThink()
+	BaseClass.InternalSlowThink(self)
 
-			self.ActivateExtraURL = self.ExtraURLs[self.ExtraURLs.Mode] or ""
-			self.ActivateExtraName = self.ExtraNames[self.ExtraURLs.Mode] or ""
+	if not self:GetMasterRadioRecursive() then
+		local oldActivateURL = self.ActivateExtraURL or ""
+		local oldActivateName = self.ActivateExtraName or ""
 
-			self:SetToolMode(self.ExtraURLs.Tool ~= "")
-			self:SetWireMode(self.ExtraURLs.Wire ~= "")
+		self.ExtraURLs.Tool = self.ExtraURLs.Tool or ""
+		self.ExtraURLs.Wire = self.ExtraURLs.Wire or ""
+		self.ExtraURLs.Mode = self.ExtraURLs.Mode or ""
 
-			if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName or self._ForceOnExtraURLUpdate then
-				self:OnExtraURLUpdate()
-			end
-		end
+		self.ActivateExtraURL = self.ExtraURLs[self.ExtraURLs.Mode] or ""
+		self.ActivateExtraName = self.ExtraNames[self.ExtraURLs.Mode] or ""
 
-		if IsValid(self.StreamObj) then
-			self.StreamObj:SetBASSEngineEnabled(self:CanHaveSpectrum())
+		self:SetToolMode(self.ExtraURLs.Tool ~= "")
+		self:SetWireMode(self.ExtraURLs.Wire ~= "")
 
-			-- Loop the song also when we are in playlist mode without a playlist. We pretend we have a playlist with a single item.
-			local shouldLoop = self:GetLoop() or (not self:IsPlaylistEnabled() and self:GetPlaylistLoop())
-
-			self.StreamObj:SetLoop(shouldLoop)
+		if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName or self._ForceOnExtraURLUpdate then
+			self:OnExtraURLUpdate()
 		end
 	end
 
-	self:NextThink(CurTime() + 0.1)
+	if IsValid(self.StreamObj) then
+		self.StreamObj:SetBASSEngineEnabled(self:CanHaveSpectrum())
+
+		-- Loop the song also when we are in playlist mode without a playlist. We pretend we have a playlist with a single item.
+		local shouldLoop = self:GetLoop() or (not self:IsPlaylistEnabled() and self:GetPlaylistLoop())
+
+		self.StreamObj:SetLoop(shouldLoop)
+	end
+
+	self:PlaybackLoopModeThink()
+	self:PanelThink()
+
 	return true
 end
 
@@ -359,7 +369,7 @@ function ENT:OnExtraURLUpdate()
 	local name = self.ActivateExtraName
 	local urlForDisplay = self.ActivateExtraURL
 
-	if StreamRadioLib.IsBlockedURLCode(urlForDisplay) then
+	if StreamRadioLib.Util.IsBlockedURLCode(urlForDisplay) then
 		urlForDisplay = "(Blocked URL)"
 	end
 
@@ -380,9 +390,9 @@ function ENT:OnGUISetupServer()
 end
 
 function ENT:SetToolURL(url, setmode)
-	if not self.__IsLibLoaded then return end
+	if not g_isLoaded then return end
 
-	self.ExtraURLs.Tool = StreamRadioLib.FilterCustomURL(url)
+	self.ExtraURLs.Tool = StreamRadioLib.Util.FilterCustomURL(url)
 
 	if not setmode and self.ExtraURLs.Mode == "Tool" then
 		self.ExtraURLs.Mode = ""
@@ -399,9 +409,9 @@ function ENT:GetToolURL(url)
 end
 
 function ENT:SetWireURL(url, setmode)
-	if not self.__IsLibLoaded then return end
+	if not g_isLoaded then return end
 
-	self.ExtraURLs.Wire = StreamRadioLib.FilterCustomURL(url)
+	self.ExtraURLs.Wire = StreamRadioLib.Util.FilterCustomURL(url)
 
 	if setmode then
 		self.ActivateExtraName = ""
@@ -475,14 +485,56 @@ function ENT:OnMasterradioChange(masterradio, oldmasterradio)
 end
 
 function ENT:OnRemove()
-	if self.__IsLibLoaded then
-		StreamRadioLib._AllowSpectrumCountCache = nil
-	end
-
 	self:_StopInternal()
 
 	self:OnRemoveShared()
 	BaseClass.OnRemove(self)
+end
+
+local function getPlayerName(ply)
+	if not IsValid(ply) then
+		return "<Unknown>"
+	end
+
+	return "'" .. StreamRadioLib.Print.GetPlayerString(ply) .. "'"
+end
+
+function ENT:NWOverflowKill()
+	if SERVER then
+		local message = nil
+		local owner = self:GetRealRadioOwner()
+		local user = self:GetLastUser()
+		local logForPly = owner
+
+		if not IsValid(user) then
+			user = owner
+		end
+
+		if not IsValid(logForPly) then
+			logForPly = user
+		end
+
+		local addonTitle = StreamRadioLib.AddonTitle
+
+		local message = string.format(
+			"Network overflow/spam detected. Stream Radio '%s' removed! Owner: %s, Last user: %s.",
+			tostring(self),
+			getPlayerName(owner),
+			getPlayerName(user)
+		)
+
+		local msgWithAddonTitle = addonTitle .. ": " .. message
+
+		StreamRadioLib.Print.Msg(owner, msgWithAddonTitle)
+
+		if user ~= owner then
+			StreamRadioLib.Print.Msg(user, msgWithAddonTitle)
+		end
+
+		StreamRadioLib.Print.Log(logForPly, message)
+	end
+
+	BaseClass.NWOverflowKill(self)
 end
 
 function ENT:OnPreEntityCopy()
@@ -510,7 +562,7 @@ function ENT:PermaPropLoad(data)
 	if data.Model then
 		local model = Model(data.Model)
 
-		if StreamRadioLib.IsValidModel(model) then
+		if StreamRadioLib.Util.IsValidModel(model) then
 			self:SetModel(model)
 		end
 	end

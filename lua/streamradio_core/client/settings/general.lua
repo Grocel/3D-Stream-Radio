@@ -1,5 +1,21 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Settings = StreamRadioLib.Settings or {}
 local LIB = StreamRadioLib.Settings
+
+local g_drawdistance = 0
+local g_hidespectrumbars = false
+local g_spectrumdistance = 0
+local g_spectrumbars = 0
+local g_rendertarget = true
+local g_rendertarget_fps = 10
+local g_3dsound = true
+local g_key = 0
+local g_vehiclekey = 0
+local g_volume = 1
+local g_coveredvolume = 0
+
+local g_lastThink = 0
 
 LIB.g_CV_List["general"] = {}
 
@@ -150,14 +166,12 @@ local function BuildMenuPanel(CPanel)
 	toplabel:SizeToContents()
 	CPanel:AddPanel(toplabel)
 
-	if not StreamRadioLib or not StreamRadioLib.Loaded then
-		local errorlabel = vgui.Create("DLabel")
+	local StreamRadioLib = StreamRadioLib or {}
 
-		errorlabel:SetDark(false)
-		errorlabel:SetHighlight(true)
-		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis menu could not be loaded.")
-		errorlabel:SizeToContents()
-		CPanel:AddPanel(errorlabel)
+	if not StreamRadioLib.Loaded then
+		if StreamRadioLib.Loader_CreateErrorPanel then
+			StreamRadioLib.Loader_CreateErrorPanel(CPanel, "This menu could not be loaded.")
+		end
 
 		return
 	end
@@ -199,22 +213,58 @@ end
 LIB.AddBuildMenuPanelHook("general", "General Settings", BuildMenuPanel)
 
 function StreamRadioLib.GetDrawDistance()
-	return LIB.GetConVarValue("drawdistance")
+	return g_drawdistance
 end
 
 function StreamRadioLib.IsSpectrumHidden()
-	return LIB.GetConVarValue("hidespectrumbars")
+	return g_hidespectrumbars
 end
 
 function StreamRadioLib.GetSpectrumDistance()
-	return LIB.GetConVarValue("spectrumdistance")
+	return g_spectrumdistance
 end
 
 function StreamRadioLib.GetSpectrumBars()
-	return LIB.GetConVarValue("spectrumbars")
+	return g_spectrumbars
 end
 
 function StreamRadioLib.IsRenderTarget()
+	return g_rendertarget
+end
+
+function StreamRadioLib.RenderTargetFPS()
+	return g_rendertarget_fps
+end
+
+function StreamRadioLib.Is3DSound()
+	return g_3dsound
+end
+
+function StreamRadioLib.GetControlKey()
+	return g_key
+end
+
+function StreamRadioLib.GetControlKeyVehicle()
+	return g_vehiclekey
+end
+
+function StreamRadioLib.GetGlobalVolume()
+	return g_volume
+end
+
+function StreamRadioLib.GetCoveredVolume()
+	return g_coveredvolume
+end
+
+local function calcRendertargetFps()
+	local fps = LIB.GetConVarValue("rendertarget_fps")
+
+	fps = math.max(fps, 0.1)
+
+	return fps
+end
+
+local function calcIsRendertarget()
 	if ScrW() < 1024 then
 		return false
 	end
@@ -226,26 +276,23 @@ function StreamRadioLib.IsRenderTarget()
 	return LIB.GetConVarValue("rendertarget")
 end
 
-function StreamRadioLib.RenderTargetFPS()
-	return LIB.GetConVarValue("rendertarget_fps")
-end
+StreamRadioLib.Hook.Add("Think", "RenderTargetFPS", function()
+	local now = RealTime()
 
-function StreamRadioLib.Is3DSound()
-	return not LIB.GetConVarValue("no3dsound")
-end
+	if g_lastThink < now then
+		g_drawdistance = LIB.GetConVarValue("drawdistance")
+		g_hidespectrumbars = LIB.GetConVarValue("hidespectrumbars")
+		g_spectrumdistance = LIB.GetConVarValue("spectrumdistance")
+		g_spectrumbars = LIB.GetConVarValue("spectrumbars")
+		g_rendertarget = calcIsRendertarget()
+		g_rendertarget_fps = calcRendertargetFps()
+		g_3dsound = not LIB.GetConVarValue("no3dsound")
 
-function StreamRadioLib.GetControlKey()
-	return LIB.GetConVarValue("key")
-end
+		g_lastThink = now + 1 + math.random()
+	end
 
-function StreamRadioLib.GetControlKeyVehicle()
-	return LIB.GetConVarValue("vehiclekey")
-end
-
-function StreamRadioLib.GetGlobalVolume()
-	return LIB.GetConVarValue("volume")
-end
-
-function StreamRadioLib.GetCoveredVolume()
-	return LIB.GetConVarValue("coveredvolume")
-end
+	g_key = LIB.GetConVarValue("key")
+	g_vehiclekey = LIB.GetConVarValue("vehiclekey")
+	g_volume = LIB.GetConVarValue("volume")
+	g_coveredvolume = LIB.GetConVarValue("coveredvolume")
+end)

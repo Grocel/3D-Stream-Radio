@@ -1,15 +1,20 @@
-StreamRadioLib.Network = {}
-StreamRadioLib.Network.Debug = {}
-local LIB = StreamRadioLib.Network
-
 local StreamRadioLib = StreamRadioLib
+
+StreamRadioLib.Network = StreamRadioLib.Network or {}
+StreamRadioLib.Network.Debug = StreamRadioLib.Network.Debug or {}
+
+local LIB = StreamRadioLib.Network
+local LIBDebug = StreamRadioLib.Network.Debug
+local LIBUtil = StreamRadioLib.Util
+
+local emptyTableSafe = LIBUtil.EmptyTableSafe
 
 local g_addonprefix = "3DStreamRadio/"
 local g_maxIdentifierLen = 44
 
 local g_networkStack = {}
 
-local g_networkMaxStackSize = 2^16
+local g_networkMaxStackSize = 4096
 local g_networkStackBatchSize = 128
 
 local g_types = {
@@ -231,6 +236,10 @@ do
 
 			assert(checkfunc(value), "invalid datatype of value at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(value) .. "'")
 
+			if ent:IsMarkedForDeletion() then
+				return
+			end
+
 			local data = {ent, ent[nwSetter], key, value}
 			table.insert(g_networkStack, data)
 		end
@@ -294,98 +303,133 @@ function LIB.SetupDataTables(ent)
 	end
 end
 
-local StreamRadioLib_CatchAndErrorNoHaltWithStack = StreamRadioLib.CatchAndErrorNoHaltWithStack
-local StreamRadioLib_ErrorNoHaltWithStack = StreamRadioLib.ErrorNoHaltWithStack
 
-local function pullNWVars(ent)
+local function pollNWVarsLoopThis(NW, ent, name, data)
+	if not data.callback then return end
+	if not data.datatype then return end
+
+	local oldvalue = data.oldvalue
+	local newvalue = LIB.GetNWVar(ent, data.datatype, name)
+
+	if oldvalue == newvalue then return end
+
+	data.callback(ent, name, oldvalue, newvalue)
+
+	NW.Names[name].oldvalue = newvalue
+end
+
+local function pollNWVars(ent)
 	local NW = ent.StreamRadioNW
 	if not NW then return end
 	if not NW.Names then return end
 
-	local loopThis = function(name, data)
-		if not data.callback then return end
-		if not data.datatype then return end
-
-		local oldvalue = data.oldvalue
-		local newvalue = LIB.GetNWVar(ent, data.datatype, name)
-
-		if oldvalue == newvalue then return end
-		StreamRadioLib_CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
-
-		NW.Names[name].oldvalue = newvalue
-	end
-
 	for name, data in pairs(NW.Names) do
-		loopThis(name, data)
+		pollNWVarsLoopThis(NW, ent, name, data)
 	end
 end
 
-local function pullDTVars(ent)
+local function pollDTVarsLoopThis(NW, ent, name, data)
+	if not data.callback then return end
+	if not data.datatype then return end
+	if not DTNetworkVarExists(ent, name) then return end
+
+	local oldvalue = data.oldvalue
+	local newvalue = LIB.GetDTNetworkVar(ent, name)
+
+	if oldvalue == newvalue then return end
+
+	data.callback(ent, name, oldvalue, newvalue)
+
+	NW.Names[name].oldvalue = newvalue
+end
+
+local function pollDTVars(ent)
 	local NW = ent.StreamRadioDT
 	if not NW then return end
 	if not NW.Names then return end
 	if not NW.Setup then return end
 
-	local loopThis = function(name, data)
-		if not data.callback then return end
-		if not data.datatype then return end
-		if not DTNetworkVarExists(ent, name) then return end
-
-		local oldvalue = data.oldvalue
-		local newvalue = LIB.GetDTNetworkVar(ent, name)
-
-		if oldvalue == newvalue then return end
-		StreamRadioLib_CatchAndErrorNoHaltWithStack(data.callback, ent, name, oldvalue, newvalue)
-
-		NW.Names[name].oldvalue = newvalue
-	end
-
 	for name, data in pairs(NW.Names) do
-		loopThis(name, data)
+		pollDTVarsLoopThis(NW, ent, name, data)
 	end
 end
 
-function LIB.PullNwStack()
+local function pollNwStackKillThis(stackItem)
+	local ent = stackItem[1]
+
+	if IsValid(ent) and not ent._NWOverflowKilled then
+		ent:NWOverflowKill()
+		ent._NWOverflowKilled = true
+	end
+end
+
+local function pollNwStackLoopThis(stackItem)
+	local ent = stackItem[1]
+	local setter = stackItem[2]
+	local key = stackItem[3]
+	local value = stackItem[4]
+
+	if not IsValid(ent) then return end
+	if ent:IsMarkedForDeletion() then return end
+	if not setter then return end
+
+	setter(ent, key, value)
+end
+
+function LIB.PollNwStack()
 	if CLIENT then
 		return
 	end
 
-	local loopThis = function(stackItem, i)
-		if not stackItem then return end
-
-		local ent = stackItem[1]
-		local setter = stackItem[2]
-		local key = stackItem[3]
-		local value = stackItem[4]
-
-		if not IsValid(ent) then return end
-		if not setter then return end
-
-		StreamRadioLib_CatchAndErrorNoHaltWithStack(setter, ent, key, value)
+	if not StreamRadioLib.HasSpawnedRadios() then
+		-- clean up any left overs, just in case
+		emptyTableSafe(g_networkStack)
+		return
 	end
 
 	local count = 0
 
 	for pointer, stackItem in pairs(g_networkStack) do
-		if pointer >= g_networkMaxStackSize then
-			StreamRadioLib_ErrorNoHaltWithStack("Network overflow, dumping stack!")
-			table.Empty(g_networkStack)
-			break
-		end
-
 		g_networkStack[pointer] = nil
-		loopThis(stackItem, pointer)
 
-		count = count + 1
-		if count >= g_networkStackBatchSize then
-			break
+		if stackItem then
+			-- network entity data chunk wise
+			pollNwStackLoopThis(stackItem)
+
+			count = count + 1
+			if count >= g_networkStackBatchSize then
+				break
+			end
+		end
+	end
+
+	if #g_networkStack > g_networkMaxStackSize then
+		-- we have a very high counter
+
+		local count = table.Count(g_networkStack)
+		-- actually count them, they can mismatch
+
+		if count > g_networkMaxStackSize then
+			-- still too high, kill the overflow by removing affected entities.
+
+			for pointer, stackItem in pairs(g_networkStack) do
+				g_networkStack[pointer] = nil
+
+				if count > g_networkMaxStackSize then
+					if stackItem then
+						pollNwStackKillThis(stackItem)
+					end
+				end
+
+				count = math.max(count - 1, 0)
+			end
 		end
 	end
 end
 
-function LIB.Pull(ent)
-	pullNWVars(ent)
-	pullDTVars(ent)
+function LIB.Poll(ent)
+	pollNWVars(ent)
+	pollDTVars(ent)
 end
 
 function LIB.AddDTNetworkVar(ent, datatype, name, ...)
@@ -520,33 +564,29 @@ local function hashToBin(str)
 end
 
 function LIB.Hash(str)
-	local hash = StreamRadioLib.Hash(str)
+	local hash = StreamRadioLib.Util.Hash(str)
 	hash = hashToBin(hash)
 
 	return hash
 end
 
-hook.Add("Tick", "Streamradio_Entity_Network_Tick", function()
+StreamRadioLib.Hook.Add("Tick", "Entity_Network_Tick", function()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 	if not StreamRadioLib.SpawnedRadios then return end
 
-	StreamRadioLib.Network.PullNwStack()
+	StreamRadioLib.Network.PollNwStack()
 
 	for index, ent in pairs(StreamRadioLib.SpawnedRadios) do
 		if not IsValid(ent) then
 			continue
 		end
 
-		if not ent.__IsRadio then
-			continue
-		end
-
-		StreamRadioLib.Network.Pull(ent)
+		StreamRadioLib.Network.Poll(ent)
 	end
 end)
 
-function LIB.Debug.DumpDTNetworkStats(ent)
+function LIBDebug.DumpDTNetworkStats(ent)
 	local NW = ent.StreamRadioDT or {}
 	local Count = NW.Count or {}
 
@@ -573,7 +613,7 @@ function LIB.Debug.DumpDTNetworkStats(ent)
 	print("======================")
 end
 
-function LIB.Debug.DumpDTNetworkVars(ent)
+function LIBDebug.DumpDTNetworkVars(ent)
 	local NW = ent.StreamRadioDT or {}
 
 	print("DumpDTNetworkVars of: " .. tostring(ent))
@@ -611,7 +651,7 @@ local function getAddonStringTable()
 	return result
 end
 
-function LIB.Debug.DumpDTNetworkStringTable()
+function LIBDebug.DumpDTNetworkStringTable()
 	print("DumpDTNetworkStringTable")
 	print("======================")
 
@@ -646,7 +686,7 @@ function LIB.Debug.DumpDTNetworkStringTable()
 	print("======================")
 end
 
-function LIB.Debug.DumpDTNetworkStringTableCode()
+function LIBDebug.DumpDTNetworkStringTableCode()
 	print("DumpDTNetworkStringTableCode")
 	print("======================")
 
@@ -683,7 +723,7 @@ do
 			return
 		end
 
-		LIB.Debug.DumpDTNetworkStringTable()
+		LIBDebug.DumpDTNetworkStringTable()
 	end, nil, nil, concommandFlags)
 
 	concommand.Add("debug_streamradio_dump_nwstringtable_code", function(ply)
@@ -691,6 +731,6 @@ do
 			return
 		end
 
-		LIB.Debug.DumpDTNetworkStringTableCode()
+		LIBDebug.DumpDTNetworkStringTableCode()
 	end, nil, nil, concommandFlags)
 end

@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -5,26 +7,25 @@ end
 
 local BASE = CLASS:GetBaseClass()
 
-local ColR = Color(255,0,0, 255)
-local ColY = Color(255,255,0, 60)
 local tune_nohdr = Vector( 0.80, 0, 0 )
 local CursorMat = StreamRadioLib.GetCustomPNG("cursor")
 
-local catchAndErrorNoHaltWithStack = StreamRadioLib.CatchAndErrorNoHaltWithStack
+local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
-local g_listengroup = 0
+local g_gui_controller_listengroup = 0
 
-function CLASS:PreAssignToListenGroup()
-	return self._listengroup
+function CLASS:AssignToListenGroup()
+	return self._gui_controller_listengroup
 end
 
 function CLASS:Create()
-	self._listengroup = g_listengroup
-	g_listengroup = g_listengroup + 1
+	self._gui_controller_listengroup = g_gui_controller_listengroup
+	g_gui_controller_listengroup = (g_gui_controller_listengroup % 2 ^ 30) + 1
 
-	self:SetGlobalVar("gui_controller_listengroup", self._listengroup)
+	self:SetGlobalVar("gui_controller_listengroup", self._gui_controller_listengroup)
 
 	BASE.Create(self)
+
 	self.Layout.AllowCursor = true
 
 	self.Cursor = self:CreateListener({
@@ -48,8 +49,8 @@ function CLASS:Create()
 
 	self._Skin = StreamRadioLib.CreateOBJ("skin_controller")
 
-	self._Skin.PreAssignToListenGroup = function()
-		return self:PreAssignToListenGroup()
+	self._Skin.AssignToListenGroup = function()
+		return self:AssignToListenGroup()
 	end
 
 	self._Skin.OnUpdateSkin = function(this, skin)
@@ -81,8 +82,8 @@ function CLASS:Create()
 	self._RT = StreamRadioLib.CreateOBJ("rendertarget")
 	if not IsValid(self._RT) then return end
 
-	self._RT.PreAssignToListenGroup = function()
-		return self:PreAssignToListenGroup()
+	self._RT.AssignToListenGroup = function()
+		return self:AssignToListenGroup()
 	end
 
 	local ResizeRT = function()
@@ -133,7 +134,7 @@ function CLASS:Create()
 	CalcSize()
 
 	if CLIENT then
-		self:StartSuperThink()
+		self:StartFastThink()
 	end
 end
 
@@ -288,10 +289,6 @@ function CLASS:IsSkinAble()
 	return true
 end
 
-local function RenderStop(this)
-	this._isseen = false
-end
-
 function CLASS:RenderSystem()
 	if SERVER then return end
 	if not self.Valid then return end
@@ -408,40 +405,53 @@ end
 
 function CLASS:OnContentChanged()
 	self._renderupdate = true
+	self:SetFastThinkNextCall(0)
 end
 
-function CLASS:Think()
-	if SERVER then return end
-	if not IsValid(self._RT) then return end
-	if not self.isseen then return end
+if CLIENT then
+	function CLASS:Think()
+		self.thinkRate = 0.5
 
-	self._RT:SetFramerate(StreamRadioLib.RenderTargetFPS())
-	self._RT:SetEnabled(StreamRadioLib.IsRenderTarget())
-	self:PosTooltipToCursor()
-end
+		if not IsValid(self._RT) then return end
+		if not self:IsSeen() then return end
 
-function CLASS:SuperThink()
-	if SERVER then return end
+		self.thinkRate = 0.1
 
-	local change = self.isseen ~= self._isseen
+		self._RT:SetFramerate(StreamRadioLib.RenderTargetFPS())
+		self._RT:SetEnabled(StreamRadioLib.IsRenderTarget())
 
-	self.isseen = self._isseen
-	self._isseen = false
-
-	if change then
-		if self.isseen then
-			self:StartListenRecursive()
-		else
-			self:StopListenRecursive()
-		end
+		self:PosTooltipToCursor()
 	end
 
-	if not IsValid(self._RT) then return end
-	if not self.isseen then return end
-	if not self._renderupdate then return end
-	if not self._RT:Update() then return end
+	function CLASS:FastThink()
+		self.fastThinkRate = 0.1
 
-	self._renderupdate = false
+		local isSeen = self:IsSeen()
+		local change = isSeen ~= self._isseen
+
+		isSeen = self._isseen
+		self._isseen = false
+
+		self.isseen = isSeen
+
+		if change then
+			if isSeen then
+				self:StartListenRecursive()
+			else
+				self:StopListenRecursive()
+			end
+		end
+
+		if not IsValid(self._RT) then return end
+		if not isSeen then return end
+
+		self.fastThinkRate = 0
+
+		if not self._renderupdate then return end
+		if not self._RT:Update() then return end
+
+		self._renderupdate = false
+	end
 end
 
 function CLASS:GetAllowCursor()

@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Skin = StreamRadioLib.Skin or {}
 local LIB = StreamRadioLib.Skin
 

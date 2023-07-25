@@ -3,6 +3,10 @@ DEFINE_BASECLASS( "base_streamradio_gui" )
 
 local StreamRadioLib = StreamRadioLib
 local LIBNetwork = StreamRadioLib.Network
+local LIBWire = StreamRadioLib.Wire
+
+local g_isLoaded = StreamRadioLib and StreamRadioLib.Loaded
+local g_isWiremodLoaded = g_isLoaded and LIBWire.HasWiremod()
 
 ENT.Spawnable = false
 ENT.AdminOnly = false
@@ -17,7 +21,7 @@ ENT.Sounds_Noise = Sound("stream_radio/noise.wav")
 ENT.Sounds_Use = Sound("common/wpn_select.wav")
 
 function ENT:SetupDataTables( )
-	if not self.__IsLibLoaded then return end
+	if not g_isLoaded then return end
 	BaseClass.SetupDataTables(self)
 
 	self:AddDTNetworkVar("Bool", "WireMode")
@@ -29,7 +33,7 @@ function ENT:SetupDataTables( )
 
 	local adv_wire = nil
 
-	if self.__IsWiremodLoaded then
+	if g_isWiremodLoaded then
 		adv_wire = {
 			KeyName = "DisableAdvancedOutputs",
 			Edit = {
@@ -234,9 +238,10 @@ function ENT:UpdatePlaybackLoopMode()
 	self._callUpdatePlaybackLoopMode = nil
 
 	local loopMode = self:GetPlaybackLoopMode()
+	local GUI_Main = self.GUI_Main
 
-	if IsValid(self.GUI_Main) then
-		self.GUI_Main:UpdatePlaybackLoopMode(loopMode)
+	if IsValid(GUI_Main) then
+		GUI_Main:UpdatePlaybackLoopMode(loopMode)
 	end
 
 	self.OnUpdatePlaybackLoopMode(loopMode)
@@ -247,7 +252,7 @@ function ENT:OnUpdatePlaybackLoopMode(loopMode)
 end
 
 function ENT:GetMasterRadioRecursive()
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		self._supermasterradio = nil
 		return nil
 	end
@@ -370,9 +375,9 @@ function ENT:OnGUIInteractionCheck(ply, trace, userEntity)
 end
 
 function ENT:MasterRadioSyncThink()
-	if not IsValid(self.StreamObj) then return end
 	if not self.old then return end
 
+	local GUI_Main = self.GUI_Main
 	local masterradio = self:GetMasterRadioRecursive()
 	local oldmasterradio = self.old.masterradio
 	local statechange = false
@@ -381,8 +386,8 @@ function ENT:MasterRadioSyncThink()
 		statechange = true
 
 		if not masterradio then
-			if IsValid(self.GUI_Main) then
-				self.GUI_Main:SetSyncMode(false)
+			if IsValid(GUI_Main) then
+				GUI_Main:SetSyncMode(false)
 			end
 		end
 
@@ -431,11 +436,11 @@ function ENT:MasterRadioSyncThink()
 
 	this_st:SetPlayingState(playingstate)
 
-	if statechange and IsValid(self.GUI_Main) then
-		self.GUI_Main:SetSyncMode(true)
+	if statechange and IsValid(GUI_Main) then
+		GUI_Main:SetSyncMode(true)
 
-		self.GUI_Main:EnablePlaylist(false)
-		self.GUI_Main:Play(name, url)
+		GUI_Main:EnablePlaylist(false)
+		GUI_Main:Play(name, url)
 	end
 
 	if SERVER then
@@ -448,7 +453,6 @@ function ENT:MasterRadioSyncThink()
 
 		local lastTargetTime = self._lastMasterTime;
 		self._lastMasterTime = targettime
-
 
 		local masterDelta = nil
 		if lastTargetTime then
@@ -485,15 +489,29 @@ function ENT:PlaybackLoopModeThink()
 end
 
 function ENT:PanelThink()
-	if not IsValid(self.GUI_Main) then
+	local GUI_Main = self.GUI_Main
+
+	if not IsValid(GUI_Main) then
 		return
 	end
 
-	local hasTool = self:GetToolMode()
-	local hasWire = self:GetWireMode()
+	local GUI_Main_Browser = GUI_Main.Browser
+	if not IsValid(GUI_Main_Browser) then
+		return
+	end
 
-	self.GUI_Main.Browser.ToolButton:SetEnabled(hasTool)
-	self.GUI_Main.Browser.WireButton:SetEnabled(hasWire)
+	local ToolButton = GUI_Main_Browser.ToolButton
+	local WireButton = GUI_Main_Browser.WireButton
+
+	if IsValid(ToolButton) then
+		local hasTool = self:GetToolMode()
+		ToolButton:SetEnabled(hasTool)
+	end
+
+	if IsValid(WireButton) then
+		local hasWire = self:GetWireMode()
+		WireButton:SetEnabled(hasWire)
+	end
 end
 
 function ENT:OnToolButtonClick()
@@ -507,7 +525,7 @@ end
 function ENT:OnWireButtonClick()
 	local hasWire = self:GetWireMode()
 	if not hasWire then return end
-	if not self.__IsWiremodLoaded then return end
+	if not g_isWiremodLoaded then return end
 	if not self.OnWireMode then return end
 
 	self:OnWireMode()
@@ -535,11 +553,13 @@ end
 function ENT:OnGUISetup()
 	BaseClass.OnGUISetup(self)
 
-	if not IsValid(self.GUI_Main) then
+	local GUI_Main = self.GUI_Main
+
+	if not IsValid(GUI_Main) then
 		return
 	end
 
-	self.GUI_Main.OnPlaybackLoopModeChange = function(this, newLoopMode)
+	GUI_Main.OnPlaybackLoopModeChange = function(this, newLoopMode)
 		if not IsValid(self) then return end
 		self:SetPlaybackLoopMode(newLoopMode)
 	end

@@ -79,7 +79,7 @@ function RADIOIFACE:Convert(url, callback)
 
 	local streamUrl = g_dropbox_content_url .. path
 
-	streamUrl = StreamRadioLib.URIAddParameter(streamUrl, {
+	streamUrl = StreamRadioLib.Util.URIAddParameter(streamUrl, {
 		dl = 1,
 	})
 

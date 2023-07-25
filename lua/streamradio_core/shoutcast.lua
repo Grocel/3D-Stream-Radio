@@ -1,4 +1,6 @@
-StreamRadioLib.Shoutcast = {}
+local StreamRadioLib = StreamRadioLib
+
+StreamRadioLib.Shoutcast = StreamRadioLib.Shoutcast or {}
 local LIB = StreamRadioLib.Shoutcast
 
 local g_streamUrl = "https://yp.shoutcast.com/sbin/tunein-station.m3u"
@@ -1050,7 +1052,7 @@ local function mapGenres(genres)
 			end
 
 			map.children[key] = subItem
-			map.childrenTitles[#map.childrenTitles + 1] = title
+			table.insert(map.childrenTitles, title)
 		end
 
 		return map
@@ -1078,7 +1080,7 @@ function LIB.GetHierarchy(hierarchy)
 			continue
 		end
 
-		newHierarchy[#newHierarchy + 1] = v
+		table.insert(newHierarchy, v)
 	end
 
 	return newHierarchy
@@ -1227,7 +1229,7 @@ function LIB.GetListOfGenre(hierarchy, callback)
 			result.format = format
 			result.streamUrl = streamUrl
 
-			results[#results + 1] = result
+			table.insert(results, result)
 		end
 
 		table.sort(results, sorter)
@@ -1250,7 +1252,7 @@ function LIB.GetStreamUrlById(id)
 		return nil
 	end
 
-	local url = StreamRadioLib.URIAddParameter(g_streamUrl, {
+	local url = StreamRadioLib.Util.URIAddParameter(g_streamUrl, {
 		id = id,
 	})
 

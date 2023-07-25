@@ -1127,7 +1127,7 @@ function PANEL:BuildPlaylistFromTextPanel()
 	end
 
 	lines = self.PlaylistText:GetText()
-	lines = StreamRadioLib.NormalizeNewlines(lines, '\n')
+	lines = StreamRadioLib.Util.NormalizeNewlines(lines, '\n')
 
 	lines = string.Explode("\n", lines, false) or {}
 
@@ -1185,8 +1185,8 @@ function PANEL:BuildTextFromPlaylistPanel()
 			url = string.format("(no url #%d)", index)
 		end
 
-		lines[#lines + 1] = name
-		lines[#lines + 1] = url
+		table.insert(lines, name)
+		table.insert(lines, url)
 
 		index = index + 1
 	end

@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Surface = StreamRadioLib.Surface or {}
 local LIB = StreamRadioLib.Surface
 

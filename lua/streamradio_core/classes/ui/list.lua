@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -8,8 +10,11 @@ local LIBNetwork = StreamRadioLib.Network
 
 local BASE = CLASS:GetBaseClass()
 
-local g_listcache = CLASS:GetGlobalVar("list_listcache", {})
-CLASS:SetGlobalVar("list_listcache", g_listcache)
+local g_listcache = StreamRadioLib.Util.CreateCacheArray(256)
+
+StreamRadioLib.Hook.Add("PostCleanupMap", "reset_cache_list", function()
+	g_listcache:Empty()
+end)
 
 function CLASS:Create()
 	BASE.Create(self)
@@ -36,6 +41,7 @@ function CLASS:Create()
 	self.Buttons = {}
 	self.Data = {}
 	self.IconIDs = {}
+	self.NetworkPlayerList = {}
 
 	self.Layout.IsHorizontal = false
 	self.Layout.ListGridX = 2
@@ -88,24 +94,18 @@ function CLASS:Create()
 				})
 			end
 
-			local curhash = self:GetHash()
-			local newhash = self:GetHashFromData(newdata)
+			local newhash = LIBNet.ReceiveHash()
 
 			-- Store the result of our request for later use
-			self:SetCache(newhash, newdata)
-
-			if curhash == newhash then
-				-- Apply the data if the request is the most up to date one
-				self:SetData(newdata)
-			end
+			g_listcache:Set(newhash, newdata)
+			self:SetData(newdata)
 		end)
 	else
 		LIBNetwork.AddNetworkString("data")
 		LIBNetwork.AddNetworkString("datarequest")
 
 		self:NetReceive("datarequest", function(this, id, len, ply)
-			self.NetworkPlayerList = self.NetworkPlayerList or {}
-			self.NetworkPlayerList[ply] = true
+			self.NetworkPlayerList[ply] = ply
 
 			self:NetworkButtons()
 		end)
@@ -192,37 +192,12 @@ function CLASS:NetworkButtons()
 	self:QueueCall("NetworkButtonsInternal")
 end
 
-function CLASS:GetCache(hashstr)
-	if SERVER then return nil end
-
-	hashstr = hashstr or ""
-	if hashstr == "" then
-		return nil
-	end
-
-	local data = g_listcache[hashstr]
-	if not data then
-		return nil
-	end
-
-	return data
-end
-
-function CLASS:SetCache(hashstr, data)
-	if SERVER then return end
-
-	hashstr = hashstr or ""
-	if hashstr == "" then return end
-
-	g_listcache[hashstr] = data
-end
-
 function CLASS:NetworkButtonsInternal()
 	if not self:IsVisible() then return end
 
 	if CLIENT then
 		local hash = self:GetHash()
-		local cache = self:GetCache(hash)
+		local cache = g_listcache:Get(hash)
 
 		if cache then
 			self:SetData(cache)
@@ -234,21 +209,19 @@ function CLASS:NetworkButtonsInternal()
 		return
 	end
 
-	local playerlist = table.GetKeys(self.NetworkPlayerList or {})
-	local data = self.Data or {}
+	self:NetSendToPlayers("data", function()
+		local data = self.Data or {}
 
-	self.NetworkPlayerList = nil
-	if #playerlist <= 0 then
-		return
-	end
-
-	self:NetSend("data", function()
 		net.WriteUInt(#data, 16)
 
 		for i, v in ipairs(data) do
 			LIBNet.SendListEntry(v.text, v.icon)
 		end
-	end, "Send", playerlist)
+
+		LIBNet.SendHash(self:GetHashFromData(data))
+	end, self.NetworkPlayerList)
+
+	table.Empty(self.NetworkPlayerList)
 end
 
 function CLASS:UpdateButtonsInternal()

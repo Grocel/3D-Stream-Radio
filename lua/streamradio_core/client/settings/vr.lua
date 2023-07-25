@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Settings = StreamRadioLib.Settings or {}
 local LIB = StreamRadioLib.Settings
 
@@ -32,14 +34,12 @@ local function BuildMenuPanel(CPanel)
 	toplabel:SizeToContents()
 	CPanel:AddPanel(toplabel)
 
-	if not StreamRadioLib or not StreamRadioLib.Loaded then
-		local errorlabel = vgui.Create("DLabel")
-		errorlabel:SetDark(false)
-		errorlabel:SetHighlight(true)
-		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis menu could not be loaded.")
-		errorlabel:SizeToContents()
+	local StreamRadioLib = StreamRadioLib or {}
 
-		CPanel:AddPanel(errorlabel)
+	if not StreamRadioLib.Loaded then
+		if StreamRadioLib.Loader_CreateErrorPanel then
+			StreamRadioLib.Loader_CreateErrorPanel(CPanel, "This menu could not be loaded.")
+		end
 
 		return
 	end

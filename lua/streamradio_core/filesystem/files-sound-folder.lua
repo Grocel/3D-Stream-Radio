@@ -65,7 +65,7 @@ function RADIOFS:GetFiles(findpath)
 			continue
 		end
 
-		validfiles[#validfiles + 1] = v
+		table.insert(validfiles, v)
 	end
 
 	return validfiles
@@ -95,7 +95,7 @@ function RADIOFS:Find(globalpath, vfolder, callback)
 	local files = self:GetFiles(findpath)
 
 	if #files > 0 then
-		files[#files + 1] = ":allfiles"
+		table.insert(files, ":allfiles")
 	end
 
 	callback(true, files, folders)

@@ -1,5 +1,8 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Tool = StreamRadioLib.Tool or {}
 local LIB = StreamRadioLib.Tool
+
 local LIBNetwork = StreamRadioLib.Network
 local LIBNet = StreamRadioLib.Net
 
@@ -333,14 +336,12 @@ function LIB.Setup(toolobj)
 		toplabel:SizeToContents()
 		CPanel:AddPanel(toplabel)
 
-		if not StreamRadioLib.Loaded then
-			local errorlabel = vgui.Create("DLabel")
+		local StreamRadioLib = StreamRadioLib or {}
 
-			errorlabel:SetDark(false)
-			errorlabel:SetHighlight(true)
-			errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\nThis tool could not be loaded.")
-			errorlabel:SizeToContents()
-			CPanel:AddPanel(errorlabel)
+		if not StreamRadioLib.Loaded then
+			if StreamRadioLib.Loader_CreateErrorPanel then
+				StreamRadioLib.Loader_CreateErrorPanel(CPanel, "This tool could not be loaded.")
+			end
 
 			return
 		end

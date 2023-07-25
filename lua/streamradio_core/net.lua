@@ -1,5 +1,8 @@
-StreamRadioLib.Net = {}
+local StreamRadioLib = StreamRadioLib
+
+StreamRadioLib.Net = StreamRadioLib.Net or {}
 local LIB = StreamRadioLib.Net
+
 local LIBNetwork = StreamRadioLib.Network
 
 LIBNetwork.AddNetworkString("Control")
@@ -82,7 +85,7 @@ function LIB.SendIdentifier(identifier)
 		identifierId = LIBNetwork.NetworkStringToID(identifier)
 
 		if identifierId == 0 then
-			StreamRadioLib.ErrorNoHaltWithStack("Identifier '" .. identifier .. "' was not added via util.AddNetworkString() yet.")
+			StreamRadioLib.Util.ErrorNoHaltWithStack("Identifier '" .. identifier .. "' was not added via util.AddNetworkString() yet.")
 		end
 	end
 
@@ -94,6 +97,15 @@ function LIB.ReceiveIdentifier()
 	local identifier = LIBNetwork.NetworkIDToString(identifierId)
 
 	return identifier
+end
+
+function LIB.SendHash(hash)
+	net.WriteString(hash or "")
+end
+
+function LIB.ReceiveHash()
+	local hash = net.ReadString() or ""
+	return hash
 end
 
 function LIB.SendListEntry( text, iconid )

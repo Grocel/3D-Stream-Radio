@@ -1,5 +1,8 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Settings = StreamRadioLib.Settings or {}
 local LIB = StreamRadioLib.Settings
+
 LIB.g_CV =  {}
 LIB.g_CV_CMD = {}
 LIB.g_CV_List = {}
@@ -82,7 +85,7 @@ function LIB.AddBuildMenuPanelHook(namespace, title, buildFunction)
 	namespace = tostring(namespace or "")
 	title = tostring(title or "")
 
-	hook.Add("PopulateToolMenu", "AddStreamRadioSettingsPanel_" .. namespace, function()
+	StreamRadioLib.Hook.Add("PopulateToolMenu", "SettingsPanel_" .. namespace, function()
 		spawnmenu.AddToolMenuOption( "Utilities", "Stream Radio", "StreamRadioSettingsPanel_" .. namespace, title, "", "", buildFunction, {} )
 	end)
 end

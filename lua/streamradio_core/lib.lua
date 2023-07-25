@@ -18,106 +18,6 @@ local CLIENT = CLIENT
 local BASS3 = BASS3 or {}
 local StreamRadioLib = StreamRadioLib
 
-local _, NetURL = StreamRadioLib.LoadSH("streamradio_core/neturl.lua")
-StreamRadioLib.NetURL = NetURL
-
-function StreamRadioLib.IsDebug()
-	local devconvar = GetConVar("developer")
-	if not devconvar then return end
-
-	return devconvar:GetInt() > 0
-end
-
-function StreamRadioLib.ErrorNoHaltWithStack(err)
-	err = tostring(err or "")
-	ErrorNoHaltWithStack(err)
-end
-
-local catchAndNohalt = function(err)
-	local msgstring = tostring(err or "")
-	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
-
-	StreamRadioLib.ErrorNoHaltWithStack(err)
-
-	return err
-end
-
-function StreamRadioLib.CatchAndErrorNoHaltWithStack(func, ...)
-	return xpcall(func, catchAndNohalt, ...)
-end
-
-function StreamRadioLib.Debug(format, ...)
-	if not StreamRadioLib.IsDebug() then return end
-
-	format = tostring(format or "")
-	if format == "" then return end
-
-	local msgstring = string.format(format, ...)
-	msgstring = string.Trim(msgstring)
-
-	if msgstring == "" then return end
-
-	local tmp = string.Explode("\n", msgstring, false)
-	for i, v in ipairs(tmp) do
-		tmp[i] = "  " .. v .. "\n"
-	end
-
-	msgstring = table.concat(tmp)
-	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
-
-	if StreamRadioLib.VR.IsActive() then
-		StreamRadioLib.VR.Debug(msgstring)
-	else
-		MsgN(msgstring)
-	end
-end
-
-function StreamRadioLib.Hash(str)
-	str = tostring(str or "")
-
-	local salt = "StreamRadioLib_Hash230628"
-
-	local data = string.format(
-		"[%s][%s]",
-		salt,
-		str
-	)
-
-	local hash = util.SHA256(data)
-	return hash
-end
-
-local g_uid = 0
-function StreamRadioLib.Uid()
-	g_uid = (g_uid + 1) % (2 ^ 31 - 1)
-	return g_uid
-end
-
-function StreamRadioLib.NormalizeNewlines(text, nl)
-	nl = tostring(nl or "")
-	text = tostring(text or "")
-
-	local replacemap = {
-		["\r\n"] = true,
-		["\r"] = true,
-		["\n"] = true,
-	}
-
-	if not replacemap[nl] then
-		nl = "\n"
-	end
-
-	replacemap[nl] = nil
-
-	for k, v in pairs(replacemap) do
-		replacemap[k] = nl
-	end
-
-	text = string.gsub(text, "([\r]?[\n]?)", replacemap)
-
-	return text
-end
-
 function StreamRadioLib.IsGUIHidden(ply)
 	if not IsValid(ply) and CLIENT then
 		ply = LocalPlayer()
@@ -171,48 +71,6 @@ function StreamRadioLib.IsMuted(ply, owner)
 
 	return true
 end
-/*
-function StreamRadioLib.IsMuted(ply, owner)
-	if not IsValid(ply) and CLIENT then
-		ply = LocalPlayer()
-	end
-
-	if not IsValid(ply) then return true end
-	if not ply:IsPlayer() then return true end
-	if ply:IsBot() then return true end
-
-	if not IsValid(owner) then return true end
-	if not owner:IsPlayer() then return true end
-	if owner:IsBot() then return true end
-
-	local mutedForeign = tobool(ply:GetInfo("cl_streamradio_mute_foreign"))
-	if not mutedForeign then
-		return false
-	end
-
-	if IsValid(owner) and owner:IsPlayer() and not owner:IsBot() and owner ~= ply then
-		local mutedForeign = tobool(ply:GetInfo("cl_streamradio_mute_foreign"))
-		if mutedForeign then
-			return true
-		end
-	end
-
-	if SERVER then
-		return false
-	end
-
-	local muteunfocused = tobool(ply:GetInfo("cl_streamradio_muteunfocused"))
-	if not muteunfocused then
-		return false
-	end
-
-	if system.HasFocus() then
-		return false
-	end
-
-	return true
-end
-*/
 
 function StreamRadioLib.HasYoutubeSupport(ply)
 	if not IsValid(ply) and CLIENT then
@@ -224,141 +82,6 @@ function StreamRadioLib.HasYoutubeSupport(ply)
 	if ply:IsBot() then return false end
 
 	return tobool(ply:GetInfo("cl_streamradio_youtubesupport"))
-end
-
-function StreamRadioLib.GameIsPaused()
-	local frametime = FrameTime()
-
-	if frametime > 0 then
-		return false
-	end
-
-	return true
-end
-
-function StreamRadioLib.GetDefaultModel()
-	local defaultModel = Model("models/sligwolf/grocel/radio/radio.mdl")
-	return defaultModel
-end
-
-local g_cache_IsValidModel = {}
-local g_cache_IsValidModelFile = {}
-
-function StreamRadioLib.IsValidModel(model)
-	model = tostring(model or "")
-
-	if g_cache_IsValidModel[model] then
-		return true
-	end
-
-	g_cache_IsValidModel[model] = nil
-
-	if not StreamRadioLib.IsValidModelFile(model) then
-		return false
-	end
-
-	util.PrecacheModel(model)
-
-	if not util.IsValidModel(model) then
-		return false
-	end
-
-	if not util.IsValidProp(model) then
-		return false
-	end
-
-	g_cache_IsValidModel[model] = true
-	return true
-end
-
-function StreamRadioLib.IsValidModelFile(model)
-	model = tostring(model or "")
-
-	if g_cache_IsValidModelFile[model] then
-		return true
-	end
-
-	g_cache_IsValidModelFile[model] = nil
-
-	if model == "" then
-		return false
-	end
-
-	if IsUselessModel(model) then
-		return false
-	end
-
-	if not file.Exists(model, "GAME") then
-		return false
-	end
-
-	g_cache_IsValidModelFile[model] = true
-	return true
-end
-
-function StreamRadioLib.FrameNumber()
-	local frame = nil
-
-	if CLIENT then
-		frame = FrameNumber()
-	else
-		frame = engine.TickCount()
-	end
-
-	return frame
-end
-
-function StreamRadioLib.RealFrameTime()
-	local frameTime = nil
-
-	if CLIENT then
-		frameTime = RealFrameTime()
-	else
-		frameTime = FrameTime()
-	end
-
-	return frameTime
-end
-
-function StreamRadioLib.RealTimeFps()
-	local fps = StreamRadioLib.RealFrameTime()
-
-	if fps <= 0 then
-		return 0
-	end
-
-	fps = 1 / fps
-
-	return fps
-end
-
-local g_LastFrameRegister = {}
-local g_LastFrameRegisterCount = 0
-
-function StreamRadioLib.IsSameFrame(id)
-	local id = tostring(id or "")
-	local lastFrame = g_LastFrameRegister[id]
-
-	local frame = StreamRadioLib.FrameNumber()
-
-	if not lastFrame or frame ~= lastFrame then
-
-		-- prevent the cache from overflowing
-		if g_LastFrameRegisterCount > 1024 then
-			table.Empty(g_LastFrameRegister)
-			g_LastFrameRegisterCount = 0
-		end
-
-		g_LastFrameRegister[id] = frame
-
-		if not lastFrame then
-			g_LastFrameRegisterCount = g_LastFrameRegisterCount + 1
-		end
-
-		return false
-	end
-
-	return true
 end
 
 function StreamRadioLib.GetMuteDistance( ply )
@@ -476,7 +199,7 @@ function StreamRadioLib.Trace(ent)
 	local cacheID = tostring(ent or "")
 	local cacheItem = g_PlayerTraceCache[cacheID]
 
-	if cacheItem and StreamRadioLib.IsSameFrame("StreamRadioLib.Trace_" .. cacheID) then
+	if cacheItem and StreamRadioLib.Util.IsSameFrame("StreamRadioLib.Trace_" .. cacheID) then
 		return cacheItem
 	end
 
@@ -512,8 +235,7 @@ function StreamRadioLib.Trace(ent)
 
 	for _, filterEnt in pairs(tmp) do
 		if not IsValid(filterEnt) then continue end
-
-		filter[#filter + 1] = filterEnt
+		table.insert(filter, filterEnt)
 	end
 
 	g_PlayerTrace.filter = filter
@@ -522,7 +244,7 @@ function StreamRadioLib.Trace(ent)
 
 	-- prevent the cache from overflowing
 	if g_PlayerTraceCacheCount > 1024 then
-		table.Empty(g_PlayerTraceCache)
+		StreamRadioLib.Util.EmptyTableSafe(g_PlayerTraceCache)
 		g_PlayerTraceCacheCount = 0
 	end
 
@@ -589,7 +311,7 @@ function StreamRadioLib.StarTrace(traceparams, size, edges, layers)
 		-- debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.1, color_white, false)
 		-- debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
 
-		traces[#traces + 1] = trace
+		table.insert(traces, trace)
 	end
 
 	return traces
@@ -691,7 +413,7 @@ function StreamRadioLib.SetSkinTableProperty(tab, hierarchy, property, value)
 	for i, v in ipairs(hierarchy) do
 		local sk = curskin[v] or {}
 
-		if(i >= count) then
+		if i >= count then
 			sk.data = sk.data or {}
 			sk.data[property] = value
 			curskin[v] = sk
@@ -726,11 +448,13 @@ local function ClearCheckPropProtectionCache()
 		return
 	end
 
-	table.Empty(g_checkPropProtectionCache)
+	StreamRadioLib.Util.EmptyTableSafe(g_checkPropProtectionCache)
 
 	g_checkPropProtectionCacheEmpty = true
 	g_checkPropProtectionCacheExpire = nil
 end
+
+catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 function StreamRadioLib.CheckPropProtectionAgainstUse(ent, ply)
 	if not IsValid( ent ) then return false end
@@ -761,7 +485,7 @@ function StreamRadioLib.CheckPropProtectionAgainstUse(ent, ply)
 
 	-- Support for prop protections
 	if ent.CPPICanUse then
-		local status, use = StreamRadioLib.CatchAndErrorNoHaltWithStack(ent.CPPICanUse, ent, ply)
+		local status, use = catchAndErrorNoHaltWithStack(ent.CPPICanUse, ent, ply)
 
 		if not status then
 			return false
@@ -773,7 +497,7 @@ function StreamRadioLib.CheckPropProtectionAgainstUse(ent, ply)
 	end
 
 	if SERVER then
-		local status, use = StreamRadioLib.CatchAndErrorNoHaltWithStack(hook.Run, "PlayerUse", ply, ent)
+		local status, use = catchAndErrorNoHaltWithStack(hook.Run, "PlayerUse", ply, ent)
 
 		if not status then
 			return false
@@ -984,168 +708,35 @@ function StreamRadioLib.IsPlayerNetworkable(plyOrId)
 	return IsValid(_GetPlayerFromId(plyOrId))
 end
 
-local function NormalizeOfflineFilename( path )
-	path = path or ""
-	path = string.Replace( path, "\r", "" )
-	path = string.Replace( path, "\n", "" )
-	path = string.Replace( path, "\t", "" )
-	path = string.Replace( path, "\b", "" )
-
-	path = string.Replace( path, "\\", "/" )
-	path = string.Replace( path, "../", "" )
-	path = string.Replace( path, "//", "/" )
-
-	if #path > 260 then
-		return string.sub(path, 0, 260)
-	end
-
-	return path
-end
-
-function StreamRadioLib.URIAddParameter(url, parameter)
-	if not istable(parameter) then
-		parameter = {parameter}
-	end
-
-	url = tostring(url or "")
-	url = NetURL.normalize(url)
-
-	for k, v in pairs(parameter) do
-		url.query[k] = v
-	end
-
-	url = tostring(url)
-	return url
-end
-
-function StreamRadioLib.NormalizeURL(url)
-	url = tostring(url or "")
-	url = NetURL.normalize(url)
-	url = tostring(url)
-
-	return url
-end
-
-function StreamRadioLib.IsBlockedURLCode( url )
-	if ( not StreamRadioLib.BlockedURLCode ) then return false end
-	if ( StreamRadioLib.BlockedURLCode == "" ) then return false end
-
-	url = url or ""
-	local blocked = StreamRadioLib.BlockedURLCode
-
-	return url == blocked
-end
-
-function StreamRadioLib.IsOfflineURL( url )
-	url = string.Trim( url or "" )
-	local protocol = string.Trim( string.match( url, ( "([ -~]+):[//\\][//\\]" ) ) or "" )
-
-	if ( protocol == "" ) then
-		return true
-	end
-
-	if ( protocol == "file" ) then
-		return true
-	end
-
-	return false
-end
-
-function StreamRadioLib.ConvertURL( url )
-	url = string.Trim(tostring(url or ""))
-
-	if ( StreamRadioLib.IsOfflineURL( url ) ) then
-		local fileurl = string.Trim( string.match( url, ( ":[//\\][//\\]([ -~]+)" ) ) or "" )
-
-		if ( fileurl ~= "" ) then
-			url = fileurl
-		end
-
-		url = "sound/" .. url
-		url = NormalizeOfflineFilename(url)
-		return url, StreamRadioLib.STREAM_URLTYPE_FILE
-	end
-
-	local URLType = StreamRadioLib.STREAM_URLTYPE_ONLINE
-
-	local Cachefile = StreamRadioLib.Cache.GetFile( url )
-	if ( Cachefile ) then
-		url = "data/" .. Cachefile
-		url = NormalizeOfflineFilename(url)
-		URLType = StreamRadioLib.STREAM_URLTYPE_CACHE
-	end
-
-	return url, URLType
-end
-
-function StreamRadioLib.DeleteFolder(path)
-	if not StreamRadioLib.DataDirectory then
-		return false
-	end
-
-	if StreamRadioLib.DataDirectory == "" then
-		return false
-	end
-
-	if path == "" then
-		return false
-	end
-
-	if not string.StartWith(path, StreamRadioLib.DataDirectory) then
-		return false
-	end
-
-	local files, folders = file.Find(path .. "/*", "DATA")
-
-	for k, v in pairs(folders or {}) do
-		StreamRadioLib.DeleteFolder(path .. "/" .. v)
-	end
-
-	for k, v in pairs(files or {}) do
-		file.Delete(path .. "/" .. v)
-	end
-
-	file.Delete(path)
-
-	if file.Exists(path, "DATA") then
-		return false
-	end
-
-	if file.IsDir(path, "DATA") then
-		return false
-	end
-
-	return true
-end
-
 StreamRadioLib.SpawnedRadios = {}
 
-local g_lastThink = RealTime()
-
+local g_nextThink = 0
 local g_radioCount = 0
 local g_streamingRadioCount = 0
 
-hook.Add("Think", "Streamradio_Entity_Think", function()
+StreamRadioLib.Hook.Add("Think", "Entity_Think", function()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 
 	local now = RealTime()
-	if (now - g_lastThink) < 0.01 then return end
-	g_lastThink = now
+	if g_nextThink > now then return end
+
+	g_nextThink = now + 0.01
 
 	StreamRadioLib.SpawnedRadios = StreamRadioLib.SpawnedRadios or {}
+	local spawnedRadios = StreamRadioLib.SpawnedRadios
 
 	local radioCount = 0
 	local streamingRadioCount = 0
 
-	for index, ent in pairs(StreamRadioLib.SpawnedRadios) do
+	for index, ent in pairs(spawnedRadios) do
 		if not IsValid(ent) then
-			StreamRadioLib.SpawnedRadios[index] = nil
+			spawnedRadios[index] = nil
 			continue
 		end
 
 		if not ent.__IsRadio then
-			StreamRadioLib.SpawnedRadios[index] = nil
+			spawnedRadios[index] = nil
 			continue
 		end
 
@@ -1154,15 +745,6 @@ hook.Add("Think", "Streamradio_Entity_Think", function()
 		if ent.IsStreaming and ent:IsStreaming() then
 			streamingRadioCount = streamingRadioCount + 1
 		end
-
-		if ent.FastThink then
-			ent:FastThink()
-		end
-
-		if ent:IsDormant() then continue end
-		if not ent.DormantThink then continue end
-
-		ent:DormantThink()
 	end
 
 	g_radioCount = radioCount
@@ -1170,6 +752,20 @@ hook.Add("Think", "Streamradio_Entity_Think", function()
 
 	if g_radioCount <= 0 then
 		ClearCheckPropProtectionCache()
+		return
+	end
+
+	for index, ent in pairs(spawnedRadios) do
+		if ent.FastThink then
+			-- Think with a faster rate that doesn't interfere with model animations
+			ent:FastThink()
+		end
+
+		if ent:IsDormant() then continue end
+		if not ent.NonDormantThink then continue end
+
+		-- Called when the radio is not Dormant
+		ent:NonDormantThink()
 	end
 end)
 
@@ -1198,17 +794,18 @@ function StreamRadioLib.RegisterRadio(ent)
 		return
 	end
 
-	StreamRadioLib.SpawnedRadios[ent:EntIndex()] = ent
+	StreamRadioLib.SpawnedRadios[ent:GetCreationID()] = ent
 end
 
-function StreamRadioLib.UnregisterRadio(ent)
+function StreamRadioLib.UnregisterRadio(entOrCreationID)
+	if isnumber(entOrCreationID) then
+		StreamRadioLib.SpawnedRadios[entOrCreationID] = nil
+		return
+	end
+
 	if not IsValid(ent) then
 		return
 	end
 
-	if not ent.__IsRadio then
-		return
-	end
-
-	StreamRadioLib.SpawnedRadios[ent:EntIndex()] = nil
+	StreamRadioLib.SpawnedRadios[ent:GetCreationID()] = nil
 end

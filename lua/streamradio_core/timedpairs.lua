@@ -50,10 +50,10 @@ local function copy( t )
 	local ret = {}
 
 	for k, v in pairs( t ) do
-		ret[#ret + 1] = {
+		table.insert(ret, {
 			key = k,
 			value = v
-		}
+		})
 	end
 
 	return ret
@@ -78,7 +78,7 @@ local function Timedpairs( )
 
 				if not ok then
 					ErrorNoHalt( "Error in Timedpairs '" .. name .. "': " .. err .. "\n" )
-					toremove[#toremove + 1] = name
+					table.insert(toremove, name)
 					break
 				elseif err == false then
 					-- They returned false inside the function
@@ -92,7 +92,7 @@ local function Timedpairs( )
 					end
 
 					-- If we had any end callback function
-					toremove[#toremove + 1] = name
+					table.insert(toremove, name)
 					break
 				end
 			else
@@ -108,7 +108,7 @@ local function Timedpairs( )
 				end
 
 				-- If we had any end callback function
-				toremove[#toremove + 1] = name
+				table.insert(toremove, name)
 				break
 			end
 		end
@@ -121,9 +121,9 @@ local function Timedpairs( )
 end
 
 if ( CLIENT ) then
-	hook.Add( "PostRenderVGUI", "StreamRadioLib_Timedpairs", Timedpairs ) -- Doesn't get paused in single player. Can be important for vguis.
+	StreamRadioLib.Hook.Add( "PostRenderVGUI", "Timedpairs", Timedpairs ) -- Doesn't get paused in single player. Can be important for vguis.
 else
-	hook.Add( "Think", "StreamRadioLib_Timedpairs", Timedpairs ) -- Servers still uses Think.
+	StreamRadioLib.Hook.Add( "Think", "Timedpairs", Timedpairs ) -- Servers still uses Think.
 end
 
 function StreamRadioLib.Timedpairs( name, tab, step, callback, endcallback, ... )
@@ -137,11 +137,14 @@ function StreamRadioLib.Timedpairs( name, tab, step, callback, endcallback, ... 
 	}
 end
 
+local g_dummytab = {true}
+local g_id = 0
+
 -- calls the given function like simple timer, but isn't affected by game pausing.
 function StreamRadioLib.Timedcall( callback, ... )
-	local dummytab = {true}
+	g_id = (g_id % 2 ^ 30) + 1
 
-	StreamRadioLib.Timedpairs( "Timedcall_" .. tostring( dummytab ), dummytab, 1, function( k, v, ... )
+	StreamRadioLib.Timedpairs( "Timedcall_" .. g_id, g_dummytab, 1, function( k, v, ... )
 		callback( ... )
 	end, nil, ... )
 end

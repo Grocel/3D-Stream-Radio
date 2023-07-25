@@ -1,11 +1,20 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
 end
 
+local LIBNet = StreamRadioLib.Net
 local LIBNetwork = StreamRadioLib.Network
 
 local BASE = CLASS:GetBaseClass()
+
+local g_skincache = StreamRadioLib.Util.CreateCacheArray(128)
+
+StreamRadioLib.Hook.Add("PostCleanupMap", "reset_cache_skin_controller", function()
+	g_skincache:Empty()
+end)
 
 local function g_encode(value)
 	value = {value or {}}
@@ -24,15 +33,11 @@ local function g_decode(value)
 	return value
 end
 
-function CLASS:PreAssignToListenGroup()
-	local group = tonumber(self:GetGlobalVar("gui_controller_listengroup")) or self:GetID()
-	return group
-end
-
 function CLASS:Create()
 	BASE.Create(self)
 
 	self.Skin = {}
+	self.NetworkPlayerList = {}
 
 	self.Hash = self:CreateListener({
 		value = "",
@@ -49,9 +54,12 @@ function CLASS:Create()
 		self:NetReceive("skin", function(this, id, len, ply)
 			local skinlen = net.ReadUInt(16)
 			local skinencoded = net.ReadData(skinlen)
-			local skin = g_decode(skinencoded)
+			local newskin = g_decode(skinencoded)
+			local newhash = LIBNet.ReceiveHash()
 
-			self:SetSkin(skin)
+			-- Store the result of our request for later use
+			g_skincache:Set(newhash, newskin)
+			self:SetSkin(newskin)
 		end)
 	else
 		LIBNetwork.AddNetworkString("skin")
@@ -59,26 +67,23 @@ function CLASS:Create()
 		LIBNetwork.AddNetworkString("skintoserver")
 
 		self:NetReceive("skinrequest", function(this, id, len, ply)
-			self.NetworkPlayerList = self.NetworkPlayerList or {}
-			self.NetworkPlayerList[ply] = true
+			self.NetworkPlayerList[ply] = ply
 
 			self:NetworkSkin()
 		end)
 
 		self:NetReceive("skintoserver", function(this, id, len, ply)
-			self.NetworkPlayerList = self.NetworkPlayerList or {}
-
 			local players = player.GetHumans()
 
-			for i, ply in ipairs(players) do
-				self.NetworkPlayerList[ply] = true
+			for i, thisply in ipairs(players) do
+				self.NetworkPlayerList[thisply] = thisply
 			end
 
 			local skinlen = net.ReadUInt(16)
 			local skinencoded = net.ReadData(skinlen)
 			local skin = g_decode(skinencoded)
 
-			self:SetSkin(skin)
+			self:SetSkinOnServer(skin, true)
 		end)
 	end
 end
@@ -97,22 +102,29 @@ end
 
 function CLASS:NetworkSkinInternal()
 	if CLIENT then
+		local hash = self:GetHash()
+		local cache = g_skincache:Get(hash)
+
+		if cache then
+			self:SetSkin(cache)
+			return
+		end
+
 		self:NetSend("skinrequest")
 		return
 	end
 
-	local playerlist = table.GetKeys(self.NetworkPlayerList or {})
-
-	self.NetworkPlayerList = nil
-	if #playerlist <= 0 then return end
-
-	self:NetSend("skin", function()
+	self:NetSendToPlayers("skin", function()
 		local skinencoded = self:GetSkinEncoded()
 		local skinlen = #skinencoded
 
 		net.WriteUInt(skinlen, 16)
 		net.WriteData(skinencoded, skinlen)
-	end, "Send", playerlist)
+
+		LIBNet.SendHash(self:GetHashFromSkin(skinencoded))
+	end, self.NetworkPlayerList)
+
+	table.Empty(self.NetworkPlayerList)
 end
 
 function CLASS:UpdateSkinInternal()
@@ -126,7 +138,7 @@ function CLASS:SetSkin(skin)
 	self:DelCacheValue("SkinEncoded")
 
 	if SERVER then
-		self:QueueCall("CalcHash")
+		self:CalcHash()
 		self:NetworkSkin()
 	else
 		self:UpdateSkin()
@@ -144,17 +156,36 @@ function CLASS:_SendSkinToServer()
 
 		net.WriteUInt(skinlen, 16)
 		net.WriteData(skinencoded, skinlen)
-	end, "SendToServer")
+	end)
+
+	self._skintoserver = nil
 end
 
-function CLASS:SetSkinOnServer(skin)
-	if SERVER then
-		self:SetSkin(skin)
+function CLASS:SetSkinOnServer(skin, merge)
+	skin = skin or {}
+
+	if CLIENT then
+		if merge then
+			local oldskin = self._skintoserver or {}
+			local newskin = table.Merge(oldskin, skin)
+
+			self._skintoserver = newskin
+		else
+			self._skintoserver = skin
+		end
+
+		self:QueueCall("_SendSkinToServer")
 		return
 	end
 
-	self._skintoserver = skin
-	self:QueueCall("_SendSkinToServer")
+	if merge then
+		local oldskin = self:GetSkin()
+		local newskin = table.Merge(oldskin, skin)
+
+		self:SetSkin(newskin)
+	else
+		self:SetSkin(skin)
+	end
 end
 
 function CLASS:GetSkinEncoded()
@@ -171,7 +202,9 @@ end
 
 function CLASS:SetProperty(hierarchy, property, value)
 	local skin = self:GetSkin()
+
 	skin = StreamRadioLib.SetSkinTableProperty(skin, hierarchy, property, value)
+
 	self:SetSkin(skin)
 end
 
@@ -183,14 +216,21 @@ function CLASS:SetPropertyOnServer(hierarchy, property, value)
 
 	local skin = self._skintoserver or {}
 	skin = StreamRadioLib.SetSkinTableProperty(skin, hierarchy, property, value)
-	self:SetSkinOnServer(skin)
+	self:SetSkinOnServer(skin, false)
+end
+
+function CLASS:GetHashFromSkin(skinEncoded)
+	local hash = LIBNetwork.Hash(skinEncoded)
+	return hash
 end
 
 function CLASS:CalcHash()
 	if CLIENT then return end
 	if not self.Network.Active then return end
 
-	local hash = LIBNetwork.Hash(self:GetSkinEncoded())
+	self:DelCacheValue("SkinEncoded")
+
+	local hash = self:GetHashFromSkin(self:GetSkinEncoded())
 	self.Hash.value = hash or ""
 end
 

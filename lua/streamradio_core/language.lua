@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Language = StreamRadioLib.Language or {}
 local LIB = StreamRadioLib.Language
 

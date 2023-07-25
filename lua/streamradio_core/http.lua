@@ -1,4 +1,6 @@
-StreamRadioLib.Http = {}
+local StreamRadioLib = StreamRadioLib
+
+StreamRadioLib.Http = StreamRadioLib.Http or {}
 local LIB = StreamRadioLib.Http
 
 local g_request_quene = {}
@@ -23,7 +25,7 @@ end
 
 local function request(url, callback, parameters, method, headers, body, type)
 	url = url or ""
-	url = StreamRadioLib.NormalizeURL(url)
+	url = StreamRadioLib.Util.NormalizeURL(url)
 
 	callback = callback or (function() end)
 	parameters = parameters or {}

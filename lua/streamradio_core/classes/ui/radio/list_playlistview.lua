@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -125,7 +127,7 @@ function CLASS:BuildListInternal()
 		return
 	end
 
-	self.PathUid = StreamRadioLib.Uid()
+	self.PathUid = StreamRadioLib.Util.Uid()
 	local uid = self.PathUid
 
 	StreamRadioLib.Filesystem.Read(self.Path.Value, self.Path.Type, function(success, playlist)
@@ -287,7 +289,7 @@ function CLASS:ApplaDataFromDupe()
 			name = url
 		end
 
-		if StreamRadioLib.IsBlockedCustomURL(url) then
+		if StreamRadioLib.Util.IsBlockedCustomURL(url) then
 			continue
 		end
 
@@ -310,7 +312,7 @@ function CLASS:PostDupe(ent, dupedata)
 	local path = dupedata.Path
 	local type = dupedata.PathType
 
-	self.PathUid = StreamRadioLib.Uid()
+	self.PathUid = StreamRadioLib.Util.Uid()
 	local uid = self.PathUid
 
 	StreamRadioLib.Filesystem.Read(path, type, function(success, data)

@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Interface = StreamRadioLib.Interface or {}
 local LIB = StreamRadioLib.Interface
 
@@ -235,7 +237,7 @@ local function AddSubInterfaces(interface)
 			continue
 		end
 
-		interface.subinterfaces[#interface.subinterfaces + 1] = RADIOIFACE
+		table.insert(interface.subinterfaces, RADIOIFACE)
 		RADIOIFACE = nil
 	end
 
@@ -279,7 +281,8 @@ local function AddInterface(script)
 
 	local iface = RADIOIFACE
 
-	Intefaces[#Intefaces + 1] = iface
+	table.insert(Intefaces, iface)
+
 	RADIOIFACE = nil
 
 	AddSubInterfaces(iface)

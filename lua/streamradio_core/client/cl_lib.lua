@@ -43,7 +43,7 @@ end)
 local g_camPos = nil
 local g_inRenderScene = false
 
-hook.Add( "RenderScene", "Streamradio_CamInfo", function( origin, angles, fov )
+StreamRadioLib.Hook.Add( "RenderScene", "CamInfo", function( origin, angles, fov )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 	if not StreamRadioLib.HasSpawnedRadios() then return end
@@ -92,7 +92,7 @@ local function ReleaseLastRadioControl()
 end
 
 local function GetPressed(ply)
-	if StreamRadioLib.GameIsPaused() then
+	if StreamRadioLib.Util.GameIsPaused() then
 		return false
 	end
 
@@ -135,7 +135,7 @@ local function GetPressed(ply)
 	return pressed
 end
 
-hook.Add("Think", "Streamradio_Control", function( )
+StreamRadioLib.Hook.Add("Think", "Control", function( )
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 	if not StreamRadioLib.HasSpawnedRadios() then return end

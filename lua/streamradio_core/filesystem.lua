@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Filesystem = StreamRadioLib.Filesystem or {}
 local LIB = StreamRadioLib.Filesystem
 
@@ -116,7 +118,7 @@ local function AddCommonFunctions(fs)
 			v = string.Trim(v, "/")
 			if v == "" then continue end
 
-			out[#out + 1] = v
+			table.insert(out, v)
 		end
 
 		if table.IsEmpty(out) then
@@ -254,11 +256,11 @@ local function SanitizeData(data)
 			name = url
 		end
 
-		tmp[#tmp + 1] = {
+		table.insert(tmp, {
 			order = tonumber(k or 0) or 0,
 			name = name,
 			url = url,
-		}
+		})
 	end
 
 	table.SortByMember(tmp, "order", true)
@@ -281,7 +283,7 @@ function LIB.Load()
 			continue
 		end
 
-		filesystems[#filesystems + 1] = fs
+		table.insert(filesystems, fs)
 	end
 
 	Filesystem = {}
@@ -322,7 +324,7 @@ function LIB.Load()
 				extension = extension .. " (default)"
 			end
 
-			formats[#formats + 1] = extension;
+			table.insert(formats, extension)
 		end
 	end
 
@@ -467,7 +469,7 @@ function LIB.FilterInvalidFilesnames(filenames)
 			continue
 		end
 
-		results[#results + 1] = filename
+		table.insert(results, filename)
 	end
 
 	return results
@@ -485,7 +487,7 @@ function LIB.FilterInvalidFilepaths(filepaths)
 			continue
 		end
 
-		results[#results + 1] = filepath
+		table.insert(results, filepath)
 	end
 
 	return results
@@ -890,12 +892,8 @@ function LIB.Exists(vpath, filetype)
 
 	vpath = string.lower(vpath or "")
 
-	if vpath == "" then
-		return false
-	end
-
-	if not LIB.IsValidFilepath(vpath) then
-		return false
+	if vpath == "" or vpath == "/" or vpath == "./" then
+		return LIB.IsFolder(filetype)
 	end
 
 	local globalpath = VirtualPathToGlobal(vpath, LIB.IsFolder(filetype))
@@ -986,12 +984,14 @@ function LIB.Find(vfolder, callback)
 					typeid = g_FolderID
 				end
 
-				folderlist[#folderlist + 1] = {
+				local item = {
 					isfolder = true,
 					type = typeid,
 					file = name,
 					path = filepath,
 				}
+
+				table.insert(folderlist, item)
 
 				nodouble_folder[filepath] = true
 			end
@@ -1003,12 +1003,14 @@ function LIB.Find(vfolder, callback)
 
 				if nodouble_files[filepath] then continue end
 
-				filelist[#filelist + 1] = {
+				local item = {
 					isfolder = false,
 					type = id,
 					file = name,
 					path = filepath,
 				}
+
+				table.insert(filelist, item)
 
 				nodouble_files[filepath] = true
 			end
@@ -1119,7 +1121,7 @@ local CVBacklist = CreateConVar( "sv_streamradio_playlist_filesystem_blacklist",
 local oldCVValue = CVBacklist:GetString()
 updateBlacklistFromString(oldCVValue)
 
-hook.Add("Think", "Streamradio_Playlist_Filesystem_Think", function()
+StreamRadioLib.Hook.Add("Think", "Playlist_Filesystem", function()
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
 	if not CVBacklist then return end

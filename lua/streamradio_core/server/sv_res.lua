@@ -74,7 +74,7 @@ do
 			return
 		end
 
-		local deleted = StreamRadioLib.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists" )
+		local deleted = StreamRadioLib.Util.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists" )
 		if not deleted then
 			local msgstring = StreamRadioLib.AddonPrefix .. "Playlists could not be rebuilt"
 			StreamRadioLib.Print.Msg( ply, msgstring )
@@ -97,7 +97,7 @@ do
 			return
 		end
 
-		local deleted = StreamRadioLib.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists/community" )
+		local deleted = StreamRadioLib.Util.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists/community" )
 		if not deleted then
 			local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists could not be rebuilt"
 			StreamRadioLib.Print.Msg( ply, msgstring )
@@ -136,7 +136,7 @@ StreamRadioLib.Timedcall( function()
 	end
 
 	if rebuildmode == 2 then
-		StreamRadioLib.DeleteFolder( community_folder )
+		StreamRadioLib.Util.DeleteFolder( community_folder )
 		CopyFiles( community_folder )
 	end
 end )

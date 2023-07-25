@@ -3,6 +3,8 @@ if SERVER then
 	return
 end
 
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -11,11 +13,9 @@ end
 local BASE = CLASS:GetBaseClass()
 local g_classname = CLASS:GetClassname()
 
-local catchAndErrorNoHaltWithStack = StreamRadioLib.CatchAndErrorNoHaltWithStack
+local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
-
-local g_RenderTargetsCache = CLASS:GetGlobalVar("rendertarget_RenderTargetsCache", {})
-CLASS:SetGlobalVar("rendertarget_RenderTargetsCache", g_RenderTargetsCache)
+local g_RenderTargetsCache = {}
 
 local function next2power(value)
 	value = value or 0
@@ -121,11 +121,6 @@ local function GetRendertargetName(w, h, index)
 	return name
 end
 
-function CLASS:PreAssignToListenGroup()
-	local group = tonumber(self:GetGlobalVar("gui_controller_listengroup")) or self:GetID()
-	return group
-end
-
 function CLASS:Create()
 	BASE.Create(self)
 
@@ -168,6 +163,8 @@ function CLASS:Create()
 end
 
 function CLASS:Initialize()
+	BASE.Initialize(self)
+
 	self._RT = self:CreateRendertarget()
 
 	if self._RT then
@@ -507,7 +504,7 @@ function CLASS:__tostring()
 		name = "no rendertarget"
 	end
 
-	return "[" .. self.classname .. "][" .. name .. "]"
+	return string.format("[%s][%s]", self.classname, name)
 end
 
 function CLASS:__eg(other)

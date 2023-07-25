@@ -86,7 +86,7 @@ local YoutubeURLs = {
 }
 
 function RADIOIFACE:PrintError(url, code)
-	StreamRadioLib.Debug([[
+	StreamRadioLib.Print.Debug([[
 Error Converting YouTube URL: '%s'
 Code: %d (%s), %s
 Retrying with next module...

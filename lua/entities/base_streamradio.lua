@@ -8,31 +8,10 @@ local LIBWire = StreamRadioLib.Wire
 
 local WireLib = WireLib
 
-local IsValid = IsValid
-local Vector = Vector
-local Angle = Angle
-local pairs = pairs
-local CurTime = CurTime
-local tobool = tobool
-local istable = istable
-local Model = Model
-local Sound = Sound
-
-local NULL = NULL
-local TRANSMIT_PVS = TRANSMIT_PVS
-local TRANSMIT_ALWAYS = TRANSMIT_ALWAYS
-
-local math = math
-local string = string
-local ents = ents
-local util = util
-local timer = timer
-local SERVER = SERVER
-local CLIENT = CLIENT
+local g_isLoaded = StreamRadioLib and StreamRadioLib.Loaded
+local g_isWiremodLoaded = g_isLoaded and LIBWire.HasWiremod()
 
 ENT.__IsRadio = true
-ENT.__IsLibLoaded = StreamRadioLib and StreamRadioLib.Loaded
-ENT.__IsWiremodLoaded = ENT.__IsLibLoaded and LIBWire.HasWiremod()
 
 ENT.Editable = false
 ENT.Spawnable = false
@@ -41,7 +20,7 @@ ENT.AdminOnly = false
 ENT.WireDebugName = "Stream Radio"
 
 function ENT:AddDTNetworkVar(datatype, name, ...)
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		return
 	end
 
@@ -49,7 +28,7 @@ function ENT:AddDTNetworkVar(datatype, name, ...)
 end
 
 function ENT:SetupDataTables()
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		return
 	end
 
@@ -104,7 +83,7 @@ function ENT:SetDupePoses( PoseParameter )
 end
 
 function ENT:GetOrCreateStream()
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		if IsValid(self.StreamObj) then
 			self.StreamObj:Remove()
 		end
@@ -233,45 +212,41 @@ function ENT:GetStreamObject()
 	return self.StreamObj
 end
 
-local ang_zero = Angle()
-function ENT:SetSoundPosAng(pos, ang)
+function ENT:SetSoundPosAngOffset(pos, ang)
 	self.SoundPosOffset = pos
 	self.SoundAngOffset = ang
 end
 
-function ENT:GetSoundPosAng()
+function ENT:GetSoundPosAngOffset()
+	return self.SoundPosOffset, self.SoundAngOffset
+end
+
+local ang_zero = Angle()
+local vec_zero = Vector()
+
+function ENT:CalcSoundPosAngWorld()
 	local pos = self:GetPos()
 	local ang = self:GetAngles()
 
-	local stream = self.StreamObj
-	local channeltext = "no sound"
+	local spos, sang = LocalToWorld(self.SoundPosOffset or vec_zero, self.SoundAngOffset or ang_zero, pos, ang)
 
-	if stream then
-		channeltext = tostring(stream)
-	end
+	self.SoundPos = spos
+	self.SoundAng = sang
 
-	if not self.SoundPosOffset then
-		debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
-		debugoverlay.EntityTextAtPosition(pos, 1, "Sound pos: " .. channeltext, 0.05, color_white)
-
-		return pos, ang
-	end
-
-	pos, ang = LocalToWorld(self.SoundPosOffset, self.SoundAngOffset or ang_zero, pos, ang)
-
-	debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
-	debugoverlay.EntityTextAtPosition(pos, 1, "Sound pos: " .. channeltext, 0.05, color_white)
-
-	return pos, ang
+	return spos, sang
 end
 
 function ENT:DistanceToEntity(ent, pos1, pos2)
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		return 0
 	end
 
 	if not pos1 then
-		pos1 = self:GetSoundPosAng()
+		pos1 = self.SoundPos
+	end
+
+	if not pos1 then
+		return 0
 	end
 
 	if pos2 then
@@ -288,12 +263,16 @@ function ENT:DistanceToEntity(ent, pos1, pos2)
 end
 
 function ENT:DistToSqrToEntity(ent, pos1, pos2)
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		return 0
 	end
 
 	if not pos1 then
-		pos1 = self:GetSoundPosAng()
+		pos1 = self.SoundPos
+	end
+
+	if not pos1 then
+		return 0
 	end
 
 	if pos2 then
@@ -321,7 +300,7 @@ function ENT:CheckDistanceToEntity(ent, maxDist, pos1, pos2)
 end
 
 function ENT:Initialize()
-	if self.__IsLibLoaded then
+	if g_isLoaded then
 		StreamRadioLib.RegisterRadio(self)
 	end
 
@@ -343,7 +322,7 @@ function ENT:OnReloaded()
 end
 
 function ENT:IsMutedForPlayer(ply)
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		return true
 	end
 
@@ -374,7 +353,7 @@ function ENT:IsMutedForPlayer(ply)
 end
 
 function ENT:IsMutedForAll()
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		return true
 	end
 
@@ -418,7 +397,7 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:PostFakeRemove( )
-	if not self.__IsLibLoaded then
+	if not g_isLoaded then
 		return nil
 	end
 
@@ -427,6 +406,7 @@ end
 
 function ENT:OnRemove()
 	local Stream = self.StreamObj
+	local creationID = self:GetCreationID()
 
 	-- We run it in a timer to ensure the entity is actually gone
 	timer.Simple( 0.05, function()
@@ -439,48 +419,100 @@ function ENT:OnRemove()
 			Stream:Remove()
 			Stream = nil
 		end
+
+		if g_isLoaded then
+			StreamRadioLib.UnregisterRadio(creationID)
+		end
 	end)
 
-	if self.__IsLibLoaded then
-		StreamRadioLib.UnregisterRadio(self)
-	end
-
-	if self.__IsWiremodLoaded and SERVER then
+	if g_isWiremodLoaded and SERVER then
 		WireLib.Remove(self)
 	end
 
 	BaseClass.OnRemove(self)
 end
 
-function ENT:DormantThink()
+function ENT:NWOverflowKill()
+	self:SetNoDraw(true)
+
+	if SERVER then
+		self:Remove()
+	end
+end
+
+function ENT:NonDormantThink()
 	-- Override me
 end
 
 function ENT:FastThink()
-	if not self.__IsLibLoaded then
-		return
-	end
+	local pos, ang = self:CalcSoundPosAngWorld()
 
 	if SERVER then
-		if self.__IsWiremodLoaded then
+		if g_isWiremodLoaded then
 			self:WiremodThink()
 		end
+	else
+		local stream = self.StreamObj
 
-		return
-	end
+		if CLIENT and self:ShowDebug() then
+			local channeltext = "no sound"
 
-	if IsValid( self.StreamObj ) then
-		local pos, ang = self:GetSoundPosAng()
-		self.StreamObj:Set3DPosition(pos, ang:Forward())
+			if stream then
+				channeltext = tostring(stream)
+			end
+
+			debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
+			debugoverlay.EntityTextAtPosition(pos, 1, "Sound pos: " .. channeltext, 0.05, color_white)
+		end
+	
+		if IsValid(stream) then
+			stream:Set3DPosition(pos, ang:Forward())
+		end
 	end
 end
 
 function ENT:Think()
 	BaseClass.Think(self)
 
+	local curtime = CurTime()
+
+	if not g_isLoaded then
+		if SERVER then
+			self:NextThink(curtime + 0.1)
+		end
+
+		return true
+	end
+
+	self:InternalThink()
+
+	if SERVER then
+		self:NextThink(curtime + 0.1)
+		return true
+	end
+
+	return true
+end
+
+function ENT:InternalThink()
+	local now = CurTime()
+
+	self._nextSlowThink = self._nextSlowThink or 0
+
+	if self._nextSlowThink < now then
+		self:InternalSlowThink()
+		self._nextSlowThink = now + 0.20
+	end
+end
+
+function ENT:InternalSlowThink()
+	local now = CurTime()
+
 	StreamRadioLib.RegisterRadio(self)
 
-	local curtime = CurTime()
+	self._isDebugCache = nil
+	self._beingLookedAtCache = nil
+	self._showDebugCache = nil
 
 	if SERVER then
 		if self._TransmitCheck then
@@ -488,22 +520,18 @@ function ENT:Think()
 			self._TransmitCheck = nil
 		end
 
-		if curtime >= ((self._LastTransmitCheck or 0) + 2.5) then
+		local nextTransmitCheck = (self._LastTransmitCheck or 0) + 2.5
+		if now >= nextTransmitCheck then
 			self:CheckTransmitState()
 		end
-
-		self:NextThink(curtime + 0.1)
-		return true
-	end
-
-	if self.__IsWiremodLoaded then
-		if curtime >= (self._NextRBUpdate or 0) then
-			self._NextRBUpdate = curtime + math.random(30, 100) / 10
-			Wire_UpdateRenderBounds(self)
+	else
+		if g_isWiremodLoaded then
+			if now >= (self._NextRBUpdate or 0) then
+				Wire_UpdateRenderBounds(self)
+				self._NextRBUpdate = now + math.random(30, 100) / 10
+			end
 		end
 	end
-
-	return true
 end
 
 function ENT:GetStreamURL()
@@ -528,12 +556,68 @@ if SERVER then
 	end
 end
 
+
+function ENT:IsDebug()
+	if self._isDebugCache ~= nil then
+		return self._isDebugCache
+	end
+
+	local isDebug = StreamRadioLib.Util.IsDebug()
+	self._isDebugCache = isDebug
+
+	return isDebug
+end
+
+function ENT:ShowDebug()
+	if self._showDebugCache ~= nil then
+		return self._showDebugCache
+	end
+
+	self._showDebugCache = false
+
+	if not self:IsDebug() then
+		return false
+	end
+
+	if CLIENT and not self:IsBeingLookedAt() then
+		return false
+	end
+
+	self._showDebugCache = true
+	return true
+end
+
 if CLIENT then
 	function ENT:DrawTranslucent()
 		self:DrawModel()
 
-		if not self.__IsWiremodLoaded then return end
+		if not g_isWiremodLoaded then return end
 		Wire_Render(self)
+	end
+
+	function ENT:BeingLookedAtByLocalPlayer()
+		local ply = LocalPlayer()
+		if not IsValid( ply ) then
+			return false
+		end
+
+		if not self:CheckDistanceToEntity(ply, 256) then
+			return false
+		end
+
+		local tr = StreamRadioLib.Trace(ply)
+		return tr.Entity == self
+	end
+
+	function ENT:IsBeingLookedAt()
+		if self._beingLookedAtCache ~= nil then
+			return self._beingLookedAtCache
+		end
+
+		local beingLookedAt = self:BeingLookedAtByLocalPlayer()
+		self._beingLookedAtCache = beingLookedAt
+
+		return beingLookedAt
 	end
 
 	return
@@ -543,7 +627,7 @@ else
 	end
 
 	function ENT:AddWireInput(name, ptype, desc)
-		if not self.__IsWiremodLoaded then return end
+		if not g_isWiremodLoaded then return end
 
 		name = string.Trim(tostring(name or ""))
 		ptype = string.upper(string.Trim(tostring(ptype or "NORMAL")))
@@ -565,7 +649,7 @@ else
 	end
 
 	function ENT:AddWireOutput(name, ptype, desc)
-		if not self.__IsWiremodLoaded then return end
+		if not g_isWiremodLoaded then return end
 
 		name = string.Trim(tostring(name or ""))
 		ptype = string.upper(string.Trim(tostring(ptype or "NORMAL")))
@@ -587,7 +671,7 @@ else
 	end
 
 	function ENT:InitWirePorts()
-		if not self.__IsWiremodLoaded then return end
+		if not g_isWiremodLoaded then return end
 
 		if not self._wireports then return end
 
@@ -603,7 +687,7 @@ else
 	end
 
 	function ENT:IsConnectedInputWire(name)
-		if not self.__IsWiremodLoaded then return false end
+		if not g_isWiremodLoaded then return false end
 		if not istable(self.Inputs) then return false end
 
 		local wireinput = self.Inputs[name]
@@ -614,7 +698,7 @@ else
 	end
 
 	function ENT:IsConnectedOutputWire(name)
-		if not self.__IsWiremodLoaded then return false end
+		if not g_isWiremodLoaded then return false end
 		if not istable(self.Outputs) then return false end
 		local wireoutput = self.Outputs[name]
 
@@ -631,7 +715,7 @@ else
 	end
 
 	function ENT:TriggerWireOutput(name, value)
-		if not self.__IsWiremodLoaded then return end
+		if not g_isWiremodLoaded then return end
 
 		if isbool(value) or value == nil then
 			value = value and 1 or 0
@@ -653,7 +737,7 @@ else
 	end
 
 	function ENT:OnRestore()
-		if not self.__IsWiremodLoaded then return end
+		if not g_isWiremodLoaded then return end
 
 		WireLib.Restored( self )
 	end
@@ -741,6 +825,10 @@ else
 		local PhysicsObjects = data.PhysicsObjects
 
 		data.StreamObj = nil
+		data._3dstreamradio_classobjs = nil
+		data._3dstreamradio_classobjs_data = nil
+		data._3dstraemradio_classobjs_nw_register = nil
+		data.StreamRadioDT = nil
 		data.pl = nil
 		data.Owner = nil
 
@@ -773,7 +861,7 @@ else
 	end
 
 	function ENT:PreEntityCopy()
-		if self.__IsWiremodLoaded then
+		if g_isWiremodLoaded then
 			self:SetDupeData("Wire", WireLib.BuildDupeInfo(self))
 		end
 
@@ -818,7 +906,7 @@ else
 		ent._WireData = ent.DupeData.Wire
 		ent.DupeData.Wire = nil
 
-		if self.__IsWiremodLoaded and ent._WireData then
+		if g_isWiremodLoaded and ent._WireData then
 			timer.Simple(0.2, function()
 				if not IsValid(ent) then return end
 				if not ent._WireData then return end

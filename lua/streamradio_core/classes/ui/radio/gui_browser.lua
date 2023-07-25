@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -131,6 +133,11 @@ function CLASS:Create()
 	self.State = self:CreateListener({
 		PlaylistOpened = false,
 	}, function(this, k, v)
+		if IsValid(self.Errorbox) then
+			self.Errorbox:Close()
+			self:InvalidateLayout()
+		end
+
 		if not v then
 			if IsValid(self.ListPlaylist) then
 				self.ListPlaylist:ClearData()

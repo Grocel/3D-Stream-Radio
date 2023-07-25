@@ -167,7 +167,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 				url = v.streamUrl,
 			}
 
-			playlist[#playlist + 1] = item
+			table.insert(playlist, item)
 		end
 
 		callback(true, playlist)

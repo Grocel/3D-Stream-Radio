@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Error = StreamRadioLib.Error or {}
 local LIB = StreamRadioLib.Error
 

@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -73,7 +75,7 @@ end
 function CLASS:SetPlaylistError(url)
 	url = tostring(url or "")
 
-	if StreamRadioLib.IsBlockedURLCode(url) then
+	if StreamRadioLib.Util.IsBlockedURLCode(url) then
 		url = ""
 	end
 
@@ -104,7 +106,7 @@ function CLASS:SetErrorCode(err, url)
 	err = tonumber(err or 0) or 0
 	url = tostring(url or "")
 
-	if StreamRadioLib.IsBlockedURLCode(url) then
+	if StreamRadioLib.Util.IsBlockedURLCode(url) then
 		url = ""
 	end
 

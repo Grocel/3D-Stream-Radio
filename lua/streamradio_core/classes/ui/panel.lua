@@ -1,11 +1,27 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
 end
 
+local LIBUtil = StreamRadioLib.Util
+
+local emptyTableSafe = LIBUtil.EmptyTableSafe
+
 local BASE = CLASS:GetBaseClass()
 
-function CLASS:PreAssignToListenGroup()
+function CLASS:AssignToListenGroup()
+	local superparent = self:GetSuperParent()
+
+	if IsValid(superparent) and superparent ~= self then
+		local group = superparent:AssignToListenGroup()
+
+		if group then
+			return group
+		end
+	end
+
 	local group = tonumber(self:GetGlobalVar("gui_controller_listengroup")) or self:GetID()
 	return group
 end
@@ -117,6 +133,8 @@ function CLASS:Create()
 end
 
 function CLASS:Initialize()
+	BASE.Initialize(self)
+
 	self:DelCacheValue("GetAbsolutePos")
 	self:DelCacheValue("GetRenderPos")
 	self:DelCacheValue("IsVisible")
@@ -133,7 +151,7 @@ function CLASS:Remove(childmode)
 		panel:Remove(true)
 	end)
 
-	self._ChildrenPanels = {}
+	emptyTableSafe(self._ChildrenPanels)
 	self._ChildrenPanelsSorted = nil
 
 	if childmode then
@@ -374,7 +392,8 @@ end
 
 function CLASS:Clear()
 	self:ForEachChild("RemovePanel")
-	self._ChildrenPanels = {}
+
+	emptyTableSafe(self._ChildrenPanels)
 	self._ChildrenPanelsSorted = nil
 
 	self:InvalidateLayout(true)
@@ -1101,7 +1120,6 @@ function CLASS:HasChildren()
 	return #self._ChildrenPanelsSorted > 0
 end
 
-
 function CLASS:IsSeen()
 	local superparent = self:GetSuperParent()
 
@@ -1109,7 +1127,11 @@ function CLASS:IsSeen()
 		return true
 	end
 
-	return superparent:IsSeen()
+	if superparent:IsSeen() then
+		return true
+	end
+
+	return false
 end
 
 function CLASS:IsVisible()

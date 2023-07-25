@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -276,6 +278,8 @@ function CLASS:DoScroll()
 end
 
 function CLASS:Think()
+	self.thinkRate = 0.1
+
 	local lu_button = self.LeftUpButton
 	local rd_button = self.RightDownButton
 	local scrolllen = self.ScrollLen

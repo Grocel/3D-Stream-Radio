@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -29,7 +31,7 @@ function CLASS:Create()
 			end
 		end
 
-		self:StartSuperThink()
+		self:StartFastThink()
 	end
 
 	self.TextList = {}
@@ -162,18 +164,23 @@ function CLASS:ShouldPerformRerender()
 	return true
 end
 
-function CLASS:SuperThink()
-	if SERVER then return end
+if CLIENT then
+	function CLASS:FastThink()
+		self.fastThinkRate = 0.25
 
-	if not self:IsSeen() then return end
-	if not self:IsVisible() then return end
+		if not self:IsSeen() then return end
+		if not self:IsVisible() then return end
 
-	self:CalcTime()
-	self.TextData.TextIndex = self:GetIndex()
+		self.fastThinkRate = 0.05
 
-	if not self:ShouldPerformRerender() then return end
+		self:CalcTime()
+		self.TextData.TextIndex = self:GetIndex()
 
-	self:PerformRerender(true)
+		if not self:ShouldPerformRerender() then return end
+		self.fastThinkRate = 0
+
+		self:PerformRerender(true)
+	end
 end
 
 function CLASS:Render()

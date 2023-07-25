@@ -1,5 +1,8 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Editor = StreamRadioLib.Editor or {}
 local LIB = StreamRadioLib.Editor
+
 local LIBNet = StreamRadioLib.Net
 
 local pairs = pairs

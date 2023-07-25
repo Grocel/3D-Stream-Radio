@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -5,78 +7,84 @@ end
 
 local LIBNetwork = StreamRadioLib.Network
 local LIBNet = StreamRadioLib.Net
+local LIBUtil = StreamRadioLib.Util
+
+local emptyTableSafe = LIBUtil.EmptyTableSafe
 
 local BASE = CLASS:GetBaseClass()
 
-local g_listeners = CLASS:GetGlobalVar("base_listener_listeners", {})
-CLASS:SetGlobalVar("base_listener_listeners", g_listeners)
+local g_listeners = {}
+local g_super_listeners = {}
 
-local g_super_listeners = CLASS:GetGlobalVar("base_listener_super_listeners", {})
-CLASS:SetGlobalVar("base_listener_super_listeners", g_super_listeners)
-
-local g_hookname = "3dstreamradio_classsystem_listen"
-local g_networkhookname = "classsystem_listen"
-local g_listengroups = SERVER and 6 or 4
-local g_lastgroup = 1
+local g_hookname = "classsystem_listen"
+local g_listengroups = 8
+local g_nextgroup = 1
 local g_hookruns = false
 local g_superhooksruns = false
 
+local g_listenfunc_lastcall = 0
+local g_minRate = 0
+
 for i = 1, g_listengroups do
-	g_listeners[i] = g_listeners[i] or {}
+	g_listeners[i] = {}
 end
 
-local function listentogroup_loop(id, listener, thisgroup)
-	if not IsValid(listener) then
-		g_listeners[thisgroup][id] = nil
-		return
-	end
+StreamRadioLib.Hook.Remove("Think", g_hookname)
 
-	if listener._markedforremove then
-		g_listeners[thisgroup][id] = nil
-		return
-	end
-
-	if not listener.ThinkInternal then
-		g_listeners[thisgroup][id] = nil
-		return
-	end
-
-	if not listener.Created then
-		return
-	end
-
-	local listentimeout = listener._listentimeout
-	if listentimeout then
-		if listentimeout <= 0 then
-			g_listeners[thisgroup][id] = nil
-			return
-		end
-
-		listener._listentimeout = listentimeout - 1
-	end
-
-	listener:ThinkInternal()
-	return true
-end
-
-local function listentogroup()
-	for i = 0, g_listengroups do
+local function g_listentogroup()
+	for i = 1, g_listengroups do
 		local found = nil
 
-		local thisgroup = g_lastgroup + 1
-		local group = g_listeners[thisgroup] or {}
-		g_listeners[thisgroup] = group
+		local thisgroup = g_nextgroup
+		local group = g_listeners[thisgroup]
 
 		for id, listener in pairs(group) do
-			local hasfound = listentogroup_loop(id, listener, thisgroup)
-
-			if hasfound then
-				found = listener
+			if not IsValid(listener) then
+				g_listeners[thisgroup][id] = nil
+				continue
 			end
+
+			if listener._markedforremove then
+				g_listeners[thisgroup][id] = nil
+				continue
+			end
+
+			if not listener.ThinkInternal then
+				g_listeners[thisgroup][id] = nil
+				continue
+			end
+
+			if not listener.Created then
+				continue
+			end
+
+			local listengroupid = listener.listengroupid
+
+			if thisgroup ~= listengroupid then
+				g_listeners[thisgroup][id] = nil
+
+				if listengroupid then
+					g_listeners[listengroupid][id] = listener
+				end
+
+				continue
+			end
+
+			local listentimeout = listener._listentimeout
+			if listentimeout then
+				if listentimeout <= 0 then
+					g_listeners[thisgroup][id] = nil
+					continue
+				end
+
+				listener._listentimeout = listentimeout - 1
+			end
+
+			listener:ThinkInternal()
+			found = listener
 		end
 
-		g_lastgroup = thisgroup
-		g_lastgroup = g_lastgroup % g_listengroups
+		g_nextgroup = (thisgroup % g_listengroups) + 1
 
 		-- only run the next group if this one was empty (found = nil)
 		if found then
@@ -88,66 +96,74 @@ local function listentogroup()
 end
 
 local function g_listenfunc()
-	local starttime = SysTime()
-	local found = listentogroup()
+	--local now = RealTime()
 
-	if found then
-		found:SetGlobalVar("base_listener_thinktime", SysTime() - starttime)
-	end
+	--if g_listenfunc_lastcall < now then
+		local starttime = SysTime()
+
+		local found = g_listentogroup()
+		--g_listenfunc_lastcall = now + engine.TickInterval() * 2
+
+		if found then
+			found:SetGlobalVar("base_listener_thinktime", SysTime() - starttime)
+			found:SetGlobalVar("base_listener_current_listeners_count", 0)
+		end
+	--end
 end
 
-local function superlistenfunc_loop(id, listener)
-	if not IsValid(listener) then
-		g_super_listeners[id] = nil
-		return
-	end
-
-	if listener._markedforremove then
-		g_super_listeners[id] = nil
-		return
-	end
-
-	if not isfunction(listener.SuperThink) then
-		g_super_listeners[id] = nil
-		return
-	end
-
-	if not listener.Created then
-		return
-	end
-
-	listener:SuperThink()
-	return true
-end
 
 local function g_superlistenfunc()
-	local starttime = SysTime()
+	local now = RealTime()
 
-	local found = nil
+	g_minRate = 0
 
-	for id, listener in pairs(g_super_listeners) do
-		local hasfound = superlistenfunc_loop(id, listener)
-
-		if hasfound then
-			found = listener
+	if CLIENT then
+		if StreamRadioLib.IsRenderTarget() then
+			g_minRate = 1 / StreamRadioLib.RenderTargetFPS()
+			g_minRate = math.min(g_minRate, 0.1)
 		end
 	end
 
+	local starttime = SysTime()
+
+	local found = nil
+	for id, listener in pairs(g_super_listeners) do
+		if not IsValid(listener) then
+			g_super_listeners[id] = nil
+			continue
+		end
+
+		if listener._markedforremove then
+			g_super_listeners[id] = nil
+			continue
+		end
+
+		if not listener.FastThink then
+			g_super_listeners[id] = nil
+			continue
+		end
+
+		if not listener.Created then
+			continue
+		end
+
+		local nextCall = listener.fastThinkNextCall or 0
+
+		if nextCall > now then
+			found = listener
+			continue
+		end
+
+		listener:FastThink()
+
+		local fastThinkRate = math.max(listener.fastThinkRate or 0, g_minRate)
+		listener.fastThinkNextCall = now + fastThinkRate
+
+		found = listener
+	end
+
 	if found then
-		found:SetGlobalVar("base_listener_superthinktime", SysTime() - starttime)
-	end
-end
-
-local function g_thinkfunc()
-	if not StreamRadioLib then return end
-	if not StreamRadioLib.Loaded then return end
-
-	if g_hookruns then
-		g_listenfunc()
-	end
-
-	if g_superhooksruns then
-		g_superlistenfunc()
+		found:SetGlobalVar("base_listener_fastthinktime", SysTime() - starttime)
 	end
 end
 
@@ -158,13 +174,20 @@ local function g_register_thinkfunc()
 	if g_hookruns then return end
 	if g_superhooksruns then return end
 
-	hook.Remove("Think", g_hookname)
-	hook.Add("Think", g_hookname, g_thinkfunc)
+	StreamRadioLib.Hook.Add("Think", g_hookname, function()
+		if g_hookruns then
+			g_listenfunc()
+		end
+
+		if g_superhooksruns then
+			g_superlistenfunc()
+		end
+	end)
 end
 
-LIBNetwork.AddNetworkString(g_networkhookname)
+LIBNetwork.AddNetworkString(g_hookname)
 
-LIBNet.Receive(g_networkhookname, function(len, ply)
+LIBNet.Receive(g_hookname, function(len, ply)
 	if SERVER and not IsValid(ply) then
 		return
 	end
@@ -214,7 +237,7 @@ LIBNet.Receive(g_networkhookname, function(len, ply)
 	func(this, id, len, ply)
 end)
 
-function CLASS:PreAssignToListenGroup()
+function CLASS:AssignToListenGroup()
 	return self:GetID()
 end
 
@@ -243,20 +266,28 @@ function CLASS:Create()
 	end)
 
 	self:ApplyNetworkedMode()
+
+	--self:AssignToListenGroupInternal()
+end
+
+function CLASS:Initialize()
+	BASE.Initialize(self)
+
+	--self:AssignToListenGroupInternal()
 end
 
 function CLASS:Remove()
-	self._watch = {}
-	self._old = {}
-	self._profile = {}
-	self._callqueue = {}
-	self._callqueueonce = {}
-	self._events = {}
+	emptyTableSafe(self._watch)
+	emptyTableSafe(self._old)
+	emptyTableSafe(self._profile)
+	emptyTableSafe(self._callqueue)
+	emptyTableSafe(self._callqueueonce)
+	emptyTableSafe(self._events)
 
 	self.Network.Active = false
 
 	self:StopListen()
-	self:StopSuperThink()
+	self:StopFastThink()
 
 	BASE.Remove(self)
 end
@@ -307,7 +338,9 @@ function CLASS:RemoveEvent(eventname, name)
 end
 
 function CLASS:TimerGetName(identifier)
-	local name = "OBJ[" .. self:GetClassname() .. "][" .. self:GetID() .. "]_" .. tostring(identifier or "")
+	identifier = tostring(identifier or "")
+
+	local name = string.format("OBJ[%s][%i]_%s", self:GetClassname(), self:GetID(), identifier)
 	return name
 end
 
@@ -373,7 +406,7 @@ function CLASS:TimerRemove(identifier)
 end
 
 function CLASS:GetListengroup()
-	return self.listengroupid or 0
+	return self.listengroupid
 end
 
 local function CopyValue(value)
@@ -480,53 +513,108 @@ function CLASS:CreateListener(val, func)
 end
 
 function CLASS:ThinkInternal()
-	self:CallHook("Think")
-
-	local hasqueue = false
-
-	for k, data in pairs(self._callqueuetemp or {}) do
-		local func = data.func
-		local args = data.args
-
-		if not func then
-			continue
-		end
-
-		func(self, unpack(args))
-		hasqueue = true
-	end
-
-	self._callqueuetemp = {}
-	for k, data in ipairs(self._callqueue or {}) do
-		self._callqueue[k] = nil
-
-		local func = data.func
-
-		if isstring(func) then
-			self._callqueueonce[func] = nil
-		end
-
-		func = self:GetFunction(func)
-		if not func then
-			continue
-		end
-
-		self._callqueueonce[func] = nil
-		self._callqueuetemp[k] = {
-			func = func,
-			args = data.args,
-		}
-
-		hasqueue = true
-	end
-
 	if not self.CanListen then
 		self:StopListen()
+		return
 	end
 
-	if not self.Think and not hasqueue then
+	local needThink = false
+
+	if self.Think then
+		local now = RealTime()
+		local nextCall = self.thinkNextCall or 0
+
+		if nextCall < now then
+			self:Think()
+
+			local thinkRate = math.max(self.thinkRate or 0.05, g_minRate)
+			self.thinkNextCall = now + thinkRate
+		end
+
+		needThink = true
+	end
+
+	local callqueuetemp = self._callqueuetemp
+	local callqueue = self._callqueue
+	local callqueueonce = self._callqueueonce
+
+	if callqueuetemp then
+		for k, data in pairs(callqueuetemp) do
+			local func = data.func
+			local args = data.args
+
+			if not func then
+				continue
+			end
+
+			func(self, unpack(args))
+			needThink = true
+		end
+
+		emptyTableSafe(callqueuetemp)
+	end
+
+	if callqueue then
+		for k, data in ipairs(callqueue) do
+			local func = data.func
+
+			func = self:GetFunction(func)
+			if not func then
+				continue
+			end
+
+			callqueuetemp[k] = {
+				func = func,
+				args = data.args,
+			}
+
+			needThink = true
+		end
+
+		emptyTableSafe(callqueue)
+		emptyTableSafe(callqueueonce)
+	end
+
+	if not needThink then
 		self:StopListen()
 	end
+end
+
+function CLASS:AssignToListenGroupInternal()
+	if not self.AssignToListenGroup then
+		return
+	end
+
+	listengroupid = self:AssignToListenGroup()
+	listengroupid = tonumber(listengroupid)
+
+	if not listengroupid then
+		return
+	end
+
+	listengroupid = (listengroupid % g_listengroups) + 1
+
+	self.listengroupid = listengroupid
+end
+
+function CLASS:AssignListenGroup()
+	if not self.CanListen then
+		return
+	end
+
+	if not self.listengroupid then
+		self:AssignToListenGroupInternal()
+		return
+	end
+
+	local listengroupid = self.listengroupid
+	if not listengroupid then
+		return
+	end
+
+	local id = self:GetID()
+
+	g_listeners[listengroupid][id] = self
 end
 
 function CLASS:StartListen()
@@ -534,25 +622,12 @@ function CLASS:StartListen()
 		return
 	end
 
-	local id = self:GetID()
-
-	if not self.listengroupid then
-		self.listengroupid = self:CallHook("PreAssignToListenGroup")
-		self.listengroupid = tonumber(self.listengroupid)
-
-		if not self.listengroupid then
-			return
-		end
-
-		self.listengroupid = self.listengroupid % g_listengroups + 1
-	end
-
-	local listengroupid = self.listengroupid
-
 	self._listentimeout = nil
 
-	g_listeners[listengroupid] = g_listeners[listengroupid] or {}
-	g_listeners[listengroupid][id] = self
+	StreamRadioLib.Timedcall(function()
+		if not IsValid(self) then return end
+		self:AssignListenGroup()
+	end)
 
 	if g_hookruns then return end
 
@@ -568,12 +643,12 @@ function CLASS:StopListen()
 	self._listentimeout = 5
 end
 
-function CLASS:StartSuperThink()
-	self:QueueCall("_StartSuperThink")
+function CLASS:StartFastThink()
+	self:QueueCall("_StartFastThink")
 end
 
-function CLASS:_StartSuperThink()
-	self:StopSuperThink()
+function CLASS:_StartFastThink()
+	self:StopFastThink()
 
 	local id = self:GetID()
 	g_super_listeners[id] = self
@@ -584,9 +659,41 @@ function CLASS:_StartSuperThink()
 	end
 end
 
-function CLASS:StopSuperThink()
+function CLASS:StopFastThink()
 	local id = self:GetID()
 	g_super_listeners[id] = nil
+end
+
+function CLASS:SetThinkRate(rate)
+	self.thinkRate = tonumber(rate or 0) or 0
+end
+
+function CLASS:GetThinkRate()
+	return self.thinkRate or 0
+end
+
+function CLASS:SetThinkNextCall(nextCall)
+	self.thinkNextCall = tonumber(nextCall or 0) or 0
+end
+
+function CLASS:GetThinkNextCall()
+	return self.thinkNextCall or 0
+end
+
+function CLASS:SetFastThinkRate(rate)
+	self.fastThinkRate = tonumber(rate or 0) or 0
+end
+
+function CLASS:GetFastThinkRate()
+	return self.fastThinkRate or 0
+end
+
+function CLASS:SetFastThinkNextCall(nextCall)
+	self.fastThinkNextCall = tonumber(nextCall or 0) or 0
+end
+
+function CLASS:GetFastThinkNextCall()
+	return self.fastThinkNextCall or 0
 end
 
 function CLASS:IsListening()
@@ -665,9 +772,11 @@ function CLASS:QueueCall(func, ...)
 		args = {...}
 	}
 
-	self:StartListen()
 	self._callqueueonce[func] = true
 	table.insert(self._callqueue, data)
+
+	if not IsValid(self) then return end
+	self:StartListen()
 end
 
 function CLASS:RegisterForDupe()
@@ -699,7 +808,7 @@ function CLASS:LoadFromDupeInternal()
 	local data = ent._3dstreamradio_classobjs_data[name]
 	if not data then return end
 
-	self:QueueCall("PostDupeInternal", ent, name, data)
+	self:PostDupeInternal(ent, name, data)
 end
 
 function CLASS:LoadFromDupe()
@@ -839,7 +948,7 @@ function CLASS:NetReceive(id, func)
 	self._netreceivefuncs[id] = func
 end
 
-function CLASS:NetSend(id, func, send, ...)
+function CLASS:NetSend(id, func, sendfunc, ...)
 	if not self.Network.Active then return end
 
 	id = tostring(id or "")
@@ -855,7 +964,7 @@ function CLASS:NetSend(id, func, send, ...)
 	LIBNetwork.AddNetworkString(nwname)
 	LIBNetwork.AddNetworkString(id)
 
-	LIBNet.Start(g_networkhookname, false)
+	LIBNet.Start(g_hookname, false)
 
 	net.WriteEntity(ent)
 	LIBNet.SendIdentifier(nwname)
@@ -871,10 +980,23 @@ function CLASS:NetSend(id, func, send, ...)
 		return
 	end
 
-	send = send or "Broadcast"
+	if not sendfunc then
+		net.Broadcast()
+		return
+	end
 
-	local sendfunc = net[send] or net.Broadcast
 	sendfunc(...)
+end
+
+function CLASS:NetSendToPlayers(id, func, playerlist)
+	if CLIENT then
+		return
+	end
+
+	local playerlist = table.ClearKeys(playerlist or {})
+	if #playerlist <= 0 then return end
+
+	self:NetSend(id, func, net.Send, playerlist)
 end
 
 function CLASS:ApplyNetworkedMode()

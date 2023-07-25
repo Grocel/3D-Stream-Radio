@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Timer = StreamRadioLib.Timer or {}
 local LIB = StreamRadioLib.Timer
 

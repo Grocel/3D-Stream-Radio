@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -20,7 +22,7 @@ local SERVER = SERVER
 local CLIENT = CLIENT
 
 local EmptyVector = Vector()
-local catchAndErrorNoHaltWithStack = StreamRadioLib.CatchAndErrorNoHaltWithStack
+local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 local BASS3 = nil
 
@@ -340,7 +342,7 @@ function CLASS:Create()
 		end)
 	end
 
-	self:StartSuperThink()
+	self:StartFastThink()
 end
 
 function CLASS:ActivateNetworkedMode()
@@ -417,11 +419,13 @@ function CLASS:NetworkClientState()
 			continue
 		end
 
-		sendbuffer[#sendbuffer + 1] = {
+		local item = {
 			key = key,
 			key_index = key_index,
 			value = value,
 		}
+
+		table.insert(sendbuffer, item)
 
 		self.Old_ClientStateListBuffer[key] = value
 	end
@@ -632,7 +636,7 @@ function CLASS:CalcTime()
 	end
 end
 
-function CLASS:SuperThink()
+function CLASS:FastThink()
 	self:CalcTime()
 
 	local masterLength = self:GetMasterLength()
@@ -844,8 +848,12 @@ function CLASS:ToString()
 		return r
 	end
 
-	r = r .. " <" .. tostring( self:GetChannel() or "no channel" ) .. "> [err:" .. self:GetError() .. "]"
-	return r
+	local channel = tostring(self:GetChannel() or "no channel")
+
+	local err = self:GetError()
+	local errName = LIBError.GetStreamErrorName(err)
+
+	return string.format("%s <%s> [err: %i, %s]", r, channel, err, errName)
 end
 
 function CLASS:__eq( other )
@@ -944,7 +952,7 @@ function CLASS:Reconnect()
 		return false
 	end
 
-	if StreamRadioLib.IsBlockedURLCode( self.URL.extern ) then
+	if StreamRadioLib.Util.IsBlockedURLCode( self.URL.extern ) then
 		self:AcceptStream( nil, 1000 )
 		return false
 	end
@@ -1024,7 +1032,7 @@ function CLASS:PlayStreamInternal(nodownload)
 		return true
 	end
 
-	local URL, URLtype = StreamRadioLib.ConvertURL(self.URL.extern)
+	local URL, URLtype = StreamRadioLib.Util.ConvertURL(self.URL.extern)
 	local URLonline = (URLtype ~= StreamRadioLib.STREAM_URLTYPE_FILE) and (URLtype ~= StreamRadioLib.STREAM_URLTYPE_CACHE)
 
 	self._isCached = URLtype == StreamRadioLib.STREAM_URLTYPE_CACHE
@@ -1269,7 +1277,7 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, noBlock, retrycount)
 		end
 	else
 		-- make sure we have a clean online url
-		URL = StreamRadioLib.NormalizeURL(URL)
+		URL = StreamRadioLib.Util.NormalizeURL(URL)
 	end
 
 	local playfunc = nil
@@ -1410,7 +1418,11 @@ end
 
 function CLASS:GetError()
 	if not self.Valid then return 0 end
-	return self.State.Error or 0
+
+	local state = self.State
+	if not state then return 0 end
+
+	return state.Error or 0
 end
 
 function CLASS:HasError()
@@ -1693,7 +1705,7 @@ function CLASS:_SetTimeToTargetInternal()
 
 		-- an attempt to ease it a bit on the performance impact
 		local random = math.random() * 2
-		local step = math.Clamp(StreamRadioLib.RealTimeFps() * 0.03 + random, 2, 15)
+		local step = math.Clamp(StreamRadioLib.Util.RealTimeFps() * 0.03 + random, 2, 15)
 		local time = math.Approach(thistime, targettime, step)
 
 		time = math.Clamp(time, 0, length)
@@ -1715,7 +1727,7 @@ end
 
 function CLASS:SyncTime()
 	if not self.Valid then return end
-	if StreamRadioLib.GameIsPaused() then return end
+	if StreamRadioLib.Util.GameIsPaused() then return end
 	if self:IsStopMode() then return end
 
 	local maxdelta = 1.5
@@ -2381,7 +2393,7 @@ function CLASS:PreDupe(ent)
 end
 
 function CLASS:PostDupe(ent, data)
-	self:SetURL(StreamRadioLib.FilterCustomURL(data.url))
+	self:SetURL(StreamRadioLib.Util.FilterCustomURL(data.url))
 
 	self:SetStreamName(data.streamname)
 	self:SetLoop(data.loop)

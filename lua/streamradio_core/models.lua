@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Model = StreamRadioLib.Model or {}
 local LIB = StreamRadioLib.Model
 
@@ -171,7 +173,7 @@ function LIB.RegisteredModels( )
 
 	for model, setting in pairs(Models) do
 		if model == "default" then continue end
-		if not StreamRadioLib.IsValidModelFile(model) then continue end
+		if not StreamRadioLib.Util.IsValidModelFile(model) then continue end
 		if setting.HiddenInTool then continue end
 
 		ToolModels[model] = setting.tool or {}

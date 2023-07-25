@@ -8,19 +8,19 @@ TOOL.Information = {
 }
 
 if SERVER then
-	CreateConVar( "sbox_max" .. TOOL.Mode, 20 )
+	CreateConVar( "sbox_max" .. TOOL.Mode, 5 )
 end
 
 cleanup.Register( TOOL.Mode )
 
-TOOL.ClientConVar["model"] = StreamRadioLib.GetDefaultModel()
+TOOL.ClientConVar["model"] = "models/sligwolf/grocel/radio/radio.mdl"
 TOOL.ClientConVar["streamurl"] = ""
 TOOL.ClientConVar["play"] = "1"
 TOOL.ClientConVar["3dsound"] = "1"
 TOOL.ClientConVar["mute"] = "0"
 TOOL.ClientConVar["volume"] = "1"
 TOOL.ClientConVar["radius"] = "1200"
-TOOL.ClientConVar["playbackloopmode"] = tostring(StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST)
+TOOL.ClientConVar["playbackloopmode"] = "0"
 
 TOOL.ClientConVar["nodisplay"] = "0"
 TOOL.ClientConVar["noinput"] = "0"
@@ -32,11 +32,10 @@ TOOL.ClientConVar["weld"] = "1"
 TOOL.ClientConVar["worldweld"] = "0"
 TOOL.ClientConVar["nocollide"] = "1"
 
-local g_icon_playbackloopmode_none = StreamRadioLib.GetPNGIconPath("arrow_not_refresh", true)
-local g_icon_playbackloopmode_song = StreamRadioLib.GetPNGIconPath("arrow_refresh")
-local g_icon_playbackloopmode_playlist = StreamRadioLib.GetPNGIconPath("table_refresh")
-
 if StreamRadioLib and StreamRadioLib.Loaded then
+	TOOL.ClientConVar["model"] = StreamRadioLib.Util.GetDefaultModel()
+	TOOL.ClientConVar["playbackloopmode"] = tostring(StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST)
+
 	StreamRadioLib.Tool.AddLocale(TOOL, "name", "Radio Spawner")
 	StreamRadioLib.Tool.AddLocale(TOOL, "desc", "Spawns a Stream Radio")
 
@@ -93,16 +92,9 @@ else
 		language.Add("Tool." .. _mode .. ".0", "This tool could not be loaded.")
 
 		function TOOL.BuildCPanel(CPanel)
-			local errorlabel = vgui.Create("DLabel")
-			local err = string.Trim((StreamRadioLib.AddonPrefix or "") .. (StreamRadioLib.ErrorString or "") .. "\n\nThis tool could not be loaded.")
-
-			errorlabel:SetDark(false)
-			errorlabel:SetHighlight(true)
-			errorlabel:SetText(err)
-			errorlabel:SizeToContents()
-			CPanel:AddPanel(errorlabel)
-
-			return
+			if StreamRadioLib.Loader_CreateErrorPanel then
+				StreamRadioLib.Loader_CreateErrorPanel(CPanel, "This tool could not be loaded.")
+			end
 		end
 	end
 end
@@ -138,12 +130,17 @@ function TOOL:BuildToolPanel(CPanel)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
+
+	local iconPlaybackloopmodeNone = StreamRadioLib.GetPNGIconPath("arrow_not_refresh", true)
+	local iconPlaybackloopmodeSong = StreamRadioLib.GetPNGIconPath("arrow_refresh")
+	local iconPlaybackloopmodePlaylist = StreamRadioLib.GetPNGIconPath("table_refresh")
+
 	local PlaybackLoopModeComboBox = self:AddComboBox(CPanel, "playbackloopmode", true)
 	PlaybackLoopModeComboBox:SetSortItems(false)
-	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.none"), StreamRadioLib.PLAYBACK_LOOP_MODE_NONE, false, g_icon_playbackloopmode_none)
+	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.none"), StreamRadioLib.PLAYBACK_LOOP_MODE_NONE, false, iconPlaybackloopmodeNone)
 	PlaybackLoopModeComboBox:AddSpacer()
-	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.song"), StreamRadioLib.PLAYBACK_LOOP_MODE_SONG, false, g_icon_playbackloopmode_song)
-	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.playlist"), StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST, false, g_icon_playbackloopmode_playlist)
+	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.song"), StreamRadioLib.PLAYBACK_LOOP_MODE_SONG, false, iconPlaybackloopmodeSong)
+	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.playlist"), StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST, false, iconPlaybackloopmodePlaylist)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
@@ -295,7 +292,7 @@ end
 function TOOL:SetSettings(settings)
 	local url = settings.StreamUrl or ""
 
-	if StreamRadioLib.IsBlockedURLCode(url) then
+	if StreamRadioLib.Util.IsBlockedURLCode(url) then
 		url = ""
 	end
 
@@ -437,7 +434,7 @@ function TOOL:Reload( trace )
 	if ent:GetPhysicsObjectCount() > 1 then return false end -- No ragdolls!
 
 	local model = ent:GetModel()
-	if not StreamRadioLib.IsValidModel(model) then return false end
+	if not StreamRadioLib.Util.IsValidModel(model) then return false end
 
 	if CLIENT then return true end
 
@@ -496,8 +493,8 @@ end
 function TOOL:GetModel( )
 	local model = self:GetClientInfo("model")
 
-	if not StreamRadioLib.IsValidModel(model) then
-		return StreamRadioLib.GetDefaultModel()
+	if not StreamRadioLib.Util.IsValidModel(model) then
+		return StreamRadioLib.Util.GetDefaultModel()
 	end
 
 	return model

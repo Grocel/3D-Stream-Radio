@@ -1,4 +1,6 @@
-StreamRadioLib.VR = {}
+local StreamRadioLib = StreamRadioLib
+
+StreamRadioLib.VR = StreamRadioLib.VR or {}
 local LIB = StreamRadioLib.VR
 
 function LIB.IsInstalled()
@@ -171,7 +173,7 @@ function LIB.TraceHand()
 		return nil
 	end
 
-	if g_PlayerHandTraceCache and StreamRadioLib.IsSameFrame("StreamRadioLib.VR.TraceHand") then
+	if g_PlayerHandTraceCache and StreamRadioLib.Util.IsSameFrame("StreamRadioLib.VR.TraceHand") then
 		return g_PlayerHandTraceCache
 	end
 
@@ -358,7 +360,7 @@ function LIB.RenderMenu(panel)
 
 			vrmod.MenuRenderStart(uid)
 
-			StreamRadioLib.CatchAndErrorNoHaltWithStack(function()
+			StreamRadioLib.Util.CatchAndErrorNoHaltWithStack(function()
 				mainPanel:PaintManual()
 			end)
 
@@ -427,11 +429,11 @@ if CLIENT then
 		LIB.g_openMenus = nil
 	end
 
-	hook.Add("VRUtilStart", "StreamRadioCloseMenusOnVRStart", function()
+	StreamRadioLib.Hook.Add("VRUtilStart", "CloseMenusOnVRStart", function()
 		clearMenus()
 	end)
 
-	hook.Add("VRUtilExit", "StreamRadioCloseMenusOnVRExit", function()
+	StreamRadioLib.Hook.Add("VRUtilExit", "CloseMenusOnVRExit", function()
 		clearMenus()
 	end)
 

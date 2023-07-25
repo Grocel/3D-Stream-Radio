@@ -1,16 +1,24 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Cache = StreamRadioLib.Cache or {}
 local LIB = StreamRadioLib.Cache
 
-LIB.forbidden = {}
-LIB.lastloaded = {}
+local g_forbidden = StreamRadioLib.Util.CreateCacheArray(16)
+local g_lastloaded = StreamRadioLib.Util.CreateCacheArray(4096)
+
+StreamRadioLib.Hook.Add("PostCleanupMap", "reset_cache_download_cache", function()
+	g_forbidden:Empty()
+	g_lastloaded:Empty()
+end)
 
 local g_isDedicatedServer = (SERVER and game.IsDedicated())
-local MainDir = (StreamRadioLib.DataDirectory or "") .. "/cache"
+local g_mainDir = (StreamRadioLib.DataDirectory or "") .. "/cache"
 
-local MinFileSize = 2 ^ 16 -- 64 KB
-local MaxFileSize = 2 ^ 28 -- 256 MB
-local MaxCacheSize = 2 ^ 34 -- 16 GB
-local MaxCacheCount = 1024
+local g_minFileSize = 2 ^ 16 -- 64 KB
+local g_maxFileSize = 2 ^ 28 -- 256 MB
+local g_maxFileSizeFast = 2 ^ 24 -- 16 MB
+local g_maxCacheSize = 2 ^ 34 -- 16 GB
+local g_maxCacheCount = 1024
 
 local function CreateBaseFolder( dir )
 	if not file.IsDir( dir, "DATA" ) then
@@ -35,13 +43,13 @@ do
 				return
 			end
 
-			if not StreamRadioLib.DeleteFolder( MainDir ) then
+			if not StreamRadioLib.Util.DeleteFolder( g_mainDir ) then
 				StreamRadioLib.Print.Msg( ply, "Server stream cache could not be cleared!" )
 				return
 			end
 
-			LIB.lastloaded = {}
-			LIB.forbidden = {}
+			g_forbidden:Empty()
+			g_lastloaded:Empty()
 
 			StreamRadioLib.Print.Msg( ply, "Server stream cache cleared!" )
 		else
@@ -57,13 +65,13 @@ do
 				return
 			end
 
-			if not StreamRadioLib.DeleteFolder( MainDir ) then
+			if not StreamRadioLib.Util.DeleteFolder( g_mainDir ) then
 				StreamRadioLib.Print.Msg( ply, "Client stream cache could not be cleared!" )
 				return
 			end
 
-			LIB.lastloaded = {}
-			LIB.forbidden = {}
+			g_forbidden:Empty()
+			g_lastloaded:Empty()
 
 			StreamRadioLib.Print.Msg( ply, "Client stream cache cleared!" )
 		end
@@ -86,12 +94,12 @@ end
 
 local function GetFilenameFromURL( url )
 	url = tostring( url or "" )
-	url = StreamRadioLib.NormalizeURL(url)
+	url = StreamRadioLib.Util.NormalizeURL(url)
 
 	local filename = Hash( url ) or ""
 	if ( filename == "" ) then return end
 
-	local path = MainDir .. "/cache_" .. filename .. ".dat"
+	local path = g_mainDir .. "/cache_" .. filename .. ".dat"
 	return path
 end
 
@@ -100,15 +108,15 @@ local function Cache_GetCacheMap()
 	map.files = {}
 	map.totalsize = 0
 
-	if ( not file.IsDir( MainDir, "DATA" ) ) then
+	if ( not file.IsDir( g_mainDir, "DATA" ) ) then
 		return map
 	end
 
-	local files = file.Find( MainDir .. "/*", "DATA" ) or {}
+	local files = file.Find( g_mainDir .. "/*", "DATA" ) or {}
 	local index = 0
 
 	for k, v in pairs( files ) do
-		local path = MainDir .. "/" .. v
+		local path = g_mainDir .. "/" .. v
 		if ( not IsValidFile( path ) ) then continue end
 
 		local size = file.Size(path, "DATA") or 0
@@ -141,7 +149,7 @@ local function Cache_Cleanup()
 	local files = map.files
 	local filesleft = {}
 
-	local sizeleft = map.totalsize - MaxCacheSize
+	local sizeleft = map.totalsize - g_maxCacheSize
 	if ( sizeleft < 0 ) then
 		sizeleft = 0
 	end
@@ -154,7 +162,7 @@ local function Cache_Cleanup()
 		local path = v.path
 		local size = v.size
 
-		if ( index >= MaxCacheCount ) then
+		if ( index >= g_maxCacheCount ) then
 			file.Delete( path )
 
 			if ( sizeleft > 0 ) then
@@ -164,7 +172,7 @@ local function Cache_Cleanup()
 			continue
 		end
 
-		if ( size < MinFileSize or size > MaxFileSize or size > MaxCacheSize ) then
+		if ( size < g_minFileSize or size > g_maxFileSize or size > g_maxCacheSize ) then
 			file.Delete( path )
 
 			if ( sizeleft > 0 ) then
@@ -204,7 +212,7 @@ local function Cache_Save( url, data )
 	local path = GetFilenameFromURL( url )
 	if ( not path ) then return false end
 
-	CreateBaseFolder( MainDir )
+	CreateBaseFolder( g_mainDir )
 	Cache_Cleanup()
 
 	local f = file.Open( path, "wb", "DATA" )
@@ -276,20 +284,16 @@ function LIB.CanDownload( len )
 
 	len = tonumber(len or 0) or 0
 
-	if len == -1 then
-		-- allow trying to download the file if the size is unknown
-		return true
-	end
-
-	if len > MaxCacheSize then
+	if len > g_maxCacheSize then
 		return false
 	end
 
-	if len > MaxFileSize then
+	if len > g_maxFileSize then
 		return false
 	end
 
-	if len < MinFileSize then
+	if len < g_minFileSize then
+		-- small files are likly not real sound files
 		return false
 	end
 
@@ -300,6 +304,8 @@ function LIB.Download(url, callback, saveas_url)
 	local queueurl = saveas_url or url or ""
 	if queueurl == "" then return false end
 
+	local cacheid = util.SHA256(queueurl)
+
 	if not isfunction( callback ) then
 		callback = function( len, headers, code, saved )
 			-- dummy function
@@ -307,13 +313,13 @@ function LIB.Download(url, callback, saveas_url)
 	end
 
 	if SERVER and not g_isDedicatedServer then
-		LIB.lastloaded[queueurl] = nil
+		g_lastloaded:Remove(cacheid)
 		callback(queueurl, 0, {}, -1, false)
 		return true
 	end
 
-	if LIB.forbidden[queueurl] then
-		LIB.lastloaded[queueurl] = nil
+	if g_forbidden:Has(cacheid) then
+		g_lastloaded:Remove(cacheid)
 		callback(queueurl, 0, {}, -1, false)
 		return true
 	end
@@ -325,13 +331,13 @@ function LIB.Download(url, callback, saveas_url)
 		local code = data.code
 
 		if not success then
-			LIB.lastloaded[queueurl] = nil
+			g_lastloaded:Remove(cacheid)
 			callback(queueurl, 0, {}, err, false)
 			return
 		end
 
-		if LIB.forbidden[queueurl] then
-			LIB.lastloaded[queueurl] = nil
+		if g_forbidden:Has(cacheid) then
+			g_lastloaded:Remove(cacheid)
 			callback(queueurl, len, headers, -1, false)
 			return
 		end
@@ -339,38 +345,42 @@ function LIB.Download(url, callback, saveas_url)
 		local contenttype, maintype, subtype = GetContentType( headers )
 
 		if contenttype_blacklist[contenttype] then
-			LIB.lastloaded[queueurl] = nil
+			g_lastloaded:Remove(cacheid)
 			callback(queueurl, len, headers, -1, false)
 			return
 		end
 
 		if maintype and contenttype_blacklist[maintype .. "/*"] then
-			LIB.lastloaded[queueurl] = nil
+			g_lastloaded:Remove(cacheid)
 			callback(queueurl, len, headers, -1, false)
 			return
 		end
 
 		if subtype and contenttype_blacklist["*/" .. subtype] then
-			LIB.lastloaded[queueurl] = nil
+			g_lastloaded:Remove(cacheid)
 			callback(queueurl, len, headers, -1, false)
 			return
 		end
 
 		if not LIB.CanDownload(len) then
-			LIB.lastloaded[queueurl] = nil
-			LIB.forbidden[queueurl] = true
+			g_lastloaded:Remove(cacheid)
+			g_forbidden:Set(cacheid, true)
+
 			callback(queueurl, len, headers, -1, false)
 		end
 
 		local saved = Cache_Save(queueurl, data.body)
 
-		LIB.lastloaded = {}
-		LIB.lastloaded[queueurl] = data
+		g_forbidden:Remove(cacheid)
+
+		if len <= g_maxFileSizeFast then
+			g_lastloaded:Set(cacheid, data)
+		end
 
 		callback(queueurl, len, headers, code, saved)
 	end
 
-	local cache = LIB.lastloaded[queueurl]
+	local cache = g_lastloaded:Get(cacheid)
 	if cache then
 		StreamRadioLib.Timedcall(onLoad, true, cache)
 		return true

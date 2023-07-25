@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Menu = StreamRadioLib.Menu or {}
 local LIB = StreamRadioLib.Menu
 

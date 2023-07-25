@@ -51,10 +51,12 @@ local function decodePLS(RawPlaylist)
 			continue
 		end
 
-		Playlist[#Playlist + 1] = {
+		local item = {
 			name = name,
 			url = url
 		}
+
+		table.insert(Playlist, item)
 	end
 
 	return Playlist

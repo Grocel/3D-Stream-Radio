@@ -1,5 +1,9 @@
+local StreamRadioLib = StreamRadioLib
+
 StreamRadioLib.Bass = StreamRadioLib.Bass or {}
 local LIB = StreamRadioLib.Bass
+
+local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 local g_dll = "bass3"
 local g_dllName = string.upper("gm_" .. g_dll)
@@ -30,24 +34,6 @@ local function resetCache(...)
 end
 
 if SERVER then
-	CreateConVar(
-		"sv_streamradio_bass3_enable",
-		"1",
-		bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE ),
-		"When set to 1, it uses GM_BASS3 on the server if installed. Default: 1",
-		0,
-		1
-	)
-
-	CreateConVar(
-		"sv_streamradio_bass3_allow_client",
-		"1",
-		bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED ),
-		"Allows connected clients to use GM_BASS3 when set to 1. Overrides cl_streamradio_bass3_enable. Default: 1",
-		0,
-		1
-	)
-
 	cvars.AddChangeCallback("sv_streamradio_bass3_enable", resetCache, "streamradio_bass3_callback")
 end
 
@@ -56,6 +42,11 @@ if CLIENT then
 	cvars.AddChangeCallback("sv_streamradio_bass3_allow_client", resetCache, "streamradio_bass3_callback")
 end
 
+local g_colDefault = Color(255,255,255)
+local g_colError = Color(255,128,128)
+local g_colOk = Color(100,200,100)
+local g_colCL = Color(255,222,137)
+local g_colSV = Color(137,222,255)
 
 local function printBass3Info()
 	if g_bass_info_shown then
@@ -86,7 +77,7 @@ local function printBass3Info()
 		message
 	)
 
-	StreamRadioLib.Print.Wrapped(message)
+	--StreamRadioLib.Print.Wrapped(message) --@TODO
 end
 
 local function onLoadBASS3()
@@ -257,7 +248,7 @@ function LIB.LoadDLL()
 		return g_bass_loaded
 	end
 
-	StreamRadioLib.CatchAndErrorNoHaltWithStack(loadBASS3)
+	catchAndErrorNoHaltWithStack(loadBASS3)
 
 	g_bass_loaded = LIB.HasLoadedDLL()
 

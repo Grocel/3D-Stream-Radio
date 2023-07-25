@@ -31,10 +31,12 @@ local function decodeM3U(RawPlaylist)
 				continue
 			end
 
-			Playlist[#Playlist + 1] = {
+			local item = {
 				name = name,
 				url = url
 			}
+
+			table.insert(Playlist, item)
 		end
 
 		callback(true, Playlist)
@@ -53,10 +55,11 @@ local function decodeM3U(RawPlaylist)
 			continue
 		end
 
-		Playlist[#Playlist + 1] = {
+		local item = {
 			name = name,
 			url = url
 		}
+		table.insert(Playlist, item)
 	end
 
 	return Playlist

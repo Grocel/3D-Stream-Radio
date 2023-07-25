@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -34,7 +36,7 @@ function CLASS:Create()
 	self.SkinAble = true
 
 	if CLIENT then
-		self:StartSuperThink()
+		self:StartFastThink()
 	end
 end
 
@@ -254,19 +256,33 @@ function CLASS:ShouldPerformRerender()
 	return true
 end
 
-function CLASS:SuperThink()
-	if SERVER then return end
-	if not IsValid(self.StreamOBJ) then return end
+if CLIENT then
+	function CLASS:FastThink()
+		self.fastThinkRate = 10
 
-	if not self:IsSeen() then return end
-	if not self:IsVisible() then return end
+		if not IsValid(self.StreamOBJ) then return end
 
-	if not self:ShouldPerformRerender() then return end
-	self:PerformRerender(true)
+		self.fastThinkRate = 0.25
+
+		if not self:IsSeen() then return end
+		if not self:IsVisible() then return end
+
+		if not self:ShouldPerformRerender() then return end
+
+		self.fastThinkRate = 0
+		self:PerformRerender(true)
+	end
 end
 
 function CLASS:SetStream(stream)
+	local oldStreamOBJ = self.StreamOBJ
 	self.StreamOBJ = stream
+
+	if oldStreamOBJ == stream then
+		return
+	end
+
+	self:SetFastThinkNextCall(0)
 end
 
 function CLASS:GetStream()

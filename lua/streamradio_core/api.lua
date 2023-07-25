@@ -81,7 +81,7 @@ local function ErrorCheckArg( var, tright, argn, funcname, level )
 	local t = type( var )
 
 	if t ~= tright then
-		StreamRadioLib.ErrorNoHaltWithStack( string.format( "bad argument #%i to '%s' (%s or nil expected, got %s)", argn, funcname, tright, t ), level or 3 )
+		StreamRadioLib.Util.ErrorNoHaltWithStack( string.format( "bad argument #%i to '%s' (%s or nil expected, got %s)", argn, funcname, tright, t ), level or 3 )
 		return false
 	end
 
@@ -96,7 +96,7 @@ local function ErrorCheckRadioSettings( settings, argn, funcname, level )
 		local t = type( v )
 		local tright = ValidTypes[k]
 		if not tright or t == tright then continue end
-		StreamRadioLib.ErrorNoHaltWithStack( string.format( "bad datatype at index '%s' of argument #%i at '%s' (%s or nil expected, got %s)", k, argn, funcname, tright, t ), level )
+		StreamRadioLib.Util.ErrorNoHaltWithStack( string.format( "bad datatype at index '%s' of argument #%i at '%s' (%s or nil expected, got %s)", k, argn, funcname, tright, t ), level )
 
 		return false
 	end
@@ -128,19 +128,11 @@ local Vec_Zero = Vector( )
 function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 	if not SERVER then return end
 
+	local StreamRadioLib = StreamRadioLib or {}
+
 	if not StreamRadioLib.Loaded then
-		local Addonname = StreamRadioLib.AddonPrefix or ""
-		local ErrorString = StreamRadioLib.ErrorString or ""
-		local Prefix = ( Addonname .. ErrorString )
-
-		if ErrorString ~= "" then
-			Prefix = Prefix .. "\n\n"
-		end
-
-		local err = Prefix .. "The Entity 'sent_streamradio' could not be spawned."
-
-		if StreamRadioLib.ErrorNoHaltWithStack then
-			StreamRadioLib.ErrorNoHaltWithStack(err)
+		if StreamRadioLib.Loader_ShowSpawnError then
+			StreamRadioLib.Loader_ShowSpawnError("The Entity 'sent_streamradio' could not be spawned.")
 		end
 
 		return
@@ -162,7 +154,7 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 	local ent = ents.Create( "sent_streamradio" )
 	if not IsValid(ent) then return end
 
-	if StreamRadioLib.IsValidModel(model) then
+	if StreamRadioLib.Util.IsValidModel(model) then
 		ent:SetModel(model)
 	end
 

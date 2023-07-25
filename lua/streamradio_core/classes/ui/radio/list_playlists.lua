@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -21,7 +23,7 @@ function CLASS:BuildListInternal()
 		return
 	end
 
-	self.PathUid = StreamRadioLib.Uid()
+	self.PathUid = StreamRadioLib.Util.Uid()
 	local uid = self.PathUid
 
 	StreamRadioLib.Filesystem.Find(self.Path.Value, function(success, files)

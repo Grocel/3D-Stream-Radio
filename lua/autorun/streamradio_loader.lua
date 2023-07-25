@@ -1,249 +1,144 @@
--- Loader of the 3D Stream Radio. Made By Grocel.
+-- 3D Stream Radio. Made By Grocel.
 AddCSLuaFile()
 
-local function getVersion()
-	local versiondata = file.Read("materials/3dstreamradio/_data/version.vmt", "GAME") or ""
-	versiondata = string.Explode("[\r\n|\r|\n]", versiondata, true) or {}
+local g_addonBrokenError = nil
 
-	local Version = string.Trim(tostring(versiondata[1] or ""))
-	local VersionTime = tonumber(string.Trim(versiondata[2] or "")) or -1
-
-	if Version == "" then
-		Version = "UNKNOWN"
-	end
-
-	return Version, VersionTime
+if SERVER then
+	g_addonBrokenError = "Addon loadup is broken on SERVER! To many addons?"
+else
+	g_addonBrokenError = "Addon loadup is broken on CLIENT! To many addons?"
 end
 
-local g_version, g_versionTime = getVersion()
+local function initStreamRadioLibGlobal()
+	_G.StreamRadioLib = _G.StreamRadioLib or {}
+	local lib = _G.StreamRadioLib
 
-local AddonTitle = ( "3D Stream Radio (ver. " .. g_version .. ")" )
-local AddonPrefix = ( AddonTitle .. ":\n" )
+	table.Empty(lib)
 
-StreamRadioLib = StreamRadioLib or {}
-table.Empty(StreamRadioLib)
-
-StreamRadioLib.AddonTitle = AddonTitle
-StreamRadioLib.AddonPrefix = AddonPrefix
-StreamRadioLib.Loaded = nil
-StreamRadioLib.ErrorString = nil
-
-function StreamRadioLib.GetVersion()
-	return g_version
-end
-
-function StreamRadioLib.GetVersionTime()
-	return g_versionTime
-end
-
-local g_loader_ok = true
-
-local g_loaded_cs = {}
-local g_loaded_lua = {}
-
-local function appendError(err)
-	local lib = StreamRadioLib or {}
-
-	err = tostring(err or "")
-	if err == "" then
-		return
-	end
-
-	lib.ErrorString = lib.ErrorString or ""
-	lib.ErrorString = string.Trim(lib.ErrorString .. "\n\n" .. err)
-end
-
-local function throwError(err)
-	local lib = StreamRadioLib or {}
-
-	err = tostring(err or "")
-
-	if err == "" then
-		err = "Unknown error"
-	end
-
-	appendError(err)
-
-	g_loader_ok = false
 	lib.Loaded = nil
+	lib.Errors = {g_addonBrokenError}
 
-	ErrorNoHaltWithStack((lib.AddonPrefix or "") .. err .. "\n")
-	return false, err
-end
-
-local function saveCSLuaFile(lua, force)
-	lua = tostring(lua or "")
-	lua = string.lower(lua or "")
-
-	if lua == "" then
-		return false
-	end
-
-	if force then
-		g_loaded_cs[lua] = nil
-	end
-
-	if g_loaded_cs[lua] ~= nil then
-		return g_loaded_cs[lua] or false
-	end
-
-	g_loaded_cs[lua] = false
-
-	local status, err = pcall(function()
-		if CLIENT then
+	-- this is the failback content for tools and menus
+	lib.Loader_CreateErrorPanel = function(CPanel, message)
+		if not IsValid(CPanel) then
 			return
 		end
 
-		if not file.Exists(lua, "LUA") then
-			error("Couldn't AddCSLuaFile file '" .. lua .. "' (File not found)", 0)
+		local lib = _G.StreamRadioLib or {}
+		if lib.Loaded then
+			return
 		end
 
-		AddCSLuaFile(lua)
-	end)
+		local addonPrefix = tostring(lib.AddonPrefix or "")
+		addonPrefix = string.Trim(addonPrefix)
 
-	if not status then
-		throwError(err)
-		return false
-	end
+		if addonPrefix ~= "" then
+			local prefixlabel = vgui.Create("DLabel")
 
-	g_loaded_cs[lua] = true
-	return true
-end
+			prefixlabel:SetDark(true)
+			prefixlabel:SetHighlight(false)
+			prefixlabel:SetText(addonPrefix)
+			prefixlabel:SizeToContents()
 
-local function saveInclude(lua, force)
-	lua = tostring(lua or "")
-	lua = string.lower(lua or "")
-
-	if lua == "" then
-		return nil
-	end
-
-	if force then
-		g_loaded_lua[lua] = nil
-	end
-
-	if g_loaded_lua[lua] then
-		-- Prevent loading twice
-		return true, g_loaded_lua[lua]
-	end
-
-	local status, errOrResult = pcall(function()
-		if not file.Exists(lua, "LUA") then
-			error("Couldn't include file '" .. lua .. "' (File not found)", 0)
+			CPanel:AddPanel(prefixlabel)
 		end
 
-		return include(lua)
-	end)
+		local errors = lib.Errors or {}
 
-	if not status then
-		throwError(errOrResult)
+		for i, thiserr in ipairs(errors) do
+			thiserr = tostring(thiserr or "")
+			thiserr = string.Trim(thiserr)
 
-		g_loaded_lua[lua] = nil
+			if thiserr == "" then
+				continue
+			end
 
-		return nil
+			local errorlabel = vgui.Create("DLabel")
+
+			errorlabel:SetDark(false)
+			errorlabel:SetHighlight(true)
+			errorlabel:SetText(i .. ". " .. thiserr)
+			errorlabel:SetTooltip(thiserr)
+			errorlabel:SizeToContents()
+
+			CPanel:AddPanel(errorlabel)
+		end
+
+		message = tostring(message or "")
+		message = string.Trim(message)
+
+		if message ~= "" then
+			local messagelabel = vgui.Create("DLabel")
+
+			messagelabel:SetDark(false)
+			messagelabel:SetHighlight(true)
+			messagelabel:SetText(message)
+			messagelabel:SetTooltip(message)
+			messagelabel:SizeToContents()
+
+			CPanel:AddPanel(messagelabel)
+		end
 	end
 
-	g_loaded_lua[lua] = errOrResult
-	return status, errOrResult
-end
+	-- this is the failback error message for radio entity spawn
+	lib.Loader_ShowSpawnError = function(message)
+		local lib = _G.StreamRadioLib or {}
+		if lib.Loaded then
+			return
+		end
 
-function StreamRadioLib.SaveCSLuaFile(lua, force)
-	return saveCSLuaFile(lua, force)
-end
+		local addonPrefix = tostring(lib.AddonPrefix or "")
+		addonPrefix = string.Trim(addonPrefix)
 
-function StreamRadioLib.LoadSH(lua, force)
-	if not saveCSLuaFile(lua) then return end
-	return saveInclude(lua, force)
-end
+		local errors = lib.Errors or {}
 
-function StreamRadioLib.LoadCL(lua, force)
-	if SERVER then
-		return saveCSLuaFile(lua)
+		local errorString = table.concat(errors, "\n\n")
+		errorString = string.Trim(errorString)
+
+		message = tostring(message or "")
+		message = string.Trim(message)
+
+		local err = string.format("%s\n\n%s\n\n%s", addonPrefix, errorString, message)
+
+		ErrorNoHaltWithStack(err)
 	end
-
-	return saveInclude(lua, force)
-end
-
-function StreamRadioLib.LoadSV(lua, force)
-	if CLIENT then return true end
-	return saveInclude(lua, force)
 end
 
 do
-	local printLoaded = StreamRadioLib.LoadSH("streamradio_core/print.lua")
+	initStreamRadioLibGlobal()
 
-	if not printLoaded or not StreamRadioLib.Print then
-		throwError(AddonTitle .. "Fatal error: Print and reporting system not loaded!")
+	local status, loaded = xpcall(function()
+		AddCSLuaFile("streamradio_core/load.lua")
+		return include("streamradio_core/load.lua")
+	end, ErrorNoHaltWithStack)
+
+	if not _G.StreamRadioLib then
+		initStreamRadioLibGlobal()
+	end
+
+	if not status then
+		_G.StreamRadioLib.Loaded = nil
+	end
+
+	if not loaded then
+		_G.StreamRadioLib.Loaded = nil
+	end
+
+	local errors = _G.StreamRadioLib.Errors or {}
+
+	local errorString = tostring(errors[1] or "")
+	errorString = string.Trim(errorString)
+
+	if errorString ~= "" then
+		_G.StreamRadioLib.Loaded = nil
+	end
+
+	collectgarbage( "collect" )
+
+	if errorString == g_addonBrokenError then
+		-- something went horribly wrong, so tell the user about it.
+
+		error(g_addonBrokenError)
 		return
 	end
 end
-
-local outdated = false
-
-if CLIENT then
-	if VERSION < 230714 and VERSION > 5 then
-		throwError("Your GMod-Client (Version: " .. VERSION .. ") is too old!\nPlease update the GMod-Client!")
-		outdated = true
-	end
-else
-	if VERSION < 230714 and VERSION > 5 then
-		throwError("The GMod-Server (Version: " .. VERSION .. ") is too old!\nPlease update the GMod-Server. Tell an Admin!")
-		outdated = true
-	end
-end
-
-if not outdated then
-	local status, loaded = StreamRadioLib.LoadSH("streamradio_core/load.lua")
-	StreamRadioLib.Loaded = status and loaded and g_loader_ok
-end
-
-local realmname = "clientside"
-if SERVER then
-	realmname = "serverside"
-end
-
-if not StreamRadioLib.Loaded then
-	local err = StreamRadioLib.ErrorString or ""
-	if err == "" then
-		StreamRadioLib.ErrorString = "Unknown error"
-	end
-
-	local errcol = "[color:255,128,128]"
-	local err = errcol .. StreamRadioLib.Print.IndentText(StreamRadioLib.ErrorString)
-	err = string.Replace(err, "\n", "\n" .. errcol)
-
-	StreamRadioLib.Print.Wrapped(AddonTitle .. "[color:255,128,128] could not be loaded " .. realmname .. ".", "Error:\n" .. err)
-else
-	StreamRadioLib.Print.Wrapped(AddonTitle .. "[color:100,200,100] is loaded " .. realmname .. ".")
-end
-
-if SERVER then
-	util.AddNetworkString("3DStreamRadio/LoadError")
-
-	hook.Add("PlayerInitialSpawn", "3DStreamRadio/LoadError", function(ply)
-		if not IsValid(ply) then
-			return
-		end
-
-		if not StreamRadioLib then
-			return
-		end
-
-		if StreamRadioLib.Loaded then
-			return
-		end
-
-		net.Start("3DStreamRadio/LoadError")
-			net.WriteString(StreamRadioLib.ErrorString or "")
-		net.Send(ply)
-	end)
-else
-	net.Receive("3DStreamRadio/LoadError", function()
-		local err = net.ReadString()
-		if err == "" then return end
-
-		throwError(err)
-	end)
-end
-
-collectgarbage( "collect" )

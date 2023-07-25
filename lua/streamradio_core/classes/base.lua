@@ -1,7 +1,13 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
 end
+
+local LIBUtil = StreamRadioLib.Util
+
+local emptyTableSafe = LIBUtil.EmptyTableSafe
 
 function CLASS:Create()
 	self.Valid = true
@@ -9,25 +15,35 @@ function CLASS:Create()
 	self.Name = ""
 
 	StreamRadioLib.Timedcall(function()
-		if not IsValid(self) then return end
+		if not self.Valid then return end
 		if self._markedforremove then return end
 
 		self.Created = true
-		self:CallHook("Initialize")
+
+		if self.Initialize then
+			self:Initialize()
+		end
 	end)
 end
 
+function CLASS:Initialize()
+	-- override me
+end
+
 function CLASS:Remove()
+	self._markedforremove = true
+	self:CallHook("OnRemove")
+
 	StreamRadioLib.Timedcall(function()
-		if not IsValid(self) then return end
+		if not self then
+			return
+		end
 
 		self.Valid = false
 		self.Created = false
-		self._cache = {}
-	end)
 
-	self._markedforremove = true
-	self:CallHook("OnRemove")
+		emptyTableSafe(self._cache)
+	end)
 end
 
 function CLASS:IsValid()
@@ -180,27 +196,24 @@ end
 CLASS.print = CLASS.Print
 
 function CLASS:ToString()
-	local r = "[" .. self.classname .. "]"
-
 	if not self.Valid then
-		return r .. "[Removed]"
+		return string.format("[%s][Removed]", self.classname)
 	end
-
-	r = r .. "[" .. self.ID .. "]"
 
 	local name = self.Name or ""
 
 	if name == "" then
-		return r
+		return string.format("[%s][%i]", self.classname, self.ID)
 	end
 
-	r = r .. "[" .. name .. "]"
-	return r
+	return string.format("[%s][%i][%s]", self.classname, self.ID, name)
 end
 
 function CLASS:__tostring()
 	local called = self._tostringcall
-	if called then return "[" .. self.classname .. "][" .. self.ID .. "]" end
+	if called then
+		return string.format("[%s][%s]", self.classname, self.ID)
+	end
 
 	self._tostringcall = true
 	local r = self:ToString() or ""

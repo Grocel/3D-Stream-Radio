@@ -1,3 +1,5 @@
+local StreamRadioLib = StreamRadioLib
+
 if not istable(CLASS) then
 	StreamRadioLib.ReloadClasses()
 	return
@@ -308,7 +310,7 @@ function CLASS:Create()
 	self:QueueCall("ActivateNetworkedMode")
 
 	if CLIENT then
-		self:StartSuperThink()
+		self:StartFastThink()
 	end
 
 	self:InvalidateLayout()
@@ -450,17 +452,24 @@ function CLASS:UpdatePlayBar()
 end
 
 function CLASS:SetStream(stream)
+	local oldStreamOBJ = self.StreamOBJ
 	self.StreamOBJ = stream
+
+	if oldStreamOBJ == stream then
+		return
+	end
+
+	self:SetFastThinkNextCall(0)
 
 	self:UpdateFromStream()
 	self:UpdateButtons()
 	self:UpdatePlayBar()
 
-	if not IsValid(self.StreamOBJ) then return end
+	if not IsValid(stream) then return end
 
-	self.StreamOBJ:SetEvent("OnTrackEnd", self:GetID(), function()
+	stream:SetEvent("OnTrackEnd", self:GetID(), function()
 		if not IsValid(self) then return end
-		if not IsValid(self.StreamOBJ) then return end
+		if not IsValid(stream) then return end
 
 		self:QueueCall("UpdatePlayBar")
 		self:QueueCall("UpdateButtons")
@@ -470,7 +479,7 @@ function CLASS:SetStream(stream)
 		if self._currentLoopMode ~= StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST then return end
 
 		self:CallHook("OnPlaylistForward")
-		self.StreamOBJ:Play()
+		stream:Play()
 	end)
 
 	local function OnVolumeChange(this, vol)
@@ -487,12 +496,10 @@ function CLASS:SetStream(stream)
 
 	local function OnPlayModeChange(this, mode)
 		if not IsValid(self) then return end
+		if not IsValid(stream) then return end
 
-		local StreamOBJ = self.StreamOBJ
-		if not IsValid(StreamOBJ) then return end
-
-		local isPlayMode = StreamOBJ:IsPlayMode()
-		local isStopMode = StreamOBJ:IsStopMode()
+		local isPlayMode = stream:IsPlayMode()
+		local isStopMode = stream:IsStopMode()
 
 		if IsValid(self.PlayPauseButton) then
 			self.PlayPauseButton:SetIcon(isPlayMode and g_mat_pause or g_mat_play)
@@ -507,8 +514,8 @@ function CLASS:SetStream(stream)
 		self:QueueCall("UpdateButtons")
 	end
 
-	self.StreamOBJ:SetEvent("OnVolumeChange", self:GetID(), OnVolumeChange)
-	self.StreamOBJ:SetEvent("OnPlayModeChange", self:GetID(), OnPlayModeChange)
+	stream:SetEvent("OnVolumeChange", self:GetID(), OnVolumeChange)
+	stream:SetEvent("OnPlayModeChange", self:GetID(), OnPlayModeChange)
 
 	if CLIENT then
 		local function UpdatePlayBar()
@@ -522,20 +529,20 @@ function CLASS:SetStream(stream)
 			return true
 		end
 
-		self.StreamOBJ:SetEvent("OnSeekingStart", self:GetID(), UpdatePlayBar)
-		self.StreamOBJ:SetEvent("OnSeekingEnd", self:GetID(), UpdatePlayBar)
-		self.StreamOBJ:SetEvent("OnMute", self:GetID(), UpdatePlayBar)
-		self.StreamOBJ:SetEvent("OnClose", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnSeekingStart", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnSeekingEnd", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnMute", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnClose", self:GetID(), UpdatePlayBar)
 
-		self.StreamOBJ:SetEvent("OnDownload", self:GetID(), UpdatePlayBar)
-		self.StreamOBJ:SetEvent("OnRetry", self:GetID(), UpdatePlayBar)
-		self.StreamOBJ:SetEvent("OnSearch", self:GetID(), UpdatePlayBar)
-		self.StreamOBJ:SetEvent("OnConnect", self:GetID(), UpdatePlayBar)
-		self.StreamOBJ:SetEvent("OnError", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnDownload", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnRetry", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnSearch", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnConnect", self:GetID(), UpdatePlayBar)
+		stream:SetEvent("OnError", self:GetID(), UpdatePlayBar)
 	end
 
-	OnVolumeChange(self.StreamOBJ, self.StreamOBJ:GetVolume())
-	OnPlayModeChange(self.StreamOBJ)
+	OnVolumeChange(stream, stream:GetVolume())
+	OnPlayModeChange(stream)
 end
 
 function CLASS:GetStream()
@@ -595,19 +602,26 @@ function CLASS:ShouldPerformRerender()
 	return true
 end
 
-function CLASS:SuperThink()
-	if SERVER then return end
-	if not IsValid(self.StreamOBJ) then return end
+if CLIENT then
+	function CLASS:FastThink()
+		self.fastThinkRate = 10
 
-	if not self:IsSeen() then return end
-	if not self:IsVisible() then return end
+		if not IsValid(self.StreamOBJ) then return end
 
-	self:UpdateFromStream()
+		self.fastThinkRate = 0.25
 
-	if not self:ShouldPerformRerender() then return end
+		if not self:IsSeen() then return end
+		if not self:IsVisible() then return end
 
-	self:UpdatePlayBar()
-	self:PerformRerender(true)
+		self.fastThinkRate = 0.04
+
+		self:UpdateFromStream()
+
+		if not self:ShouldPerformRerender() then return end
+
+		self:UpdatePlayBar()
+		self:PerformRerender(true)
+	end
 end
 
 function CLASS:EnablePlaylist(bool)
