@@ -410,7 +410,7 @@ function CLASS:ActivateNetworkedMode()
 	self:SetMaxScroll(self:GetNWInt("ScrollMax", 0))
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 
 	data.Scroll = self:GetScroll()
@@ -418,7 +418,7 @@ function CLASS:PreDupe(ent)
 	return data
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	self:SetScroll(data.Scroll)
 	self.DupeData = data
 end

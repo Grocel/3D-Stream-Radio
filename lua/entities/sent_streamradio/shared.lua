@@ -550,8 +550,8 @@ function ENT:StreamStopAnimModel()
 	self.AnimStopped = true
 end
 
-function ENT:OnGUISetup()
-	BaseClass.OnGUISetup(self)
+function ENT:OnGUISetup(...)
+	BaseClass.OnGUISetup(self, ...)
 
 	local GUI_Main = self.GUI_Main
 
@@ -565,10 +565,6 @@ function ENT:OnGUISetup()
 	end
 
 	self:MarkForUpdatePlaybackLoopMode()
-
-	if SERVER then
-		self:OnGUISetupServer()
-	end
 end
 
 function ENT:OnModelSetup()

@@ -20,9 +20,8 @@ local g_hookname = "classsystem_listen"
 local g_listengroups = 8
 local g_nextgroup = 1
 local g_hookruns = false
-local g_superhooksruns = false
+local g_fasthooksruns = false
 
-local g_listenfunc_lastcall = 0
 local g_minRate = 0
 
 for i = 1, g_listengroups do
@@ -32,6 +31,8 @@ end
 StreamRadioLib.Hook.Remove("Think", g_hookname)
 
 local function g_listentogroup()
+	-- think function with load balancing between frames for registered instances of the class system
+
 	for i = 1, g_listengroups do
 		local found = nil
 
@@ -96,30 +97,27 @@ local function g_listentogroup()
 end
 
 local function g_listenfunc()
-	--local now = RealTime()
+	local starttime = SysTime()
 
-	--if g_listenfunc_lastcall < now then
-		local starttime = SysTime()
+	local found = g_listentogroup()
 
-		local found = g_listentogroup()
-		--g_listenfunc_lastcall = now + engine.TickInterval() * 2
-
-		if found then
-			found:SetGlobalVar("base_listener_thinktime", SysTime() - starttime)
-			found:SetGlobalVar("base_listener_current_listeners_count", 0)
-		end
-	--end
+	if found then
+		found:SetGlobalVar("base_listener_thinktime", SysTime() - starttime)
+		found:SetGlobalVar("base_listener_current_listeners_count", 0)
+	end
 end
 
 
-local function g_superlistenfunc()
+local function g_fastlistenfunc()
+	-- think function with faster rate for registered instances of the class system
+
 	local now = RealTime()
 
 	g_minRate = 0
 
 	if CLIENT then
 		if StreamRadioLib.IsRenderTarget() then
-			g_minRate = 1 / StreamRadioLib.RenderTargetFPS()
+			g_minRate = 1 / StreamRadioLib.GetRenderTargetFPS()
 			g_minRate = math.min(g_minRate, 0.1)
 		end
 	end
@@ -172,15 +170,15 @@ local function g_register_thinkfunc()
 	if not StreamRadioLib.Loaded then return end
 
 	if g_hookruns then return end
-	if g_superhooksruns then return end
+	if g_fasthooksruns then return end
 
 	StreamRadioLib.Hook.Add("Think", g_hookname, function()
 		if g_hookruns then
 			g_listenfunc()
 		end
 
-		if g_superhooksruns then
-			g_superlistenfunc()
+		if g_fasthooksruns then
+			g_fastlistenfunc()
 		end
 	end)
 end
@@ -203,19 +201,15 @@ LIBNet.Receive(g_hookname, function(len, ply)
 	if nwname == "" then return end
 	if id == "" then return end
 
-	if not nwent._3dstraemradio_classobjs_nw_register then return end
+	local classobjs_nw_register = nwent._3dstraemradio_classobjs_nw_register
+	if not classobjs_nw_register then return end
 
-	local this = nwent._3dstraemradio_classobjs_nw_register[nwname]
+	local this = classobjs_nw_register[nwname]
 	if not IsValid(this) then
-		if this then
-			nwent._3dstraemradio_classobjs_nw_register[nwname] = nil
-		end
-
 		return
 	end
 
 	if not this._netreceivefuncs then
-		nwent._3dstraemradio_classobjs_nw_register[nwname] = nil
 		return
 	end
 
@@ -266,14 +260,6 @@ function CLASS:Create()
 	end)
 
 	self:ApplyNetworkedMode()
-
-	--self:AssignToListenGroupInternal()
-end
-
-function CLASS:Initialize()
-	BASE.Initialize(self)
-
-	--self:AssignToListenGroupInternal()
 end
 
 function CLASS:Remove()
@@ -283,6 +269,9 @@ function CLASS:Remove()
 	emptyTableSafe(self._callqueue)
 	emptyTableSafe(self._callqueueonce)
 	emptyTableSafe(self._events)
+
+	self:RemoveFromNwRegisterInternal(self.entityClassobjsNwRegister)
+	self.entityClassobjsNwRegister = nil
 
 	self.Network.Active = false
 
@@ -381,11 +370,11 @@ function CLASS:TimerOnce(identifier, delay, func)
 	end)
 end
 
-function CLASS:TimerUtil(identifier, delay, func)
+function CLASS:TimerUntil(identifier, delay, func)
 	local name = self:TimerGetName(identifier)
 
 	StreamRadioLib.Timer.Remove(name)
-	StreamRadioLib.Timer.Util(name, delay, function()
+	StreamRadioLib.Timer.Until(name, delay, function()
 		if not IsValid(self) then
 			StreamRadioLib.Timer.Remove(name)
 			return true
@@ -550,9 +539,9 @@ function CLASS:ThinkInternal()
 			func(self, unpack(args))
 			needThink = true
 		end
-
-		emptyTableSafe(callqueuetemp)
 	end
+
+	emptyTableSafe(callqueuetemp)
 
 	if callqueue then
 		for k, data in ipairs(callqueue) do
@@ -570,10 +559,10 @@ function CLASS:ThinkInternal()
 
 			needThink = true
 		end
-
-		emptyTableSafe(callqueue)
-		emptyTableSafe(callqueueonce)
 	end
+
+	emptyTableSafe(callqueue)
+	emptyTableSafe(callqueueonce)
 
 	if not needThink then
 		self:StopListen()
@@ -653,9 +642,9 @@ function CLASS:_StartFastThink()
 	local id = self:GetID()
 	g_super_listeners[id] = self
 
-	if not g_superhooksruns then
+	if not g_fasthooksruns then
 		g_register_thinkfunc()
-		g_superhooksruns = true
+		g_fasthooksruns = true
 	end
 end
 
@@ -672,10 +661,6 @@ function CLASS:GetThinkRate()
 	return self.thinkRate or 0
 end
 
-function CLASS:SetThinkNextCall(nextCall)
-	self.thinkNextCall = tonumber(nextCall or 0) or 0
-end
-
 function CLASS:GetThinkNextCall()
 	return self.thinkNextCall or 0
 end
@@ -686,10 +671,6 @@ end
 
 function CLASS:GetFastThinkRate()
 	return self.fastThinkRate or 0
-end
-
-function CLASS:SetFastThinkNextCall(nextCall)
-	self.fastThinkNextCall = tonumber(nextCall or 0) or 0
 end
 
 function CLASS:GetFastThinkNextCall()
@@ -775,80 +756,113 @@ function CLASS:QueueCall(func, ...)
 	self._callqueueonce[func] = true
 	table.insert(self._callqueue, data)
 
-	if not IsValid(self) then return end
 	self:StartListen()
 end
 
-function CLASS:RegisterForDupe()
+function CLASS:LoadToDupeInternal(dupeTable)
 	if not SERVER then return end
+	if not istable(dupeTable) then return end
 
-	local ent = self:GetEntity()
 	local name = self:GetName()
-
-	if not IsValid(ent) then return end
 	if name == "" then return end
 
-	ent._3dstreamradio_classobjs = ent._3dstreamradio_classobjs or {}
-	ent._3dstreamradio_classobjs[name] = self
-
-	self:LoadFromDupeInternal()
+	dupeTable[name] = self:CallHook("PreDupe")
 end
 
-function CLASS:LoadFromDupeInternal()
+function CLASS:LoadToDupe(dupeTable)
 	if not SERVER then return end
+	if not istable(dupeTable) then return end
 
-	local ent = self:GetEntity()
+	self:LoadToDupeInternal(dupeTable)
+end
+
+function CLASS:LoadFromDupeInternal(dupeTable)
+	if not SERVER then return end
+	if not istable(dupeTable) then return end
+
 	local name = self:GetName()
-
-	if not IsValid(ent) then return end
 	if name == "" then return end
 
-	if not ent._3dstreamradio_classobjs_data then return end
+	local data = dupeTable[name]
+	if data == nil then return end
 
-	local data = ent._3dstreamradio_classobjs_data[name]
-	if not data then return end
-
-	self:PostDupeInternal(ent, name, data)
+	self:CallHook("PostDupe", data)
 end
 
-function CLASS:LoadFromDupe()
-	self:LoadFromDupeInternal()
+function CLASS:LoadFromDupe(dupeTable)
+	if not SERVER then return end
+	if not istable(dupeTable) then return end
+
+	self:LoadFromDupeInternal(dupeTable)
 end
 
 function CLASS:SetName(name)
 	name = tostring(name or "")
 	name = string.gsub(name, "[%/%\\%s]", "_")
 
-	local ent = self:GetEntity()
-	local oldname = self:GetName()
+	self.Name = name
+end
 
-	if IsValid(ent) then
-		if ent._3dstreamradio_classobjs then
-			ent._3dstreamradio_classobjs[oldname] = nil
-		end
+function CLASS:GetReferenceClassobjsNWRegister()
+	return self.entityClassobjsNwRegister
+end
+
+function CLASS:SetReferenceClassobjsNWRegister(nwRegister)
+	if not istable(nwRegister) then
+		return
 	end
 
-	self.Name = name
-	self:RegisterForDupe()
+	self.entityClassobjsNwRegister = nwRegister
+end
+
+function CLASS:AddToNwRegisterInternal(nwRegister)
+	if not istable(nwRegister) then
+		return
+	end
+
+	local nwname = self:GetNWName()
+	if not nwname then
+		return
+	end
+
+	if nwname == "" then
+		return
+	end
+
+	nwRegister[nwname] = self
+	self:SetReferenceClassobjsNWRegister(nwRegister)
+end
+
+function CLASS:RemoveFromNwRegisterInternal(nwRegister)
+	if not istable(nwRegister) then
+		return
+	end
+
+	local nwname = self:GetNWName()
+	if not nwname then
+		return
+	end
+
+	if nwname == "" then
+		return
+	end
+
+	nwRegister[nwname] = nil
+	self:SetReferenceClassobjsNWRegister(nwRegister)
+end
+
+function CLASS:AddToNwRegister(nwRegister)
+	self:AddToNwRegisterInternal(nwRegister)
+end
+
+function CLASS:RemoveFromNwRegister(nwRegister)
+	self:RemoveFromNwRegisterInternal(nwRegister)
 end
 
 function CLASS:SetEntity(ent)
-	local oldent = self:GetEntity()
-	local name = self:GetName()
-	local nwname = self:GetNWName()
-
-	if IsValid(oldent) then
-		if oldent._3dstreamradio_classobjs then
-			oldent._3dstreamradio_classobjs[name] = nil
-		end
-
-		if oldent._3dstraemradio_classobjs_nw_register then
-			oldent._3dstraemradio_classobjs_nw_register[nwname] = nil
-		end
-	end
-
 	self.Entity = ent
-	self:RegisterForDupe()
+	self:SetReferenceClassobjsNWRegister(ent._3dstraemradio_classobjs_nw_register)
+
 	self:ApplyNetworkedMode()
 end
 
@@ -859,15 +873,6 @@ end
 function CLASS:SetNWName(nwname)
 	nwname = tostring(nwname or "")
 	nwname = string.gsub(nwname, "[%/%\\%s]", "_")
-
-	local ent = self:GetEntity()
-	local oldnwname = self:GetNWName()
-
-	if IsValid(ent) then
-		if ent._3dstraemradio_classobjs_nw_register then
-			ent._3dstraemradio_classobjs_nw_register[oldnwname] = nil
-		end
-	end
 
 	self.NWName = nwname
 	self:ApplyNetworkedMode()
@@ -1016,7 +1021,7 @@ function CLASS:ApplyNetworkVars()
 end
 
 function CLASS:ApplyNetworkVarsInternal()
-	-- Override me
+	-- override me
 end
 
 function CLASS:ActivateNetworkedMode()
@@ -1031,47 +1036,16 @@ function CLASS:ActivateNetworkedMode()
 	local nwname = self:GetNWName()
 	LIBNetwork.AddNetworkString(nwname)
 
-	local ent = self:GetEntity()
-
-	if not IsValid(ent) then
-		return
-	end
-
-	ent._3dstraemradio_classobjs_nw_register = ent._3dstraemradio_classobjs_nw_register or {}
-	ent._3dstraemradio_classobjs_nw_register[nwname] = self
+	self:AddToNwRegister(self:GetReferenceClassobjsNWRegister())
 end
 
 function CLASS:DeactivateNetworkedMode()
 	self.Network.Active = false
-
-	local nwname = self:GetNWName()
-	local ent = self:GetEntity()
-
-	if not IsValid(ent) then
-		return
-	end
-
-	if not ent._3dstraemradio_classobjs_nw_register then
-		return
-	end
-
-	ent._3dstraemradio_classobjs_nw_register[nwname] = nil
 end
 
-function CLASS:PostDupeInternal(ent, name, data)
-	if not IsValid(ent) then return end
-	if not name then return end
-
-	if ent._3dstraemradio_classobjs_data then
-		ent._3dstreamradio_classobjs_data[name] = nil
-	end
-
-	self:CallHook("PostDupe", ent, data)
-end
-
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	return nil
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 end

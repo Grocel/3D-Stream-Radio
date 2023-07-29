@@ -102,6 +102,11 @@ function CLASS:BuildLines()
 	local rendertarget_active = superparent:HasRendertarget()
 	local rt_w, rt_h = superparent:GetRendertargetSize()
 
+	local memory = collectgarbage("count")
+	local radioCount = StreamRadioLib.GetRadioCount()
+	local streamingRadioCount = StreamRadioLib.GetStreamingRadioCount()
+	local idleRadioCount = math.max(radioCount - streamingRadioCount, 0)
+
 	local f_time = RealFrameTime()
 
 	local think_time_p = math.Round(think_time / f_time * 100, 1)
@@ -141,15 +146,22 @@ function CLASS:BuildLines()
 	addLine(self, 1, "")
 
 	if IsValid(aimedpanel) then
-		addLine(self, 1, "Panel Info:")
+		addLine(self, 1, "Panel Info")
 		addLine(self, 1, " Object:    %s", tostring(aimedpanel)) 
 		addLine(self, 1, " Name:      %s", aimedpanel:GetName())
 		addLine(self, 1, " NW Name:   %s", aimedpanel:GetNWName())
 		addLine(self, 1, " Skin ID:   %s", aimedpanel:GetSkinIdentifyerHierarchy())
 	else
-		addLine(self, 1, "Panel Info:")
+		addLine(self, 1, "Panel Info")
 		addLine(self, 1, " <no panel>")
 	end
+
+	addLine(self, 1, "")
+
+	addLine(self, 1, "Radio Count")
+	addLine(self, 1, " Spawned      %4i", radioCount)
+	addLine(self, 1, " Streaming    %4i", streamingRadioCount)
+	addLine(self, 1, " Idle         %4i", idleRadioCount)
 
 	addLine(self, 2, "Performance")
 	addLine(self, 2, " Game Frame (GM): %7.3f ms", f_time * 1000)
@@ -165,6 +177,8 @@ function CLASS:BuildLines()
 	addLine(self, 2, " GUI Render")
 	addLine(self, 2, "  2D3D:           %7.3f ms | %5.1f%% of GM", render_time * 1000, render_time_p)
 	addLine(self, 2, "  Content:        %7.3f ms | %5.1f%% of GM", rendertarget_time * 1000, rendertarget_time_p)
+	addLine(self, 2, "")
+	addLine(self, 2, " Memory:           %7.1f MB", memory / 1024)
 end
 
 

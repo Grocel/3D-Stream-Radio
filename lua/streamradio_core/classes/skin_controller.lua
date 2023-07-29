@@ -7,6 +7,9 @@ end
 
 local LIBNet = StreamRadioLib.Net
 local LIBNetwork = StreamRadioLib.Network
+local LIBUtil = StreamRadioLib.Util
+
+local emptyTableSafe = LIBUtil.EmptyTableSafe
 
 local BASE = CLASS:GetBaseClass()
 
@@ -73,6 +76,8 @@ function CLASS:Create()
 		end)
 
 		self:NetReceive("skintoserver", function(this, id, len, ply)
+			self.NetworkPlayerList[ply] = ply
+
 			local players = player.GetHumans()
 
 			for i, thisply in ipairs(players) do
@@ -103,11 +108,14 @@ end
 function CLASS:NetworkSkinInternal()
 	if CLIENT then
 		local hash = self:GetHash()
-		local cache = g_skincache:Get(hash)
 
-		if cache then
-			self:SetSkin(cache)
-			return
+		if hash ~= "" then
+			local cache = g_skincache:Get(hash)
+
+			if cache then
+				self:SetSkin(cache)
+				return
+			end
 		end
 
 		self:NetSend("skinrequest")
@@ -124,7 +132,7 @@ function CLASS:NetworkSkinInternal()
 		LIBNet.SendHash(self:GetHashFromSkin(skinencoded))
 	end, self.NetworkPlayerList)
 
-	table.Empty(self.NetworkPlayerList)
+	emptyTableSafe(self.NetworkPlayerList)
 end
 
 function CLASS:UpdateSkinInternal()
@@ -263,7 +271,7 @@ function CLASS:ActivateNetworkedMode()
 	self:UpdateSkin()
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 
 	data.skin = self:GetSkin()
@@ -271,6 +279,6 @@ function CLASS:PreDupe(ent)
 	return data
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	self:SetSkin(data.skin)
 end

@@ -204,7 +204,14 @@ function CLASS:ResetStream(nosend)
 end
 
 function CLASS:SetStream(stream)
+	local oldStreamOBJ = self.StreamOBJ
 	self.StreamOBJ = stream
+
+	if oldStreamOBJ == stream then
+		return
+	end
+
+	self:SetFastThinkRate(0)
 
 	if IsValid(self.ControlPanel) then
 		self.ControlPanel:SetStream(stream)
@@ -214,9 +221,9 @@ function CLASS:SetStream(stream)
 		self.SpectrumPanel:SetStream(stream)
 	end
 
-	if not IsValid(self.StreamOBJ) then return end
+	if not IsValid(stream) then return end
 
-	self.StreamOBJ:SetEvent("OnVolumeChange", self:GetID(), function(this, vol)
+	stream:SetEvent("OnVolumeChange", self:GetID(), function(this, vol)
 		if not IsValid(self) then return end
 
 		if IsValid(self.VolumeBar) then
@@ -238,7 +245,7 @@ function CLASS:SetStream(stream)
 	end)
 
 	if IsValid(self.VolumeBar) then
-		self.VolumeBar:SetFraction(self.StreamOBJ:GetVolume())
+		self.VolumeBar:SetFraction(stream:GetVolume())
 	end
 
 	if CLIENT then
@@ -250,34 +257,34 @@ function CLASS:SetStream(stream)
 				self.State.Error = LIBError.STREAM_OK
 			else
 				if IsValid(self.Errorbox) then
-					self.Errorbox:SetErrorCode(err, self.StreamOBJ:GetURL())
+					self.Errorbox:SetErrorCode(err, stream:GetURL())
 				end
 
 				self.State.Error = err
 			end
 		end
 
-		self.StreamOBJ:SetEvent("OnClose", self:GetID(), function()
+		stream:SetEvent("OnClose", self:GetID(), function()
 			updateErrorState(LIBError.STREAM_OK)
 		end)
 
-		self.StreamOBJ:SetEvent("OnSearch", self:GetID(), function()
+		stream:SetEvent("OnSearch", self:GetID(), function()
 			updateErrorState(LIBError.STREAM_OK)
 		end)
 
-		self.StreamOBJ:SetEvent("OnConnect", self:GetID(), function()
+		stream:SetEvent("OnConnect", self:GetID(), function()
 			updateErrorState(LIBError.STREAM_OK)
 		end)
 
-		self.StreamOBJ:SetEvent("OnError", self:GetID(), function(this, err)
+		stream:SetEvent("OnError", self:GetID(), function(this, err)
 			updateErrorState(err)
 		end)
 
-		self.StreamOBJ:SetEvent("OnMute", self:GetID(), function()
+		stream:SetEvent("OnMute", self:GetID(), function()
 			updateErrorState(LIBError.STREAM_OK)
 		end)
 
-		updateErrorState(self.StreamOBJ:GetError())
+		updateErrorState(stream:GetError())
 	end
 
 	self:UpdateFromStream()
@@ -302,15 +309,17 @@ end
 function CLASS:UpdateFromStream()
 	if SERVER then return end
 
-	if not IsValid(self.StreamOBJ) then return end
+	local stream = self.StreamOBJ
+
+	if not IsValid(stream) then return end
 	if not IsValid(self.HeaderText) then return end
 
 	local textlist = {}
 
-	local name = self.StreamOBJ:GetStreamName()
-	local isOnline = self.StreamOBJ:IsOnline()
-	local isCached = self.StreamOBJ:IsCached()
-	local url = self.StreamOBJ:GetURL()
+	local name = stream:GetStreamName()
+	local isOnline = stream:IsOnline()
+	local isCached = stream:IsCached()
+	local url = stream:GetURL()
 
 	if StreamRadioLib.Util.IsBlockedURLCode(url) then
 		url = "(Blocked URL)"
@@ -336,7 +345,7 @@ function CLASS:UpdateFromStream()
 	table.insert(textlist, urlprefix .. url .. urlpostfix)
 
 	local metaname = ""
-	local meta = self.StreamOBJ:GetMetadata()
+	local meta = stream:GetMetadata()
 
 	local prefix = meta.converter_name or ""
 	if prefix ~= "" then
@@ -349,13 +358,11 @@ function CLASS:UpdateFromStream()
 		metaname = prefix .. title
 	end
 
-	if self.StreamOBJ:IsBASSEngineEnabled() then
-		local remotename = self.StreamOBJ:GetTag(BASS3.ENUM.TAG_META) or {}
-		remotename = remotename["streamtitle"] or ""
+	local remotename = stream:GetMetaTags() or {}
+	remotename = remotename["streamtitle"] or ""
 
-		if remotename ~= "" then
-			metaname = prefix .. remotename
-		end
+	if remotename ~= "" then
+		metaname = prefix .. remotename
 	end
 
 	if metaname ~= "" then

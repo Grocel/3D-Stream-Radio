@@ -171,7 +171,7 @@ if CLIENT then
 		if not self:IsSeen() then return end
 		if not self:IsVisible() then return end
 
-		self.fastThinkRate = 0.05
+		self.fastThinkRate = 0.1
 
 		self:CalcTime()
 		self.TextData.TextIndex = self:GetIndex()

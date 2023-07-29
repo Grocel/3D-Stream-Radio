@@ -536,7 +536,7 @@ function CLASS:ApplyNetworkVarsInternal()
 	self.State.PlaylistOpened = self:GetNWBool("PlaylistOpened", false)
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 
 	data.PlaylistOpened = self.State.PlaylistOpened
@@ -544,6 +544,6 @@ function CLASS:PreDupe(ent)
 	return data
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	self.State.PlaylistOpened = data.PlaylistOpened and not self.InValidPlaylistDupe
 end

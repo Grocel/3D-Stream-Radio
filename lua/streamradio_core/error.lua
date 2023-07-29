@@ -250,7 +250,7 @@ end
 function LIB.GetStreamErrorId(idOrName)
 	local info = LIB.GetStreamErrorInfo(idOrName)
 	if not info then
-		return
+		return nil
 	end
 
 	return info.id
@@ -259,7 +259,7 @@ end
 function LIB.GetStreamErrorName(idOrName)
 	local info = LIB.GetStreamErrorInfo(idOrName)
 	if not info then
-		return
+		return nil
 	end
 
 	return info.name
@@ -268,7 +268,7 @@ end
 function LIB.GetStreamErrorDescription(idOrName)
 	local info = LIB.GetStreamErrorInfo(idOrName)
 	if not info then
-		return
+		return nil
 	end
 
 	return info.description

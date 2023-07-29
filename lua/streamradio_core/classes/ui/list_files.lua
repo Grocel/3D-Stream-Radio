@@ -141,7 +141,7 @@ function CLASS:ActivateNetworkedMode()
 	self.Path.Value = self:GetNWString("Path", "")
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 
 	data.Path = self:GetPath()
@@ -149,7 +149,7 @@ function CLASS:PreDupe(ent)
 	return data
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	self:SetPath(data.Path)
 end
 

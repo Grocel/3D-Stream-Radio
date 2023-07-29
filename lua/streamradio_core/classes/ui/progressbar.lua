@@ -392,7 +392,7 @@ function CLASS:ActivateNetworkedMode()
 	self:SetAllowFractionEdit(self:GetNWBool("AllowEdit", false))
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 
 	data.Fraction = self:GetFraction()
@@ -401,7 +401,7 @@ function CLASS:PreDupe(ent)
 	return data
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	self:SetFraction(data.Fraction)
 	self:SetAllowFractionEdit(data.AllowEdit)
 end

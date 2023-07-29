@@ -5,6 +5,7 @@ DEFINE_BASECLASS("base_anim")
 local StreamRadioLib = StreamRadioLib
 local LIBNetwork = StreamRadioLib.Network
 local LIBWire = StreamRadioLib.Wire
+local LIBUtil = StreamRadioLib.Util
 
 local WireLib = WireLib
 
@@ -82,6 +83,12 @@ function ENT:SetDupePoses( PoseParameter )
 	end
 end
 
+function ENT:AddObjToNwRegister(obj)
+	if not IsValid(obj) then return end
+
+	obj:AddToNwRegister(self._3dstraemradio_classobjs_nw_register)
+end
+
 function ENT:GetOrCreateStream()
 	if not g_isLoaded then
 		if IsValid(self.StreamObj) then
@@ -147,6 +154,9 @@ function ENT:GetOrCreateStream()
 	stream:SetName("stream")
 	stream:SetNWName("str")
 	stream:SetEntity(self)
+
+	self:AddObjToNwRegister(stream)
+
 	stream:ActivateNetworkedMode()
 	stream:OnClose()
 
@@ -304,6 +314,8 @@ function ENT:Initialize()
 		StreamRadioLib.RegisterRadio(self)
 	end
 
+	self._3dstraemradio_classobjs_nw_register = {}
+
 	if SERVER then
 		self._WireOutputCache = {}
 	end
@@ -398,7 +410,7 @@ end
 
 function ENT:PostFakeRemove( )
 	if not g_isLoaded then
-		return nil
+		return
 	end
 
 	StreamRadioLib.RegisterRadio(self)
@@ -407,6 +419,9 @@ end
 function ENT:OnRemove()
 	local Stream = self.StreamObj
 	local creationID = self:GetCreationID()
+
+	local classobjs_data = self._3dstreamradio_classobjs_data
+	local classobjs_nw_register = self._3dstraemradio_classobjs_nw_register
 
 	-- We run it in a timer to ensure the entity is actually gone
 	timer.Simple( 0.05, function()
@@ -423,6 +438,9 @@ function ENT:OnRemove()
 		if g_isLoaded then
 			StreamRadioLib.UnregisterRadio(creationID)
 		end
+
+		LIBUtil.EmptyTableSafe(classobjs_data)
+		LIBUtil.EmptyTableSafe(classobjs_nw_register)
 	end)
 
 	if g_isWiremodLoaded and SERVER then
@@ -461,10 +479,12 @@ function ENT:FastThink()
 				channeltext = tostring(stream)
 			end
 
+			channeltext = string.format("Sound pos, channel: %s", channeltext)
+
 			debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
-			debugoverlay.EntityTextAtPosition(pos, 1, "Sound pos: " .. channeltext, 0.05, color_white)
+			debugoverlay.EntityTextAtPosition(pos, 1, channeltext, 0.05, color_white)
 		end
-	
+
 		if IsValid(stream) then
 			stream:Set3DPosition(pos, ang:Forward())
 		end
@@ -476,15 +496,9 @@ function ENT:Think()
 
 	local curtime = CurTime()
 
-	if not g_isLoaded then
-		if SERVER then
-			self:NextThink(curtime + 0.1)
-		end
-
-		return true
+	if g_isLoaded then
+		self:InternalThink()
 	end
-
-	self:InternalThink()
 
 	if SERVER then
 		self:NextThink(curtime + 0.1)
@@ -634,18 +648,22 @@ else
 		desc = string.Trim(tostring(desc or ""))
 
 		self._wireports = self._wireports or {}
-		self._wireports.In = self._wireports.In or {}
-		self._wireports.In.names = self._wireports.In.names or {}
-		self._wireports.In.types = self._wireports.In.types or {}
-		self._wireports.In.descs = self._wireports.In.descs or {}
+		local wireports = self._wireports
 
-		self._wireports.In.once = self._wireports.In.once or {}
-		if(self._wireports.In.once[name]) then return end
+		wireports.In = wireports.In or {}
+		local inputs = wireports.In
 
-		self._wireports.In.names[#self._wireports.In.names + 1] = name
-		self._wireports.In.types[#self._wireports.In.types + 1] = ptype
-		self._wireports.In.descs[#self._wireports.In.descs + 1] = desc
-		self._wireports.In.once[name] = true
+		inputs.names = inputs.names or {}
+		inputs.types = inputs.types or {}
+		inputs.descs = inputs.descs or {}
+
+		inputs.once = inputs.once or {}
+		if inputs.once[name] then return end
+
+		inputs.names[#inputs.names + 1] = name
+		inputs.types[#inputs.types + 1] = ptype
+		inputs.descs[#inputs.descs + 1] = desc
+		inputs.once[name] = true
 	end
 
 	function ENT:AddWireOutput(name, ptype, desc)
@@ -656,18 +674,22 @@ else
 		desc = string.Trim(tostring(desc or ""))
 
 		self._wireports = self._wireports or {}
-		self._wireports.Out = self._wireports.Out or {}
-		self._wireports.Out.names = self._wireports.Out.names or {}
-		self._wireports.Out.types = self._wireports.Out.types or {}
-		self._wireports.Out.descs = self._wireports.Out.descs or {}
+		local wireports = self._wireports
 
-		self._wireports.Out.once = self._wireports.Out.once or {}
-		if(self._wireports.Out.once[name]) then return end
+		wireports.Out = wireports.Out or {}
+		local outputs = wireports.Out
 
-		self._wireports.Out.names[#self._wireports.Out.names + 1] = name
-		self._wireports.Out.types[#self._wireports.Out.types + 1] = ptype
-		self._wireports.Out.descs[#self._wireports.Out.descs + 1] = desc
-		self._wireports.Out.once[name] = true
+		outputs.names = outputs.names or {}
+		outputs.types = outputs.types or {}
+		outputs.descs = outputs.descs or {}
+
+		outputs.once = outputs.once or {}
+		if outputs.once[name] then return end
+
+		outputs.names[#outputs.names + 1] = name
+		outputs.types[#outputs.types + 1] = ptype
+		outputs.descs[#outputs.descs + 1] = desc
+		outputs.once[name] = true
 	end
 
 	function ENT:InitWirePorts()
@@ -744,7 +766,7 @@ else
 
 	function ENT:SetDupeData(key, value)
 		self.DupeData = self.DupeData or {}
-		self.DupeData[key] = value
+		self.DupeData[key] = table.Copy(value)
 	end
 
 	function ENT:GetDupeData(key)
@@ -825,7 +847,6 @@ else
 		local PhysicsObjects = data.PhysicsObjects
 
 		data.StreamObj = nil
-		data._3dstreamradio_classobjs = nil
 		data._3dstreamradio_classobjs_data = nil
 		data._3dstraemradio_classobjs_nw_register = nil
 		data.StreamRadioDT = nil
@@ -865,23 +886,11 @@ else
 			self:SetDupeData("Wire", WireLib.BuildDupeInfo(self))
 		end
 
-		local classsystem_objs = {}
+		local classsystem_classobjs_data = {}
 
-		for k, v in pairs(self._3dstreamradio_classobjs or {}) do
-			if not IsValid(v) then continue end
+		self:PreClasssystemCopy(classsystem_classobjs_data)
 
-			local name = v:GetName()
-			local ent = v:GetEntity()
-
-			if ent ~= self then continue end
-
-			local func = v.PreDupe
-			if not func then continue end
-
-			classsystem_objs[name] = func(v, self)
-		end
-
-		self:SetDupeData("Classsystem", classsystem_objs)
+		self:SetDupeData("Classsystem", classsystem_classobjs_data)
 
 		self:SetDupeData("Skin", {
 			Color = self:GetColor(),
@@ -901,10 +910,10 @@ else
 		if not IsValid(ent) then return end
 		if not ent.EntityMods then return end
 
-		ent.DupeData = ent.EntityMods.DupeData or {}
+		local dupeData = table.Copy(ent.EntityMods.DupeData or {})
 
-		ent._WireData = ent.DupeData.Wire
-		ent.DupeData.Wire = nil
+		ent._WireData = dupeData.Wire
+		dupeData.Wire = nil
 
 		if g_isWiremodLoaded and ent._WireData then
 			timer.Simple(0.2, function()
@@ -934,38 +943,53 @@ else
 			end)
 		end
 
-		ent._3dstreamradio_classobjs_data = ent.DupeData.Classsystem
-		ent.DupeData.Classsystem = nil
+		local classobjs_data = dupeData.Classsystem
+		dupeData.Classsystem = nil
 
-		if ent._3dstreamradio_classobjs_data and ent.PostClasssystemPaste then
-			timer.Simple(0.1, function()
-				if not IsValid(ent) then return end
-				if not ent._3dstreamradio_classobjs_data then return end
-				if not ent.PostClasssystemPaste then return end
+		ent._3dstreamradio_classobjs_data = classobjs_data
 
-				ent:PostClasssystemPaste()
-			end)
+		ent:PostClasssystemPaste(classobjs_data)
+
+		if dupeData.Skin then
+			ent:SetSkin(dupeData.Skin.Skin or 0)
+			ent:SetColor(dupeData.Skin.Color or color_white)
 		end
 
-		if ent.DupeData.Skin then
-			ent:SetSkin(ent.DupeData.Skin.Skin or 0)
-			ent:SetColor(ent.DupeData.Skin.Color or color_white)
-		end
+		dupeData.Skin = nil
 
-		ent.DupeData.Skin = nil
-
-		ent:SetDupePoses(ent.DupeData.DupePoses)
-		ent.DupeData.DupePoses = nil
+		ent:SetDupePoses(dupeData.DupePoses)
+		dupeData.DupePoses = nil
 
 		if not ent.DupeDataApply then return end
 
-		for key, value in pairs(ent.DupeData) do
+		for key, value in pairs(dupeData) do
 			ent:DupeDataApply(key, value)
 		end
 	end
 
-	function ENT:PostClasssystemPaste()
-		if not IsValid(self.StreamObj) then return end
-		self.StreamObj:LoadFromDupe()
+	function ENT:ReapplyClasssystemPaste()
+		local data = self._3dstreamradio_classobjs_data
+
+		if not data then
+			return
+		end
+
+		self:PostClasssystemPaste(data)
+	end
+
+	function ENT:PostClasssystemPaste(data)
+		if not IsValid(self.StreamObj) then
+			return
+		end
+
+		self.StreamObj:LoadFromDupe(data)
+	end
+
+	function ENT:PreClasssystemCopy(data)
+		if not IsValid(self.StreamObj) then
+			return
+		end
+
+		self.StreamObj:LoadToDupe(data)
 	end
 end

@@ -7,6 +7,9 @@ end
 
 local LIBNet = StreamRadioLib.Net
 local LIBNetwork = StreamRadioLib.Network
+local LIBUtil = StreamRadioLib.Util
+
+local emptyTableSafe = LIBUtil.EmptyTableSafe
 
 local BASE = CLASS:GetBaseClass()
 
@@ -193,24 +196,29 @@ function CLASS:NetworkButtons()
 end
 
 function CLASS:NetworkButtonsInternal()
-	if not self:IsVisible() then return end
+	if not self:IsVisible() then
+		return
+	end
 
 	if CLIENT then
 		local hash = self:GetHash()
-		local cache = g_listcache:Get(hash)
 
-		if cache then
-			self:SetData(cache)
-			return
+		if hash ~= "" then
+			local cache = g_listcache:Get(hash)
+
+			if cache then
+				self:SetData(cache)
+				return
+			end
 		end
 
 		self:NetSend("datarequest")
-
 		return
 	end
 
 	self:NetSendToPlayers("data", function()
-		local data = self.Data or {}
+		local data = self.Data
+		local hash = self:GetHashFromData(data)
 
 		net.WriteUInt(#data, 16)
 
@@ -218,10 +226,10 @@ function CLASS:NetworkButtonsInternal()
 			LIBNet.SendListEntry(v.text, v.icon)
 		end
 
-		LIBNet.SendHash(self:GetHashFromData(data))
+		LIBNet.SendHash(hash)
 	end, self.NetworkPlayerList)
 
-	table.Empty(self.NetworkPlayerList)
+	emptyTableSafe(self.NetworkPlayerList)
 end
 
 function CLASS:UpdateButtonsInternal()
@@ -396,7 +404,7 @@ function CLASS:CalcHash()
 end
 
 function CLASS:SetData(data)
-	self.Data = {}
+	emptyTableSafe(self.Data)
 
 	for k, v in pairs(data or {}) do
 		self:AddData(v, true)
@@ -406,8 +414,6 @@ function CLASS:SetData(data)
 end
 
 function CLASS:AddData(data, noupdate)
-	self.Data = self.Data or {}
-
 	local v = {
 		text = data.text or "",
 		value = data.value,
@@ -437,7 +443,7 @@ function CLASS:UpdateData(index, data, noupdate)
 end
 
 function CLASS:ClearData()
-	self.Data = {}
+	emptyTableSafe(self.Data)
 	self:RecreateButtons()
 end
 

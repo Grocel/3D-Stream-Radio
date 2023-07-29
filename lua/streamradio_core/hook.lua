@@ -74,7 +74,7 @@ local function BuildOrder(hookData)
 
 	local byOrder = table.ClearKeys(byName)
 
-	table.SortByMember(byOrder, "order")
+	table.SortByMember(byOrder, "order", true)
 
 	hookData.byOrder = byOrder
 end

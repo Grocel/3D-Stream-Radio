@@ -150,11 +150,6 @@ function CLASS:IsPlaylistEnabled()
 	return self.Player:IsPlaylistEnabled()
 end
 
-function CLASS:EnablePlaylist(bool)
-	self._showplaylist = bool
-	self.Player:EnablePlaylist(not self.Browser:IsSingleItem() and self._showplaylist)
-end
-
 function CLASS:UpdatePlaybackLoopMode(...)
 	self.Player:UpdatePlaybackLoopMode(...)
 end
@@ -192,7 +187,7 @@ function CLASS:ApplyNetworkVarsInternal()
 	self.State.PlayerOpened = self:GetNWBool("PlayerOpened", false)
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 
 	data.PlayerOpened = self.State.PlayerOpened
@@ -200,6 +195,6 @@ function CLASS:PreDupe(ent)
 	return data
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	self.State.PlayerOpened = data.PlayerOpened
 end

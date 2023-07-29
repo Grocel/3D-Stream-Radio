@@ -258,7 +258,7 @@ function CLASS:ActivateNetworkedMode()
 	self.State.Error = self:GetNWBool("Error", false)
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 	local path, ty = self:GetFile()
 
@@ -308,7 +308,7 @@ function CLASS:ApplaDataFromDupe()
 	self:CallHook("OnDupePlaylistApply")
 end
 
-function CLASS:PostDupe(ent, dupedata)
+function CLASS:PostDupe(dupedata)
 	local path = dupedata.Path
 	local type = dupedata.PathType
 

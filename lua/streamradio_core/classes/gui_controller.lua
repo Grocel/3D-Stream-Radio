@@ -13,6 +13,8 @@ local CursorMat = StreamRadioLib.GetCustomPNG("cursor")
 local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 local g_gui_controller_listengroup = 0
+local g_loadedAtDelay = engine.TickInterval() * 4
+local g_visuallyReadyAtDelay = 1
 
 function CLASS:AssignToListenGroup()
 	return self._gui_controller_listengroup
@@ -25,6 +27,11 @@ function CLASS:Create()
 	self:SetGlobalVar("gui_controller_listengroup", self._gui_controller_listengroup)
 
 	BASE.Create(self)
+
+	self.loadedAt = 0
+	self.visuallyReadyAt = 0
+	self.isReady = false
+	self.isLoading = false
 
 	self.Layout.AllowCursor = true
 
@@ -132,6 +139,9 @@ function CLASS:Create()
 
 	ResizeRT()
 	CalcSize()
+
+	self.CanListen = true
+	self:StartListen()
 
 	if CLIENT then
 		self:StartFastThink()
@@ -299,10 +309,12 @@ function CLASS:RenderSystem()
 	render.PushFilterMin(TEXFILTER.NONE)
 	render.PushFilterMag(TEXFILTER.NONE)
 
+	local now = RealTime()
 	local currentRenderAlpha = surface.GetAlphaMultiplier()
 	local drawAlpha = self:GetDrawAlpha()
 	local alpha = drawAlpha * currentRenderAlpha
 	local isTransparent = drawAlpha < 1
+	local ready = self.isReady and self.visuallyReadyAt < now
 
 	local oldtune = render.GetToneMappingScaleLinear( )
 	render.SetToneMappingScaleLinear(tune_nohdr) -- Turns off hdr
@@ -317,34 +329,40 @@ function CLASS:RenderSystem()
 		surface.SetAlphaMultiplier(currentRenderAlpha)
 	end
 
-	if self:HasRendertarget() then
-		surface.SetDrawColor(255, 255, 255, alpha * 255)
+	if ready then
+		if self:HasRendertarget() then
+			surface.SetDrawColor(255, 255, 255, alpha * 255)
 
-		catchAndErrorNoHaltWithStack(self._RT.Render, self._RT)
+			catchAndErrorNoHaltWithStack(self._RT.Render, self._RT)
 
-		surface.SetDrawColor(255, 255, 255, 255)
-		self.FrameTime = self._RT:ProfilerTime("Render")
-	else
-		self:ProfilerStart("Render_rtfallback")
+			surface.SetDrawColor(255, 255, 255, 255)
+			self.FrameTime = self._RT:ProfilerTime("Render")
+		else
+			self:ProfilerStart("Render_rtfallback")
+
+			if isTransparent then
+				surface.SetAlphaMultiplier(alpha)
+			end
+
+			catchAndErrorNoHaltWithStack(self._RenderInternal, self)
+
+			if isTransparent then
+				surface.SetAlphaMultiplier(currentRenderAlpha)
+			end
+
+			self.FrameTime = self:ProfilerEnd("Render_rtfallback")
+		end
 
 		if isTransparent then
 			surface.SetAlphaMultiplier(alpha)
 		end
-
-		catchAndErrorNoHaltWithStack(self._RenderInternal, self)
-
-		if isTransparent then
-			surface.SetAlphaMultiplier(currentRenderAlpha)
-		end
-
-		self.FrameTime = self:ProfilerEnd("Render_rtfallback")
 	end
 
-	if isTransparent then
-		surface.SetAlphaMultiplier(alpha)
+	if ready then
+		catchAndErrorNoHaltWithStack(self.DrawCursor, self)
+	else
+		catchAndErrorNoHaltWithStack(self.RenderLoader, self)
 	end
-
-	catchAndErrorNoHaltWithStack(self.DrawCursor, self)
 
 	if isTransparent then
 		surface.SetAlphaMultiplier(currentRenderAlpha)
@@ -388,6 +406,22 @@ function CLASS:DrawCursor()
 	surface.DrawTexturedRectUV(cx, cy, cw * cu, ch * cv, 0, 0, cu, cv)
 end
 
+function CLASS:RenderLoader()
+	local color = self.Colors.Cursor
+
+	local x, y = self:GetRenderPos()
+	local p = self:GetPadding()
+	x = x + p
+	y = y + p
+
+	local w, h = self:GetClientSize()
+
+	local sqmax, sqmin = math.max(w, h), math.min(w, h)
+	local isq = math.min(sqmax * 0.5, sqmin * 0.5)
+
+	StreamRadioLib.Surface.Loading( x + (w - isq) / 2, y + (h - isq) / 2, isq, isq, color, 8)
+end
+
 function CLASS:DrawBorder()
 	local borderw = self.Layout.BorderWidth or 0
 	if borderw <= 0 then return end
@@ -405,26 +439,58 @@ end
 
 function CLASS:OnContentChanged()
 	self._renderupdate = true
-	self:SetFastThinkNextCall(0)
+end
+
+function CLASS:PollLoading()
+	if not self.isLoading then
+		return
+	end
+
+	local now = RealTime()
+	local loadedAt = self.loadedAt or 0
+
+	if loadedAt > now then
+		return
+	end
+
+	self.loadedAt = now
+	self.isLoading = false
+
+	self:CallHook("OnLoadDone")
+
+	if not self.isReady then
+		self.isReady = true
+		self.visuallyReadyAt = now + g_visuallyReadyAtDelay
+
+		self:CallHook("OnReady")
+	end
+end
+
+function CLASS:Think()
+	self.thinkRate = 0.5
+
+	self:PollLoading()
+
+	if SERVER then
+		return
+	end
+
+	if not IsValid(self._RT) then return end
+	if not self:IsSeen() then return end
+
+	self.thinkRate = 0.1
+
+	self._RT:SetFramerate(StreamRadioLib.GetRenderTargetFPS())
+	self._RT:SetEnabled(StreamRadioLib.IsRenderTarget())
+
+	self:PosTooltipToCursor()
 end
 
 if CLIENT then
-	function CLASS:Think()
-		self.thinkRate = 0.5
-
-		if not IsValid(self._RT) then return end
-		if not self:IsSeen() then return end
-
-		self.thinkRate = 0.1
-
-		self._RT:SetFramerate(StreamRadioLib.RenderTargetFPS())
-		self._RT:SetEnabled(StreamRadioLib.IsRenderTarget())
-
-		self:PosTooltipToCursor()
-	end
-
 	function CLASS:FastThink()
-		self.fastThinkRate = 0.1
+		local isReady = self.isReady
+
+		self.fastThinkRate = isReady and 0.1 or 0.5
 
 		local isSeen = self:IsSeen()
 		local change = isSeen ~= self._isseen
@@ -438,7 +504,13 @@ if CLIENT then
 			if isSeen then
 				self:StartListenRecursive()
 			else
-				self:StopListenRecursive()
+				if not self.isReady then
+					-- make sure the gui controller never stops thinking if not maked as ready yet.
+					self.CanListen = true
+					self:StartListen()
+				else
+					self:StopListenRecursive()
+				end
 			end
 		end
 
@@ -524,7 +596,7 @@ function CLASS:SetBorderWidth(size)
 end
 
 function CLASS:IsSeen()
-	return SERVER or self.isseen
+	return SERVER or (self.isseen and self.isReady)
 end
 
 function CLASS:SetDebug(allowdebug)
@@ -641,19 +713,66 @@ end
 function CLASS:SetEntity(...)
 	BASE.SetEntity(self, ...)
 
-	if not IsValid(self._Skin) then return end
-	self._Skin:SetEntity(...)
+	if IsValid(self._Skin) then
+		self._Skin:SetEntity(...)
+	end
 end
 
-function CLASS:LoadFromDupe()
-	self:LoadFromDupeInternal()
+function CLASS:LoadToDupe(dupeTable)
+	if not SERVER then return end
+	if not istable(dupeTable) then return end
+
+	self:LoadToDupeInternal(dupeTable)
 
 	self:ForEachChildRecursive(function(this, child)
-		child:LoadFromDupeInternal()
+		child:LoadToDupeInternal(dupeTable)
 	end)
 
 	if IsValid(self._Skin) then
-		self._Skin:LoadFromDupeInternal()
+		self._Skin:LoadToDupeInternal(dupeTable)
+	end
+end
+
+function CLASS:LoadFromDupe(dupeTable)
+	if not SERVER then return end
+	if not istable(dupeTable) then return end
+
+	self:LoadFromDupeInternal(dupeTable)
+
+	self:ForEachChildRecursive(function(this, child)
+		child:LoadFromDupeInternal(dupeTable)
+	end)
+
+	if IsValid(self._Skin) then
+		self._Skin:LoadFromDupeInternal(dupeTable)
+	end
+end
+
+function CLASS:AddToNwRegister(nwRegister)
+	if not istable(nwRegister) then return end
+
+	self:AddToNwRegisterInternal(nwRegister)
+
+	self:ForEachChildRecursive(function(this, child)
+		child:AddToNwRegisterInternal(nwRegister)
+	end)
+
+	if IsValid(self._Skin) then
+		self._Skin:AddToNwRegisterInternal(nwRegister)
+	end
+end
+
+function CLASS:RemoveFromNwRegister(nwRegister)
+	if not istable(nwRegister) then return end
+
+	self:RemoveFromNwRegisterInternal(nwRegister)
+
+	self:ForEachChildRecursive(function(this, child)
+		child:RemoveFromNwRegisterInternal(nwRegister)
+	end)
+
+	if IsValid(self._Skin) then
+		self._Skin:RemoveFromNwRegisterInternal(nwRegister)
 	end
 end
 
@@ -674,4 +793,17 @@ function CLASS:OnModelSetup(setup)
 	if setup.borderwidth then
 		self:SetBorderWidth(setup.borderwidth)
 	end
+end
+
+function CLASS:OnPanelElementLoaded()
+	self.loadedAt = RealTime() + g_loadedAtDelay
+	self.isLoading = true
+end
+
+function CLASS:IsLoading()
+	return self.isLoading or false
+end
+
+function CLASS:IsReady()
+	return self.isReady or false
 end

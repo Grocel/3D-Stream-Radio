@@ -106,3 +106,14 @@ function StreamRadioLib.DecodeEditorErrorCode( err )
 
 	return errorText
 end
+
+StreamRadioLib.TAG_META = 0
+StreamRadioLib.TAG_HTTP = 1
+StreamRadioLib.TAG_ICY = 2
+StreamRadioLib.TAG_ID3 = 3
+StreamRadioLib.TAG_MF = 4
+StreamRadioLib.TAG_MP4 = 5
+StreamRadioLib.TAG_APE = 6
+StreamRadioLib.TAG_OGG = 7
+StreamRadioLib.TAG_VENDOR = 8
+

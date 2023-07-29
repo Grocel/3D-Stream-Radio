@@ -116,7 +116,7 @@ local function GetRendertargetName(w, h, index)
 	local name = string.format("3dstreamradio-rt_cls-%s_%ix%i_id-%i", g_classname, w, h, index)
 	name = string.lower(name or "")
 	name = string.Trim(name)
-	name = string.gsub(name, "[%s]", "_" )
+	name = string.gsub(name, "[%s\\.]", "_" )
 
 	return name
 end
@@ -296,11 +296,15 @@ function CLASS:CreateRendertarget()
 		return nil
 	end
 
+	-- No ENUMS for thise values are available in the game.
+	-- https://wiki.facepunch.com/gmod/Enums/TEXTUREFLAGS
+	local textureFlags = bit.bor(4, 8, 16, 32, 512, 2048, 8192, 32768)
+
 	local tex = GetRenderTargetEx(
 		name, w, h,
 		RT_SIZE_NO_CHANGE,
 		MATERIAL_RT_DEPTH_SEPARATE,
-		bit.bor(4, 8, 16, 32, 512, 2048, 8192, 32768),
+		textureFlags,
 		0,
 		IMAGE_FORMAT_RGBA8888
 	)
@@ -326,14 +330,11 @@ function CLASS:Update()
 
 	local now = SysTime()
 	local framerate = self.Settings.Framerate or 0
+	local min_rtframetime = 1 / math.max(framerate, 2)
+	local renderNextTime = self._renderNextTime or 0
 
-	if framerate > 0 then
-		local rtframetime = now - (self._rendertimestamp or 0)
-		local min_rtframetime = 1 / framerate
-
-		if rtframetime < min_rtframetime then
-			return false
-		end
+	if renderNextTime > now then
+		return false
 	end
 
 	local w, h = self:GetSize()
@@ -347,7 +348,7 @@ function CLASS:Update()
 	render.PopRenderTarget()
 	self:ProfilerEnd("Render")
 
-	self._rendertimestamp = now
+	self._renderNextTime = now + min_rtframetime
 	return true
 end
 

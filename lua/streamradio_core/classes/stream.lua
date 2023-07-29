@@ -31,6 +31,7 @@ local LIBBass = StreamRadioLib.Bass
 local LIBError = StreamRadioLib.Error
 
 local BASE = CLASS:GetBaseClass()
+local g_maxSongLenForCache = 60 * 60 * 1.5 // 1.5 Hours
 
 local function LoadBass()
 	local hasBass = LIBBass.LoadDLL()
@@ -46,7 +47,15 @@ local function ChannelIsCacheAble( channel )
 	if not IsValid( channel ) then return false end
 
 	local len = channel:GetLength( )
-	return len > 0
+	if len <= 0 then
+		return false
+	end
+
+	if len > g_maxSongLenForCache then
+		return false
+	end
+
+	return true
 end
 
 local function ChannelStop( channel )
@@ -789,7 +798,7 @@ function CLASS:UpdateChannelPlayMode()
 	end
 
 	if playmode == StreamRadioLib.STREAM_PLAYMODE_PLAY_RESTART then
-		self:SetTime(0, true)
+		self:SetTime(0)
 		self.Channel:Play()
 		self.State.PlayMode = StreamRadioLib.STREAM_PLAYMODE_PLAY
 		return
@@ -848,12 +857,14 @@ function CLASS:ToString()
 		return r
 	end
 
-	local channel = tostring(self:GetChannel() or "no channel")
+	local channel = self:GetChannel()
+	local channelStr = tostring(channel or "no channel")
 
 	local err = self:GetError()
-	local errName = LIBError.GetStreamErrorName(err)
+	local errName = LIBError.GetStreamErrorName(err) or ""
 
-	return string.format("%s <%s> [err: %i, %s]", r, channel, err, errName)
+	local str = string.format("%s <%s> [err: %i, %s]", r, channelStr, err, errName)
+	return str
 end
 
 function CLASS:__eq( other )
@@ -957,27 +968,12 @@ function CLASS:Reconnect()
 		return false
 	end
 
-	self:TimerRemove("stream")
+	local loading = self:PlayStreamInternal()
 
-	local playfunc = function()
-		if not self:StillSearching() then
-			return false
-		end
-
-		local loading = self:PlayStreamInternal()
-
-		if not loading then
-			self:AcceptStream( nil, -1 )
-			return false
-		end
-
-		return true
+	if not loading then
+		self:AcceptStream( nil, -1 )
+		return false
 	end
-
-	-- Avoid many connection requests starting at once by adding a random delay
-	local loadBalanceTimeout = 0.25 + math.random() * 0.75
-
-	self:TimerOnce("stream", loadBalanceTimeout, playfunc)
 
 	return true
 end
@@ -1058,83 +1054,102 @@ function CLASS:PlayStreamInternal(nodownload)
 		self:PlayStreamInternal(true)
 	end
 
-	local tryconverting = StreamRadioLib.Interface.Convert(URL, function(interface, success, convered_url, errorcode, data)
+	-- Avoid many connection requests starting at once by adding a random delay
+	local loadBalanceTimeout = 0.25 + math.random() * 0.75
+
+	self:TimerOnce("stream", loadBalanceTimeout, function()
 		if not IsValid(self) then return end
 		if not self:StillSearching() then return end
 
-		if not success then
-			if not errorcode then return end
+		local tryconverting = StreamRadioLib.Interface.Convert(URL, function(interface, success, convered_url, errorcode, data)
+			if not IsValid(self) then return end
+			if not self:StillSearching() then return end
 
-			self:AcceptStream(nil, errorcode)
-			return
-		end
+			if not success then
+				if not errorcode then return end
 
-		local converter_meta = data.custom_data.meta or {}
-		local converter_name = nil
-
-		if converter_meta.interface then
-			converter_name = converter_meta.interface and converter_meta.interface.name
-
-			if converter_meta.subinterface then
-				converter_name = converter_name .. "/" .. converter_meta.subinterface.name
-			end
-		end
-
-		self.Metadata = {
-			title = converter_meta.title,
-			filesize = converter_meta.filesize,
-			converter_name = converter_name,
-		}
-
-		if not nodownload and interface.download then
-			local dltimeout = interface.download_timeout or 0
-			local filesize = -1
-			local allowdl = true
-
-			if data.custom_data.meta then
-				filesize = data.custom_data.meta.filesize or -1
-				allowdl = data.custom_data.meta.download or false
+				self:AcceptStream(nil, errorcode)
+				return
 			end
 
-			local CanDownload = allowdl and StreamRadioLib.Cache.CanDownload(filesize) and self:CallHook("OnDownload", URL, interface)
+			local converter_meta = data.custom_data.meta or {}
+			local converter_name = nil
 
-			if CanDownload then
-				self._converter_downloads = self._converter_downloads or {}
-				self._converter_downloads[URL] = true
-				self._wouldpredownload = true
+			if converter_meta.interface then
+				converter_name = converter_meta.interface and converter_meta.interface.name
 
-				self:TimerRemove("download_after")
-				self:TimerRemove("download_timeout")
+				if converter_meta.subinterface then
+					converter_name = converter_name .. "/" .. converter_meta.subinterface.name
+				end
+			end
 
-				if dltimeout > 0 then
-					self:TimerOnce("download_timeout", dltimeout, function()
-						self:TimerRemove("download_after")
-						afterdl()
-					end)
+			self.Metadata = {
+				title = converter_meta.title,
+				filesize = converter_meta.filesize,
+				converter_name = converter_name,
+			}
+
+			if not nodownload and interface.download then
+				local dltimeout = interface.download_timeout or 0
+				local filesize = -1
+				local allowdl = true
+
+				if data.custom_data.meta then
+					filesize = data.custom_data.meta.filesize or -1
+					allowdl = data.custom_data.meta.download or false
 				end
 
-				local dlstarted = StreamRadioLib.Cache.Download(convered_url, function(len, headers, code, saved)
-					self:TimerOnce("download_after", 0.5, function()
-						self:TimerRemove("download_timeout")
-						afterdl()
-					end)
-				end, URL)
+				local CanDownload = allowdl and StreamRadioLib.Cache.CanDownload(filesize) and self:CallHook("OnDownload", URL, interface)
 
-				if dlstarted then
-					return
+				if CanDownload then
+					self._converter_downloads = self._converter_downloads or {}
+					self._converter_downloads[URL] = true
+					self._wouldpredownload = true
+
+					self:TimerRemove("download_after")
+					self:TimerRemove("download_timeout")
+
+					if dltimeout > 0 then
+						self:TimerOnce("download_timeout", dltimeout, function()
+							self:TimerRemove("download_after")
+							afterdl()
+						end)
+					end
+
+					local dlstarted = StreamRadioLib.Cache.Download(convered_url, function(len, headers, code, saved)
+						self:TimerOnce("download_after", 0.5, function()
+							self:TimerRemove("download_timeout")
+							afterdl()
+						end)
+					end, URL)
+
+					if dlstarted then
+						return
+					end
+
+					self._converter_downloads[URL] = nil
+					self:TimerRemove("download_after")
+					self:TimerRemove("download_timeout")
 				end
+			end
 
-				self._converter_downloads[URL] = nil
-				self:TimerRemove("download_after")
-				self:TimerRemove("download_timeout")
+			local loading = self:_PlayStreamInternal(convered_url, StreamRadioLib.STREAM_URLTYPE_ONLINE_NOCACHE)
+
+			if not loading then
+				self:AcceptStream( nil, -1 )
+			end
+		end)
+
+		if not tryconverting then
+			local loading = self:_PlayStreamInternal(URL, URLtype)
+
+			if not loading then
+				self:AcceptStream( nil, -1 )
 			end
 		end
-
-		self:_PlayStreamInternal(convered_url, StreamRadioLib.STREAM_URLTYPE_ONLINE_NOCACHE)
 	end)
 
-	if tryconverting then return true end
-	return self:_PlayStreamInternal(URL, URLtype)
+	return true
 end
 
 function CLASS:_PlayStreamInternal(URL, URLtype, no3d, noBlock, retrycount)
@@ -1224,16 +1239,16 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, noBlock, retrycount)
 					self:TimerOnce("stream", URLonline and 2 or 0, function()
 						if not IsValid( self ) then return end
 						if not self:StillSearching() then return end
-	
+
 						local loading = self:_PlayStreamInternal( URL, URLtype, true, false )
 						if not loading then
 							self:AcceptStream( nil, -1 )
 						end
 					end)
-	
+
 					return
 				end
-			end	
+			end
 		end
 
 		if not ChannelIsCacheAble(channel) then
@@ -1520,11 +1535,13 @@ function CLASS:GetRealTime()
 	if not IsValid( self.Channel ) then return 0 end
 
 	local time = self.Channel:GetTime() or 0
+	local length = self.Channel:GetLength()
 
-	if time < 0 then
-		time = 0
+	if length > 0 then
+		time = math.min(time, length)
 	end
 
+	time = math.max(time, 0)
 	return time
 end
 
@@ -1595,9 +1612,14 @@ function CLASS:GetTime()
 	if not IsValid( self.Channel ) then return 0 end
 
 	local time = self:GetRealTime()
+	local length = self:GetLength()
 
 	if self:IsEndless() then
 		time = time + self.TimeOffset
+	end
+
+	if length > 0 then
+		time = math.min(time, length)
 	end
 
 	time = math.max(time, 0)
@@ -1721,7 +1743,7 @@ function CLASS:_SetTimeToTargetInternal()
 	end
 
 	-- avoid game hiccup during track seeking
-	self:TimerUtil("SetTimeToTargetInternal", 0.001, seakToFunc)
+	self:TimerUntil("SetTimeToTargetInternal", 0.001, seakToFunc)
 	seakToFunc()
 end
 
@@ -1854,7 +1876,7 @@ function CLASS:_IsSeekingInternal()
 end
 
 function CLASS:IsSeeking()
-	if not self.Valid then return end
+	if not self.Valid then return false end
 	return self._isseeking or false
 end
 
@@ -1868,17 +1890,96 @@ function CLASS:GetMuted()
 	return self.State.Muted or false
 end
 
+local function getTagsMetaAsTable(channel)
+	local data = channel:GetTagsMeta()
+	if not data then
+		return nil
+	end
+
+	local result = {}
+
+	data = string.Trim(data)
+
+	for k, v in string.gmatch(data, "([%w_]+)%s*=%s*'(.+)';") do
+		k = string.lower(k)
+		result[k] = v
+	end
+
+	return result
+end
+
+local g_tagFunctionMap = {
+	[StreamRadioLib.TAG_META] = getTagsMetaAsTable,
+	[StreamRadioLib.TAG_HTTP] = "GetTagsHTTP",
+	[StreamRadioLib.TAG_ID3] = "GetTagsID3",
+	[StreamRadioLib.TAG_OGG] = "GetTagsOGG",
+	[StreamRadioLib.TAG_VENDOR] = "GetTagsVendor",
+}
+
 function CLASS:GetTag(tag)
-	if not self.Valid then return nil end
-	if not self.State.HasBass then return nil end
-	if not IsValid(self.Channel) then return nil end
-	if not tag then return nil end
+	if not self.Valid then
+		return nil
+	end
+
+	local channel = self.Channel
+	if not IsValid(channel) then
+		return nil
+	end
 
 	self._tags = self._tags or {}
-	self._tags[tag] = self._tags[tag] or {}
 
-	return self.Channel:GetTag(tag, self._tags[tag])
+	local tab = self._tags[tag] or {}
+	self._tags[tag] = tab
+
+	local data = tab.data or {}
+	tab.data = data
+
+	local nextCall = tab.nextCall or 0
+
+	local now = RealTime()
+	if nextCall > now then
+		return data
+	end
+
+	tab.nextCall = now + 1
+
+	if self.State.HasBass then
+		channel:GetTag(tag, data)
+		return data
+	end
+
+	local func = g_tagFunctionMap[tag]
+
+	if isstring(func) then
+		func = channel[func]
+	end
+
+	if not func then
+		return nil
+	end
+
+	local result = func(channel)
+	if not result then
+		return nil
+	end
+
+	table.CopyFromTo(result, data)
+	return result
 end
+
+function CLASS:GetMetaTags()
+	if not self.Valid then
+		return nil
+	end
+
+	local data = self:GetTag(StreamRadioLib.TAG_META)
+	if not data then
+		return nil
+	end
+
+	return data
+end
+
 
 function CLASS:GetSamplingRate()
 	if not self.Valid then return -1 end
@@ -2379,7 +2480,7 @@ function CLASS:GetBarFrequency( index, size, samplerate )
 	return (index - 1) / (size * 2) * samplerate
 end
 
-function CLASS:PreDupe(ent)
+function CLASS:PreDupe()
 	local data = {}
 
 	data.url = self:GetURL()
@@ -2392,7 +2493,7 @@ function CLASS:PreDupe(ent)
 	return data
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	self:SetURL(StreamRadioLib.Util.FilterCustomURL(data.url))
 
 	self:SetStreamName(data.streamname)

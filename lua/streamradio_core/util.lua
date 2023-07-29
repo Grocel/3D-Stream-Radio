@@ -7,9 +7,15 @@ local LIBNetURL = StreamRadioLib.NetURL
 
 function LIB.IsDebug()
 	local devconvar = GetConVar("developer")
-	if not devconvar then return end
+	if not devconvar then
+		return false
+	end
 
-	return devconvar:GetInt() > 0
+	if devconvar:GetInt() <= 0 then
+		return false
+	end
+
+	return true
 end
 
 function LIB.GameIsPaused()

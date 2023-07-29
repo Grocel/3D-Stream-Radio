@@ -29,7 +29,7 @@ function LIB.Once(identifier, delay, func)
 	end)
 end
 
-function LIB.Util(identifier, delay, func)
+function LIB.Until(identifier, delay, func)
 	if not isfunction(func) then return end
 	local name = LIB.GetName(identifier)
 

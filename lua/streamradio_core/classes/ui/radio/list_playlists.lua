@@ -54,7 +54,7 @@ function CLASS:_BuildListInternalAsyc(uid, files)
 	self:QueueCall("RestoreScrollPos")
 end
 
-function CLASS:PostDupe(ent, data)
+function CLASS:PostDupe(data)
 	if StreamRadioLib.Filesystem.Exists(data.Path, StreamRadioLib.TYPE_FOLDER) then
 		self:SetPath(data.Path)
 	else

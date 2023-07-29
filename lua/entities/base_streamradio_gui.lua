@@ -55,8 +55,18 @@ function ENT:CalcDisplayPosAngWorld()
 end
 
 function ENT:CanControlInternal(ply, userEntity)
-	if self:GetDisableInput() then return false end
 	if self.DisplayLess then return false end
+	if self:GetDisableInput() then return false end
+
+	local GUI = self.GUI
+
+	if not IsValid(GUI) then
+		return false
+	end
+
+	if not GUI:IsReady() then
+		return false
+	end
 
 	-- Check the player for +use permission
 	if not StreamRadioLib.CheckPropProtectionAgainstUse(self, ply) then
@@ -273,6 +283,8 @@ function ENT:RemoveGui()
 	self.GUI_Main = nil
 
 	if hasGui then
+		tmpGui.OnLoadDone = nil
+		tmpGui.OnReady = nil
 		tmpGui:Remove()
 		tmpGui = nil
 	end
@@ -283,61 +295,91 @@ function ENT:RemoveGui()
 	end
 end
 
-function ENT:SetupGui()
+function ENT:SetupGui(callback)
 	if not IsValid(self.GUI) then
 		self.GUI = StreamRadioLib.CreateOBJ("gui_controller")
 	end
 
-	self.GUI:SetName("gui")
-	self.GUI:SetNWName("g")
-	self.GUI:SetEntity(self)
-	self.GUI:ActivateNetworkedMode()
+	local GUI = self.GUI
 
-	if StreamRadioLib.Util.IsDebug() then
+	GUI:SetName("gui")
+	GUI:SetNWName("g")
+	GUI:SetEntity(self)
+	GUI:ActivateNetworkedMode()
+
+	if self:IsDebug() then
 		self:SetEnableDebug(true)
 	end
 
-	self.GUI:SetDebug(self:GetEnableDebug())
+	GUI:SetDebug(self:GetEnableDebug())
 
 	if not IsValid(self.GUI_Main) then
 		self.GUI_Main = self.GUI:AddPanelByClassname("radio/gui_main")
 	end
 
-	self.GUI_Main:SetPos(0, 0)
-	self.GUI_Main:SetName("main")
-	self.GUI_Main:SetNWName("m")
-	self.GUI_Main:SetSkinIdentifyer("main")
-	self.GUI_Main:SetStream(self.StreamObj)
+	local GUI_Main = self.GUI_Main
 
-	self.GUI_Main.OnToolButtonClick = function(this)
+	GUI_Main:SetPos(0, 0)
+	GUI_Main:SetName("main")
+	GUI_Main:SetNWName("m")
+	GUI_Main:SetSkinIdentifyer("main")
+	GUI_Main:SetStream(self.StreamObj)
+
+	GUI_Main.OnToolButtonClick = function(this)
 		if not IsValid(self) then return end
 		self:OnToolButtonClick()
 	end
 
-	self.GUI_Main.OnWireButtonClick = function(this)
+	GUI_Main.OnWireButtonClick = function(this)
 		if not IsValid(self) then return end
 		self:OnWireButtonClick()
 	end
 
-	self.GUI_Main.OnPlayerClosed = function(this)
+	GUI_Main.OnPlayerClosed = function(this)
 		if not IsValid(self) then return end
 		self:OnPlayerClosed()
 	end
 
-	self.GUI_Main.OnPlayerShown = function(this)
+	GUI_Main.OnPlayerShown = function(this)
 		if not IsValid(self) then return end
 		self:OnPlayerShown()
 	end
 
 	local model = self:GetModel()
 	self:CallModelFunction("InitializeFonts", model)
-	self:CallModelFunction("SetupGUI", self.GUI, self.GUI_Main)
+	self:CallModelFunction("SetupGUI", GUI, GUI_Main)
 
-	self.GUI:SetSkin(LIBSkin.GetDefaultSkin())
-	self.GUI:PerformRerender(true)
+	GUI:SetSkin(LIBSkin.GetDefaultSkin())
+	GUI:PerformRerender(true)
+
+	GUI.OnReady = function()
+		GUI.OnReady = nil
+
+		local THIS_GUI = self.GUI
+		local THIS_GUI_Main = self.GUI_Main
+
+		if not IsValid(self) then
+			return
+		end
+
+		if not IsValid(THIS_GUI) then
+			return
+		end
+
+		if not IsValid(THIS_GUI_Main) then
+			return
+		end
+
+		self:AddObjToNwRegister(THIS_GUI)
+		self:CallModelFunction("OnGUIReady", GUI, GUI_Main)
+
+		if self.OnGUIReady then
+			self:OnGUIReady(THIS_GUI, THIS_GUI_Main)
+		end
+	end
 
 	if self.OnGUISetup then
-		self:OnGUISetup(self.GUI, self.GUI_Main)
+		self:OnGUISetup(GUI, GUI_Main)
 	end
 end
 
@@ -388,10 +430,10 @@ function ENT:PollGuiSetup()
 		return
 	end
 
+	-- delay the GUI rebuild in case many newly spawned radios are seen at once
 	if SysTime() > g_displayBuildTimer then
 		self:SetupGui()
 
-		-- delay the GUI rebuild in case many newly spawned radios are seen at once
 		g_displayBuildTimer = SysTime() + 0.2
 	end
 end
@@ -418,14 +460,19 @@ end
 function ENT:ControlThink(ply, userEntity)
 	local GUI = self.GUI
 
-	if not IsValid(GUI) then return end
-	if not IsValid(ply) then return end
+	if not IsValid(GUI) then
+		return
+	end
 
 	local pos, ang = self:CalcDisplayPosAngWorld()
 
 	if CLIENT and self:ShowDebug() then
 		debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
 		debugoverlay.EntityTextAtPosition(pos, 1, "Display pos", 0.05, color_white)
+	end
+
+	if not IsValid(ply) then
+		return
 	end
 
 	local Cursor, CursorX, CursorY = self:GetCursor(ply, nil, userEntity)
@@ -590,10 +637,14 @@ function ENT:OnModelSetup()
 	-- Override me
 end
 
-function ENT:OnGUISetup()
-	if self._postClasssystemPasteLoadDupeOnGUISetup then
-		self:PostClasssystemPaste()
+function ENT:OnGUIReady()
+	if SERVER and self._postClasssystemPasteLoadDupeOnGUIReady then
+		self:ReapplyClasssystemPaste()
 	end
+end
+
+function ENT:OnGUISetup(GUI, GUI_Main)
+	-- Override me
 end
 
 function ENT:OnGUIRemove()
@@ -630,7 +681,7 @@ if CLIENT then
 
 		local pos = self.DisplayPos
 		if not pos then return false end
-	
+
 		local ang = self.DisplayAng
 		if not ang then return false end
 
@@ -701,7 +752,9 @@ if CLIENT then
 
 		self:PollGuiSetup()
 
-		if not IsValid(self.GUI) then
+		local GUI = self.GUI
+
+		if not IsValid(GUI) then
 			return
 		end
 
@@ -724,15 +777,15 @@ if CLIENT then
 		local Cursor, CursorX, CursorY = self:GetCursorFromLastUser()
 
 		local col = self:GetColor()
-		self.GUI:SetAllowCursor(StreamRadioLib.IsCursorEnabled())
-		self.GUI:SetDrawAlpha(col.a / 255)
+		GUI:SetAllowCursor(StreamRadioLib.IsCursorEnabled())
+		GUI:SetDrawAlpha(col.a / 255)
 
 		if Cursor or not IsValid(lastUser) then
-			self.GUI:SetCursor(CursorX or -1, CursorY or -1)
+			GUI:SetCursor(CursorX or -1, CursorY or -1)
 		end
 
 		cam.Start3D2D( pos, ang, scale )
-			self.GUI:RenderSystem()
+			GUI:RenderSystem()
 		cam.End3D2D( )
 	end
 
@@ -767,7 +820,16 @@ if CLIENT then
 else
 	function ENT:Use(activator, ...)
 		if not g_isWiremodLoaded then return false end
-		if not IsValid(self.GUI) then return false end
+
+		local GUI = self.GUI
+
+		if not IsValid(GUI) then
+			return false
+		end
+
+		if not GUI:IsReady() then
+			return false
+		end
 
 		if not IsValid(activator) then
 			return false
@@ -799,32 +861,39 @@ else
 		data.GUI_Main = nil
 	end
 
-	function ENT:PostClasssystemPaste()
+	function ENT:PostClasssystemPaste(data)
+		if not IsValid(self.StreamObj) then
+			return
+		end
+
+		if not self._postClasssystemPasteBaseCalled then
+			BaseClass.PostClasssystemPaste(self, data)
+			self._postClasssystemPasteBaseCalled = true
+		end
+
 		if self.DisplayLess then
-			BaseClass.PostClasssystemPaste(self)
 			return
 		end
 
 		if not IsValid(self.GUI) then
-			self._postClasssystemPasteLoadDupeOnGUISetup = true
+			self._postClasssystemPasteLoadDupeOnGUIReady = true
 			return
 		end
 
-		self._postClasssystemPasteLoadDupeOnGUISetup = nil
+		if self.GUI:IsLoading() then
+			self._postClasssystemPasteLoadDupeOnGUIReady = true
+			return
+		end
 
-		timer.Simple(engine.TickInterval() * 18, function()
-		 	if not IsValid(self) then return end
+		self._postClasssystemPasteLoadDupeOnGUIReady = nil
+		self.GUI:LoadFromDupe(data)
+	end
 
-			BaseClass.PostClasssystemPaste(self)
-			if self.DisplayLess then
-				return
-			end
+	function ENT:PreClasssystemCopy(data)
+		BaseClass.PreClasssystemCopy(self, data)
 
-			if not IsValid(self.GUI) then
-				return
-			end
-
-		 	self.GUI:LoadFromDupe()
-		end)
+		if IsValid(self.GUI) then
+			self.GUI:LoadToDupe(data)
+		end
 	end
 end

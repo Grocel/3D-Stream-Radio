@@ -3,8 +3,8 @@ local StreamRadioLib = StreamRadioLib
 StreamRadioLib.Cache = StreamRadioLib.Cache or {}
 local LIB = StreamRadioLib.Cache
 
-local g_forbidden = StreamRadioLib.Util.CreateCacheArray(16)
-local g_lastloaded = StreamRadioLib.Util.CreateCacheArray(4096)
+local g_forbidden = StreamRadioLib.Util.CreateCacheArray(256)
+local g_lastloaded = StreamRadioLib.Util.CreateCacheArray(16)
 
 StreamRadioLib.Hook.Add("PostCleanupMap", "reset_cache_download_cache", function()
 	g_forbidden:Empty()
@@ -277,22 +277,27 @@ local function GetContentType( headers )
 	return contenttype, maintype, subtype
 end
 
-function LIB.CanDownload( len )
+function LIB.CanDownload( filesize )
 	if SERVER and not g_isDedicatedServer then
 		return false
 	end
 
-	len = tonumber(len or 0) or 0
+	filesize = tonumber(filesize or 0) or 0
 
-	if len > g_maxCacheSize then
+	if filesize == -1 then
+		-- we don't know the file size yet
+		return true
+	end
+
+	if filesize > g_maxCacheSize then
 		return false
 	end
 
-	if len > g_maxFileSize then
+	if filesize > g_maxFileSize then
 		return false
 	end
 
-	if len < g_minFileSize then
+	if filesize < g_minFileSize then
 		-- small files are likly not real sound files
 		return false
 	end
@@ -362,11 +367,21 @@ function LIB.Download(url, callback, saveas_url)
 			return
 		end
 
+		if len == -1 then
+			-- still unknown sizes can't be cached
+			g_lastloaded:Remove(cacheid)
+			g_forbidden:Set(cacheid, true)
+
+			callback(queueurl, len, headers, -1, false)
+			return
+		end
+
 		if not LIB.CanDownload(len) then
 			g_lastloaded:Remove(cacheid)
 			g_forbidden:Set(cacheid, true)
 
 			callback(queueurl, len, headers, -1, false)
+			return
 		end
 
 		local saved = Cache_Save(queueurl, data.body)

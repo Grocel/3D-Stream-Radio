@@ -189,10 +189,9 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 
 	timer.Simple(0.05, function()
 		if not IsValid(ent) then return end
-		if not ent._3dstreamradio_classobjs_data then return end
-		if not ent.PostClasssystemPaste then return end
+		if not ent.ReapplyClasssystemPaste then return end
 
-		ent:PostClasssystemPaste()
+		ent:ReapplyClasssystemPaste()
 	end)
 
 	return ent

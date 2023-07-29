@@ -77,7 +77,7 @@ local function printBass3Info()
 		message
 	)
 
-	--StreamRadioLib.Print.Wrapped(message) --@TODO
+	-- StreamRadioLib.Print.Wrapped(message) -- @TODO: Rewrite the GM_BASS3 print.
 end
 
 local function onLoadBASS3()

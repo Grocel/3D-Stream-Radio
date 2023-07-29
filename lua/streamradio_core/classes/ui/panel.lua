@@ -51,7 +51,8 @@ function CLASS:Create()
 	end
 
 	local recache = function(this)
-		this._ChildrenPanelsSorted = nil
+		emptyTableSafe(this._ChildrenPanelsSorted)
+
 		this:DelCacheValue("IsVisible")
 		this:DelCacheValue("GetClickPanel")
 		this:DelCacheValue("GetPanelsAtCursor")
@@ -105,7 +106,7 @@ function CLASS:Create()
 	end)
 
 	self._ChildrenPanels = {}
-	self._ChildrenPanelsSorted = nil
+	self._ChildrenPanelsSorted = {}
 
 	self.Parent = nil
 	self.SuperParent = self
@@ -143,7 +144,6 @@ function CLASS:Initialize()
 	self:DelCacheValue("GetTopmostPanelAtCursor")
 
 	self:ApplyHierarchy()
-	self:RegisterForDupe()
 end
 
 function CLASS:Remove(childmode)
@@ -152,7 +152,7 @@ function CLASS:Remove(childmode)
 	end)
 
 	emptyTableSafe(self._ChildrenPanels)
-	self._ChildrenPanelsSorted = nil
+	emptyTableSafe(self._ChildrenPanelsSorted)
 
 	if childmode then
 		BASE.Remove(self)
@@ -301,11 +301,42 @@ function CLASS:StopListenRecursive()
 end
 
 function CLASS:_SortPanels()
-	if not self.Valid then return end
-	if self._ChildrenPanelsSorted then return end
+	if not self.Valid then
+		return
+	end
+
+	local childrenPanels = self._ChildrenPanels
+	local childrenPanelsSorted = self._ChildrenPanelsSorted
+
+	if not childrenPanels or table.IsEmpty(childrenPanels) then
+		-- we don't have child panels
+
+		if not childrenPanelsSorted or #childrenPanelsSorted <= 0 then
+			-- we already "sorted" the empty table
+			return
+		end
+
+		-- we "sort" the empty table
+
+		emptyTableSafe(childrenPanelsSorted)
+
+		local superparent = self:GetSuperParent()
+		if IsValid(superparent) then
+			superparent:QueueCall("OnPanelElementLoaded")
+		end
+
+		return
+	end
+
+	if childrenPanelsSorted and #childrenPanelsSorted > 0 then
+		-- we have child panels and we sorted them already
+		return
+	end
+
+	-- we have child panels, but we didn't sorted them yet
 
 	local tmp = {}
-	for _, panel in pairs(self._ChildrenPanels) do
+	for _, panel in pairs(childrenPanels) do
 		if not IsValid(panel) then continue end
 		if panel == self then continue end
 		if panel:GetParent() ~= self then continue end
@@ -331,9 +362,14 @@ function CLASS:_SortPanels()
 		return a:GetID() > b:GetID()
 	end)
 
-	self._ChildrenPanelsSorted = {}
+	emptyTableSafe(childrenPanelsSorted)
 	for _, panel in pairs(tmp) do
-		table.insert(self._ChildrenPanelsSorted, panel)
+		table.insert(childrenPanelsSorted, panel)
+	end
+
+	local superparent = self:GetSuperParent()
+	if IsValid(superparent) then
+		superparent:QueueCall("OnPanelElementLoaded")
 	end
 end
 
@@ -345,7 +381,7 @@ function CLASS:AddPanel(panel, strong_composition)
 	if IsValid(self._ChildrenPanels[id]) then return self._ChildrenPanels[id] end
 
 	self._ChildrenPanels[id] = panel
-	self._ChildrenPanelsSorted = nil
+	emptyTableSafe(self._ChildrenPanelsSorted)
 
 	panel:SetParent(self)
 	panel:ApplyHierarchy()
@@ -356,6 +392,7 @@ function CLASS:AddPanel(panel, strong_composition)
 
 	self:QueueCall("_SetSkinAfterAddedPanel")
 	self:QueueCall("_SetModelSetupAfterAddedPanel")
+
 	return panel
 end
 
@@ -375,7 +412,7 @@ function CLASS:RemovePanel(panel)
 	panel:ApplyHierarchy()
 
 	self._ChildrenPanels[id] = nil
-	self._ChildrenPanelsSorted = nil
+	emptyTableSafe(self._ChildrenPanelsSorted)
 
 	if panel._strong_composition then
 		panel:Remove()
@@ -394,7 +431,7 @@ function CLASS:Clear()
 	self:ForEachChild("RemovePanel")
 
 	emptyTableSafe(self._ChildrenPanels)
-	self._ChildrenPanelsSorted = nil
+	emptyTableSafe(self._ChildrenPanelsSorted)
 
 	self:InvalidateLayout(true)
 end
@@ -407,7 +444,7 @@ function CLASS:ClearInvisible()
 		self:RemovePanel(panel)
 	end)
 
-	self._ChildrenPanelsSorted = nil
+	emptyTableSafe(self._ChildrenPanelsSorted)
 	self:InvalidateLayout(true)
 end
 
@@ -485,8 +522,8 @@ function CLASS:ForEachChild(func, reverse)
 	end
 
 	if invalid then
-		self._ChildrenPanelsSorted = nil
-		self:_SortPanels(true)
+		emptyTableSafe(self._ChildrenPanelsSorted)
+		self:_SortPanels()
 	end
 
 	return nil
@@ -501,12 +538,14 @@ function CLASS:ForEachChildRecursive(func, reverse)
 	local nodouble = {}
 
 	local function recursive(this, child)
-		if nodouble[child] then
+		local cid = child:GetID()
+
+		if nodouble[cid] then
 			return
 		end
 
 		local rv = func(self, child)
-		nodouble[child] = true
+		nodouble[cid] = true
 
 		if rv ~= nil then
 			return rv
@@ -545,7 +584,7 @@ function CLASS:GetPanelsBySkinIdentifyer(name)
 	local maxlevel = #name
 	local panels = {}
 
-	local function recusive(thispanel, level)
+	local function recursive(thispanel, level)
 		if not IsValid(thispanel) then return end
 
 		local thisname = name[level] or ""
@@ -559,11 +598,11 @@ function CLASS:GetPanelsBySkinIdentifyer(name)
 		if not thispanel._panelmap.skin then return end
 
 		for k, panel in pairs(thispanel._panelmap.skin[thisname] or {}) do
-			recusive(panel, level + 1)
+			recursive(panel, level + 1)
 		end
 	end
 
-	recusive(self, 1)
+	recursive(self, 1)
 
 	return panels
 end
@@ -991,7 +1030,7 @@ function CLASS:CalcSuperParent()
 	end)
 
 	self.SuperParent = superparent
-	return self.SuperParent
+	return superparent
 end
 
 function CLASS:SetTooltip(text)
@@ -1115,9 +1154,17 @@ end
 
 function CLASS:HasChildren()
 	self:_SortPanels()
-	if not self._ChildrenPanelsSorted then return false end
 
-	return #self._ChildrenPanelsSorted > 0
+	local childrenPanelsSorted = self._ChildrenPanelsSorted
+	if not childrenPanelsSorted then
+		return false
+	end
+
+	if #childrenPanelsSorted <= 0 then
+		return false
+	end
+
+	return true
 end
 
 function CLASS:IsSeen()
@@ -1230,6 +1277,20 @@ function CLASS:ApplyHierarchy()
 	self:CalcSkinIdentifyer()
 end
 
+function CLASS:GetReferenceClassobjsNWRegister()
+	local superparent = self:GetSuperParent()
+	return superparent.entityClassobjsNwRegister
+end
+
+function CLASS:SetReferenceClassobjsNWRegister(nwRegister)
+	if not istable(nwRegister) then
+		return
+	end
+
+	local superparent = self:GetSuperParent()
+	superparent.entityClassobjsNwRegister = nwRegister
+end
+
 function CLASS:GetEntity()
 	local superparent = self:GetSuperParent()
 	return superparent.Entity
@@ -1239,22 +1300,10 @@ function CLASS:SetEntity(ent)
 	self:ApplyHierarchy()
 
 	local superparent = self:GetSuperParent()
-	local oldent = self:GetEntity()
-	local name = self:GetName()
-	local nwname = self:GetNWName()
-
-	if IsValid(oldent) then
-		if oldent._3dstreamradio_classobjs then
-			oldent._3dstreamradio_classobjs[name] = nil
-		end
-
-		if oldent._3dstraemradio_classobjs_nw_register then
-			oldent._3dstraemradio_classobjs_nw_register[nwname] = nil
-		end
-	end
 
 	superparent.Entity = ent
-	self:RegisterForDupe()
+	superparent:SetReferenceClassobjsNWRegister(ent._3dstraemradio_classobjs_nw_register)
+
 	self:ApplyNetworkedMode()
 end
 
@@ -1264,14 +1313,7 @@ function CLASS:SetName(name)
 	name = tostring(name or "")
 	name = string.gsub(name, "[%/%\\%s]", "_")
 
-	local ent = self:GetEntity()
 	local oldname = self:GetName()
-
-	if IsValid(ent) then
-		if ent._3dstreamradio_classobjs then
-			ent._3dstreamradio_classobjs[oldname] = nil
-		end
-	end
 
 	self.Name = name
 	self:CalcName()
@@ -1283,8 +1325,6 @@ function CLASS:SetName(name)
 		parent._panelmap.names[oldname] = nil
 		parent._panelmap.names[name] = self
 	end
-
-	self:RegisterForDupe()
 end
 
 function CLASS:GetNameWithoutHierarchy()
@@ -1300,15 +1340,6 @@ function CLASS:SetNWName(nwname)
 
 	nwname = tostring(nwname or "")
 	nwname = string.gsub(nwname, "[%/%\\%s]", "_")
-
-	local ent = self:GetEntity()
-	local oldnwname = self:GetNWName()
-
-	if IsValid(ent) then
-		if ent._3dstraemradio_classobjs_nw_register then
-			ent._3dstraemradio_classobjs_nw_register[oldnwname] = nil
-		end
-	end
 
 	self.NWName = nwname
 	self:CalcNWName()

@@ -710,19 +710,11 @@ end
 
 StreamRadioLib.SpawnedRadios = {}
 
-local g_nextThink = 0
+local g_nextFastThink = 0
 local g_radioCount = 0
 local g_streamingRadioCount = 0
 
-StreamRadioLib.Hook.Add("Think", "Entity_Think", function()
-	if not StreamRadioLib then return end
-	if not StreamRadioLib.Loaded then return end
-
-	local now = RealTime()
-	if g_nextThink > now then return end
-
-	g_nextThink = now + 0.01
-
+StreamRadioLib.Hook.Add("Think", "RadioCounter", function()
 	StreamRadioLib.SpawnedRadios = StreamRadioLib.SpawnedRadios or {}
 	local spawnedRadios = StreamRadioLib.SpawnedRadios
 
@@ -754,15 +746,36 @@ StreamRadioLib.Hook.Add("Think", "Entity_Think", function()
 		ClearCheckPropProtectionCache()
 		return
 	end
+end)
 
-	for index, ent in pairs(spawnedRadios) do
+StreamRadioLib.Hook.Add("Think", "EntityFastThink", function()
+	local now = RealTime()
+	if g_nextFastThink > now then return end
+
+	g_nextFastThink = now + 0.01
+
+	local radios = StreamRadioLib.SpawnedRadios
+	if not radios then
+		return
+	end
+
+	for index, ent in pairs(radios) do
+		if not IsValid(ent) then
+			continue
+		end
+
 		if ent.FastThink then
 			-- Think with a faster rate that doesn't interfere with model animations
 			ent:FastThink()
 		end
 
-		if ent:IsDormant() then continue end
-		if not ent.NonDormantThink then continue end
+		if ent:IsDormant() then
+			continue
+		end
+
+		if not ent.NonDormantThink then
+			continue
+		end
 
 		-- Called when the radio is not Dormant
 		ent:NonDormantThink()

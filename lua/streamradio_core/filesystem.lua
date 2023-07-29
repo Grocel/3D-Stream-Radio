@@ -1032,7 +1032,7 @@ function LIB.Find(vfolder, callback)
 		callback(true, outlist)
 	end
 
-	StreamRadioLib.Timer.Util("Filesystem_Find_" .. tostring({}), 0.2, function()
+	StreamRadioLib.Timer.Until("Filesystem_Find_" .. tostring({}), 0.2, function()
 		local done = table.IsEmpty(wait)
 
 		if not done then

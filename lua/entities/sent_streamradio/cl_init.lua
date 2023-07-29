@@ -32,16 +32,20 @@ function ENT:FadeoutTuneSound(time)
 	self.NoiseSound_vol = 0
 end
 
-function ENT:StartTuneSound(startvol)
+function ENT:StartTuneSound(delay)
 	local stream = self.StreamObj
-	if not IsValid(stream) then return end
+	if not IsValid(stream) then
+		return
+	end
 
 	if IsValid(stream) then
 		stream:TimerRemove("tunesound")
 		stream:TimerRemove("tunesoundstart")
 	end
 
-	stream:TimerOnce("tunesoundstart", 2, function()
+	delay = delay or 0
+
+	stream:TimerOnce("tunesoundstart", delay, function()
 		if not IsValid(self) then return end
 
 		if IsValid(stream:GetChannel()) then
@@ -62,7 +66,7 @@ function ENT:StartTuneSound(startvol)
 		end
 
 		self.NoiseSound_vol = 1
-		self.NoiseSound:PlayEx(startvol or 0, 100)
+		self.NoiseSound:PlayEx(0, 100)
 	end)
 end
 
@@ -100,18 +104,19 @@ function ENT:ApplyTuneSound()
 	end
 
 	if stream:GetMuted() then
+		self.streamswitchsound = nil
 		self:StopTuneSound()
 		return
 	end
 
 	if stream:IsLoading() then
-		self:StartTuneSound()
+		self:StartTuneSound(2)
 		return
 	end
 
 	if stream:HasError() then
 		self.streamswitchsound = true
-		self:StartTuneSound()
+		self:StartTuneSound(0)
 		return
 	end
 

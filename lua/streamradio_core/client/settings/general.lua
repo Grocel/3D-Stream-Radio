@@ -184,10 +184,11 @@ local function BuildMenuPanel(CPanel)
 		"cl_streamradio_cacheclear"
 	)
 
-	CPanel:Button(
-		"Clear Server Stream Cache (Admin only!)",
-		"sv_streamradio_cacheclear"
-	)
+	-- @TODO: Re add serverside cache button, if the server has GM_BASS3 installed. Otherwise it is without use and even confusing to the user.
+	-- CPanel:Button(
+	-- 	"Clear Server Stream Cache (Admin only!)",
+	-- 	"sv_streamradio_cacheclear"
+	-- )
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
 
@@ -232,7 +233,7 @@ function StreamRadioLib.IsRenderTarget()
 	return g_rendertarget
 end
 
-function StreamRadioLib.RenderTargetFPS()
+function StreamRadioLib.GetRenderTargetFPS()
 	return g_rendertarget_fps
 end
 
@@ -257,9 +258,14 @@ function StreamRadioLib.GetCoveredVolume()
 end
 
 local function calcRendertargetFps()
+	if StreamRadioLib.IsGUIHidden() then
+		-- When we have no GUIs, limit FPS that also affects g_fastlistenfunc think in base_listener.lua
+		return 5
+	end
+
 	local fps = LIB.GetConVarValue("rendertarget_fps")
 
-	fps = math.max(fps, 0.1)
+	fps = math.max(fps, 2)
 
 	return fps
 end
@@ -276,7 +282,7 @@ local function calcIsRendertarget()
 	return LIB.GetConVarValue("rendertarget")
 end
 
-StreamRadioLib.Hook.Add("Think", "RenderTargetFPS", function()
+StreamRadioLib.Hook.Add("Think", "SettingsUpdate", function()
 	local now = RealTime()
 
 	if g_lastThink < now then

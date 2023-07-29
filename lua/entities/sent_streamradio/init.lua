@@ -193,7 +193,7 @@ function ENT:OnReloaded( )
 	if not IsValid( self ) then return end
 	if not g_isLoaded then return end
 
-	local ply, model, pos, ang = self.pl, self:GetModel( ), self:GetPos( ), self:GetAngles( )
+	local ply, model, pos, ang = self:GetRealRadioOwner(), self:GetModel( ), self:GetPos( ), self:GetAngles( )
 	StreamRadioLib.Print.Msg( ply, "Reloaded " .. tostring( self ) )
 	self:Remove( )
 
@@ -345,7 +345,7 @@ function ENT:InternalSlowThink()
 		self:SetToolMode(self.ExtraURLs.Tool ~= "")
 		self:SetWireMode(self.ExtraURLs.Wire ~= "")
 
-		if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName or self._ForceOnExtraURLUpdate then
+		if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName then
 			self:OnExtraURLUpdate()
 		end
 	end
@@ -378,15 +378,18 @@ function ENT:OnExtraURLUpdate()
 	end
 
 	self:OnExtraURL(name, self.ActivateExtraURL)
-	self._ForceOnExtraURLUpdate = nil
 end
 
-function ENT:OnGUISetupServer()
+function ENT:OnGUIReady(...)
+	BaseClass.OnGUIReady(self, ...)
+
 	if self:GetMasterRadioRecursive() then
 		return
 	end
 
-	self._ForceOnExtraURLUpdate = true
+	if self.ActivateExtraURL ~= "" then
+		self:OnExtraURLUpdate()
+	end
 end
 
 function ENT:SetToolURL(url, setmode)

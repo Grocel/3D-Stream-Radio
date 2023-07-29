@@ -315,7 +315,6 @@ LIB.AddSubOption("copy_url", {
 	MenuLabel = "Copy Stream URL to clipboard",
 	Order = 101,
 	MenuIcon = StreamRadioLib.GetPNGIconPath("page_copy"),
-	PrependSpacer = true,
 
 	Filter = function( self, ent, ply )
 		if not LIB.CanBeTargeted( ent, ply ) then return false end
@@ -371,6 +370,23 @@ LIB.AddSubOption("error_info", {
 
 		optionPanel:SetText(label)
 		optionPanel:SetTooltip(tooltip)
+	end,
+})
+
+LIB.AddSubOption("reset_gui", {
+	MenuLabel = "Reset GUI",
+	Order = 103,
+	MenuIcon = StreamRadioLib.GetPNGIconPath("lightning"),
+
+	Filter = function( self, ent, ply )
+		if not LIB.CanBeTargeted( ent, ply ) then return false end
+		if ent.DisplayLess then return false end
+
+		return true
+	end,
+
+	Action = function( self, ent )
+		ent:RemoveGui()
 	end,
 })
 

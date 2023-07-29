@@ -282,7 +282,7 @@ function CLASS:SetStream(stream)
 		return
 	end
 
-	self:SetFastThinkNextCall(0)
+	self:SetFastThinkRate(0)
 end
 
 function CLASS:GetStream()

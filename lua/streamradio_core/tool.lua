@@ -346,7 +346,7 @@ function LIB.Setup(toolobj)
 			return
 		end
 
-		StreamRadioLib.Timer.Util("ToolReload_" .. _toolmode, 0.1, function()
+		StreamRadioLib.Timer.Until("ToolReload_" .. _toolmode, 0.1, function()
 			local this = LIB.GetTool()
 			if not this then return end
 			if this.Mode ~= _toolmode then return end

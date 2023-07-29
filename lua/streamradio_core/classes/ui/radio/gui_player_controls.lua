@@ -15,6 +15,9 @@ local g_mat_forward = StreamRadioLib.GetPNGIcon("control_end")
 local g_mat_volumedown = StreamRadioLib.GetPNGIcon("sound_delete")
 local g_mat_volumeup = StreamRadioLib.GetPNGIcon("sound_add")
 
+-- the time bar is updated less often when the song is longer than an hour
+local g_slowDisplayLength = 60 * 60
+
 local g_mat_playback_modes = {
 	[StreamRadioLib.PLAYBACK_LOOP_MODE_NONE] = StreamRadioLib.GetPNGIcon("arrow_not_refresh", true),
 	[StreamRadioLib.PLAYBACK_LOOP_MODE_SONG] = StreamRadioLib.GetPNGIcon("arrow_refresh"),
@@ -60,9 +63,7 @@ local function GetTimeFormated(seconds, timeScale)
 	local d, h, m, s, ms = FormatTime(seconds)
 
 	local scale_1m = 60
-	local scale_10m = scale_1m * 10
 	local scale_1h = scale_1m * 60
-	local scale_10h = scale_1h * 10
 	local scale_1d = scale_1h * 24
 
 	if timeScale < scale_1h then
@@ -230,9 +231,9 @@ function CLASS:Create()
 
 	self.Buttons = {}
 	table.insert(self.Buttons, self.PlayPauseButton)
+	table.insert(self.Buttons, self.StopButton)
 	table.insert(self.Buttons, self.BackButton)
 	table.insert(self.Buttons, self.ForwardButton)
-	table.insert(self.Buttons, self.StopButton)
 	table.insert(self.Buttons, self.VolumeDownButton)
 	table.insert(self.Buttons, self.VolumeUpButton)
 	table.insert(self.Buttons, self.PlaybackLoopModeButton)
@@ -298,7 +299,10 @@ function CLASS:Create()
 
 		self:UpdatePlaybackLoopMode(self._currentLoopMode)
 
-		self:SetNWBool(k, v)
+		if SERVER then
+			self:SetNWBool(k, v)
+		end
+
 		self:ApplyNetworkVars()
 		self:InvalidateLayout()
 	end)
@@ -307,6 +311,7 @@ function CLASS:Create()
 	self:UpdatePlayBar()
 
 	self.PlayBar:SetSize(1,1)
+
 	self:QueueCall("ActivateNetworkedMode")
 
 	if CLIENT then
@@ -459,7 +464,7 @@ function CLASS:SetStream(stream)
 		return
 	end
 
-	self:SetFastThinkNextCall(0)
+	self:SetFastThinkRate(0)
 
 	self:UpdateFromStream()
 	self:UpdateButtons()
@@ -479,7 +484,7 @@ function CLASS:SetStream(stream)
 		if self._currentLoopMode ~= StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST then return end
 
 		self:CallHook("OnPlaylistForward")
-		stream:Play()
+		stream:Play(true)
 	end)
 
 	local function OnVolumeChange(this, vol)
@@ -606,14 +611,21 @@ if CLIENT then
 	function CLASS:FastThink()
 		self.fastThinkRate = 10
 
-		if not IsValid(self.StreamOBJ) then return end
+		local stream = self.StreamOBJ
+		if not IsValid(stream) then return end
 
 		self.fastThinkRate = 0.25
 
 		if not self:IsSeen() then return end
 		if not self:IsVisible() then return end
 
-		self.fastThinkRate = 0.04
+		if stream:IsPlayMode() then
+			local len = stream:GetLength()
+
+			if len < g_slowDisplayLength or stream:IsSeeking() then
+				self.fastThinkRate = 0.05
+			end
+		end
 
 		self:UpdateFromStream()
 
@@ -633,15 +645,23 @@ function CLASS:IsPlaylistEnabled()
 end
 
 function CLASS:TriggerPlay()
-	if not IsValid(self.StreamOBJ) then return end
-	local isPlayMode = self.StreamOBJ:IsPlayMode()
+	local stream = self.StreamOBJ
+
+	if not IsValid(stream) then return end
+	local isPlayMode = stream:IsPlayMode()
 
 	if isPlayMode then
 		return
 	end
 
+	local hasEnded = stream:HasEnded()
+
 	self:CallHook("OnPlay")
-	self.StreamOBJ:Play(self.StreamOBJ:HasEnded())
+	stream:Play(hasEnded)
+
+	if hasEnded then
+		stream:SetTime(0, true)
+	end
 end
 
 function CLASS:UpdatePlaybackLoopMode(loopMode)
