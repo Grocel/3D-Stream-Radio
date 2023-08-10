@@ -10,7 +10,7 @@ local BASE = CLASS:GetBaseClass()
 function CLASS:Create()
 	BASE.Create(self)
 
-	self.Scollposes = {}
+	self.Scollposes = StreamRadioLib.Util.CreateCacheArray(128)
 
 	self.Path = self:CreateListener({
 		Value = nil,
@@ -112,7 +112,7 @@ function CLASS:SaveScrollPos(path)
 	local dupescroll = dd.Scroll or 0
 
 	path = path or self:GetPath()
-	self.Scollposes[path] = self.ScrollBar.Scroll.Pos or dupescroll
+	self.Scollposes:Set(path, self.ScrollBar.Scroll.Pos or dupescroll)
 end
 
 function CLASS:RestoreScrollPos()
@@ -123,7 +123,7 @@ function CLASS:RestoreScrollPos()
 	local dupescroll = dd.Scroll or 0
 
 	local path = self:GetPath()
-	self.ScrollBar.Scroll.Pos = self.Scollposes[path] or dupescroll
+	self.ScrollBar.Scroll.Pos = self.Scollposes:Get(path) or dupescroll
 end
 
 function CLASS:ActivateNetworkedMode()

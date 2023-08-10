@@ -43,12 +43,13 @@ function ENT:Initialize( )
 
 	self.ExtraURLs.Tool = ""
 	self.ExtraURLs.Wire = ""
-	self.ExtraURLs.Mode = ""
+	self.ExtraURLs.Dupe = ""
 
 	self.ActivateExtraURL = ""
 
 	self.ExtraNames.Tool = "Toolgun URL"
 	self.ExtraNames.Wire = "Wiremod Input"
+	self.ExtraNames.Dupe = ""
 
 	self.ActivateExtraName = ""
 
@@ -62,7 +63,7 @@ function ENT:Initialize( )
 	self:AddWireInput("Mute", "NORMAL")
 	self:AddWireInput("Volume", "NORMAL")
 	self:AddWireInput("Radius", "NORMAL")
-	self:AddWireInput("LoopMode", "NORMAL")
+	self:AddWireInput("Loop Mode", "NORMAL")
 	self:AddWireInput("Time", "NORMAL")
 	self:AddWireInput("3D Sound", "NORMAL")
 	self:AddWireInput("Stream URL", "STRING")
@@ -76,10 +77,13 @@ function ENT:Initialize( )
 	self:AddWireOutput("Volume", "NORMAL")
 	self:AddWireOutput("Radius", "NORMAL")
 
-	self:AddWireOutput("LoopMode", "NORMAL")
-	self:AddWireOutput("LoopsSong", "NORMAL")
-	self:AddWireOutput("LoopsPlaylist", "NORMAL")
-	self:AddWireOutput("PlaylistAvailable", "NORMAL")
+	self:AddWireOutput("Loop Mode", "NORMAL")
+	self:AddWireOutput("Loops Song", "NORMAL")
+	self:AddWireOutput("Loops Playlist", "NORMAL")
+	self:AddWireOutput("Playlist Item Count", "NORMAL")
+	self:AddWireOutput("Playlist Pos", "NORMAL")
+	self:AddWireOutput("Playlist Names", "ARRAY")
+	self:AddWireOutput("Playlist URLs", "ARRAY")
 
 	self:AddWireOutput("Time", "NORMAL")
 	self:AddWireOutput("Length", "NORMAL")
@@ -91,7 +95,7 @@ function ENT:Initialize( )
 	self:AddWireOutput("Advanced Outputs", "NORMAL", "Advanced Outputs available? Needs GM_BASS3.")
 	self:AddWireOutput("Playing", "NORMAL", "Adv. Output")
 	self:AddWireOutput("Loading", "NORMAL", "Adv. Output")
-	self:AddWireOutput("Tag", "ARRAY", "Adv. Output")
+	self:AddWireOutput("Meta Tags", "ARRAY", "Adv. Output")
 	self:AddWireOutput("Codec", "ARRAY", "Adv. Output")
 	self:AddWireOutput("Spectrum", "ARRAY", "Adv. Output")
 	self:AddWireOutput("Sound Level", "NORMAL", "Adv. Output")
@@ -289,23 +293,29 @@ function ENT:WiremodThink()
 	self:TriggerWireOutput("Muted", self:GetSVMute())
 	self:TriggerWireOutput("Radius", self:GetRadius())
 
-	self:TriggerWireOutput("LoopMode", self:GetPlaybackLoopMode())
-	self:TriggerWireOutput("LoopsSong", self:GetLoop())
-	self:TriggerWireOutput("LoopsPlaylist", self:GetPlaylistLoop())
-	self:TriggerWireOutput("PlaylistAvailable", self:IsPlaylistEnabled())
+	self:TriggerWireOutput("Loop Mode", self:GetPlaybackLoopMode())
+	self:TriggerWireOutput("Loops Song", self:GetLoop())
+	self:TriggerWireOutput("Loops Playlist", self:GetPlaylistLoop())
+	self:TriggerWireOutput("Playlist Pos", self:GetPlaylistPos())
 
 	self:TriggerWireOutput("Time", streamObj:GetMasterTime())
 	self:TriggerWireOutput("Length", streamObj:GetMasterLength())
 	self:TriggerWireOutput("Ended", streamObj:HasEnded())
 	self:TriggerWireOutput("3D Sound", self:GetSound3D())
 	self:TriggerWireOutput("Stream Name", streamObj:GetStreamName())
-	self:TriggerWireOutput("Stream URL", streamObj:GetURL())
+
+	local url = streamObj:GetURL()
+
+	if LIBUtil.IsBlockedURLCode(url) then
+		url = ""
+	end
+
+	self:TriggerWireOutput("Stream URL", url)
 
 	self:TriggerWireOutput("Advanced Outputs", hasadvoutputs)
 	self:TriggerWireOutput("Playing", streamObj:IsPlaying())
 	self:TriggerWireOutput("Loading", streamObj:IsLoading() or streamObj:IsBuffering() or streamObj:IsSeeking())
 
-	self:TriggerWireOutput("Tag", {}) -- @TODO
 	self:TriggerWireOutput("Codec", self._codec)
 	self:TriggerWireOutput("Spectrum", self._spectrum)
 	self:TriggerWireOutput("Sound Level", streamObj:GetAverageLevel())
@@ -335,34 +345,45 @@ function ENT:InternalSlowThink()
 		local oldActivateURL = self.ActivateExtraURL or ""
 		local oldActivateName = self.ActivateExtraName or ""
 
-		self.ExtraURLs.Tool = self.ExtraURLs.Tool or ""
-		self.ExtraURLs.Wire = self.ExtraURLs.Wire or ""
-		self.ExtraURLs.Mode = self.ExtraURLs.Mode or ""
+		local extraURLs = self.ExtraURLs
+		local extraNames = self.ExtraNames
 
-		self.ActivateExtraURL = self.ExtraURLs[self.ExtraURLs.Mode] or ""
-		self.ActivateExtraName = self.ExtraNames[self.ExtraURLs.Mode] or ""
+		extraURLs.Tool = extraURLs.Tool or ""
+		extraURLs.Wire = extraURLs.Wire or ""
+		extraURLs.Dupe = extraURLs.Dupe or ""
+		extraURLs.Mode = extraURLs.Mode or ""
 
-		self:SetToolMode(self.ExtraURLs.Tool ~= "")
-		self:SetWireMode(self.ExtraURLs.Wire ~= "")
+		self.ActivateExtraURL = self:FilterCustomURL(extraURLs[extraURLs.Mode] or "", true)
+		self.ActivateExtraName = extraNames[extraURLs.Mode] or ""
+
+		self:SetWireMode(LIBUtil.IsValidURL(extraURLs.Wire))
+		self:SetToolMode(LIBUtil.IsValidURL(extraURLs.Tool))
 
 		if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName then
 			self:OnExtraURLUpdate()
 		end
 	end
 
-	if IsValid(self.StreamObj) then
-		self.StreamObj:SetBASSEngineEnabled(self:CanHaveSpectrum())
+	local streamObj = self.StreamObj
+
+	if IsValid(streamObj) then
+		local canHaveSpectrum = self:CanHaveSpectrum()
+
+		if g_isWiremodLoaded and canHaveSpectrum then
+			local MetaTags = table.ClearKeys(streamObj:GetMetaTags() or {})
+			self:TriggerWireOutput("Meta Tags", MetaTags) -- @TODO: better format, better tags. Maybe CLIENT -> SERVER transmission, so it works without GM_BASS3.
+		end
+
+		streamObj:SetBASSEngineEnabled(canHaveSpectrum)
 
 		-- Loop the song also when we are in playlist mode without a playlist. We pretend we have a playlist with a single item.
-		local shouldLoop = self:GetLoop() or (not self:IsPlaylistEnabled() and self:GetPlaylistLoop())
+		local shouldLoop = self:GetLoop() or (not self:GetHasPlaylist() and self:GetPlaylistLoop())
 
-		self.StreamObj:SetLoop(shouldLoop)
+		streamObj:SetLoop(shouldLoop)
 	end
 
 	self:PlaybackLoopModeThink()
 	self:PanelThink()
-
-	return true
 end
 
 function ENT:OnExtraURLUpdate()
@@ -390,12 +411,43 @@ function ENT:OnGUIReady(...)
 	if self.ActivateExtraURL ~= "" then
 		self:OnExtraURLUpdate()
 	end
+
+	if IsValid(self.StreamObj) then
+		if self.StreamObj:GetURL() == "" then
+			self:StopStreamInternal()
+		end
+	end
+end
+
+function ENT:OnPlaylistChanged()
+	BaseClass.OnPlaylistChanged(self)
+
+	if not g_isWiremodLoaded then
+		return
+	end
+
+	local playlist = self:GetPlaylist()
+
+	local len = #playlist
+
+	local names = {}
+	local urls = {}
+
+	self:TriggerWireOutput("Playlist Item Count", len)
+
+	for i, v in ipairs(playlist) do
+		table.insert(names, v.name)
+		table.insert(urls, v.url)
+	end
+
+	self:TriggerWireOutput("Playlist Names", names)
+	self:TriggerWireOutput("Playlist URLs", urls)
 end
 
 function ENT:SetToolURL(url, setmode)
 	if not g_isLoaded then return end
 
-	self.ExtraURLs.Tool = StreamRadioLib.Util.FilterCustomURL(url)
+	self.ExtraURLs.Tool = url
 
 	if not setmode and self.ExtraURLs.Mode == "Tool" then
 		self.ExtraURLs.Mode = ""
@@ -407,14 +459,14 @@ function ENT:SetToolURL(url, setmode)
 	end
 end
 
-function ENT:GetToolURL(url)
+function ENT:GetToolURL()
 	return self.ExtraURLs.Tool
 end
 
 function ENT:SetWireURL(url, setmode)
 	if not g_isLoaded then return end
 
-	self.ExtraURLs.Wire = StreamRadioLib.Util.FilterCustomURL(url)
+	self.ExtraURLs.Wire = url
 
 	if setmode then
 		self.ActivateExtraName = ""
@@ -422,7 +474,26 @@ function ENT:SetWireURL(url, setmode)
 	end
 end
 
-function ENT:GetWireURL(url)
+function ENT:SetDupeURL(url, name, setmode)
+	if not g_isLoaded then return end
+
+	name = tostring(name or "")
+	name = string.Trim(name)
+
+	if name == "" then
+		name = "Duped URL"
+	end
+
+	self.ExtraURLs.Dupe = url
+	self.ExtraNames.Dupe = name
+
+	if setmode then
+		self.ActivateExtraName = ""
+		self:OnDupeMode()
+	end
+end
+
+function ENT:GetWireURL()
 	return self.ExtraURLs.Wire
 end
 
@@ -434,44 +505,78 @@ function ENT:OnWireMode()
 	self.ExtraURLs.Mode = "Wire"
 end
 
+function ENT:OnDupeMode()
+	self.ExtraURLs.Mode = "Dupe"
+end
+
 function ENT:OnExtraURL(name, url)
 	if not IsValid(self.StreamObj) then
 		return
 	end
 
 	if url == "" then
-		self:_StopInternal()
+		self:StopStreamInternal()
 		return
 	end
 
-	if IsValid(self.GUI_Main) then
-		self.GUI_Main:EnablePlaylist(false)
-		self.GUI_Main:Play(name, url)
-		return
+	if self.ExtraURLs.Mode ~= "Dupe" then
+		local playlist = {
+			{
+				url = url,
+				name = name,
+			}
+		}
+
+		self:SetPlaylist(playlist, 1, true)
+		self._dupePlaylistData = playlist
+
+		if IsValid(self.GUI_Main) then
+			self.GUI_Main:EnablePlaylist(false)
+		end
 	end
 
-	self.StreamObj:RemoveChannel(true)
-	self.StreamObj:SetURL(url)
-	self.StreamObj:SetStreamName(name)
-	self.StreamObj:Play(true)
+	self:PlayStreamInternal(url, name)
 end
 
-function ENT:_StopInternal()
-	if not IsValid(self.StreamObj) then
-		return
+function ENT:OnPlayStreamInternal(url, name)
+	BaseClass.OnPlayStreamInternal(self, url, name)
+
+	if IsValid(self.GUI_Main) then
+		self.GUI_Main:OpenPlayer()
 	end
+end
+
+function ENT:StopStreamInternal()
+	BaseClass.StopStreamInternal(self)
 
 	self.ExtraURLs = self.ExtraURLs or {}
 	self.ExtraURLs.Mode = ""
-	self.StreamObj:Stop()
+	self.ExtraURLs.Dupe = ""
 
 	if IsValid(self.GUI_Main) then
-		self.GUI_Main:Play("", "")
+		self.GUI_Main:Stop()
 	end
 end
 
-function ENT:OnPlayerClosed()
-	self:_StopInternal()
+function ENT:StreamOnTrackEnd(stream)
+	BaseClass.StreamOnTrackEnd(self, stream)
+
+	if not self:GetHasPlaylist() then
+		return
+	end
+
+	local masterradio = self:GetMasterRadioRecursive()
+	if masterradio then
+		return
+	end
+
+	local loopMode = self:GetPlaybackLoopMode()
+	if loopMode ~= StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST then
+		return
+	end
+
+	self:PlayNextPlaylistItem()
+	stream:Play(true)
 end
 
 function ENT:OnMasterradioChange(masterradio, oldmasterradio)
@@ -488,8 +593,6 @@ function ENT:OnMasterradioChange(masterradio, oldmasterradio)
 end
 
 function ENT:OnRemove()
-	self:_StopInternal()
-
 	self:OnRemoveShared()
 	BaseClass.OnRemove(self)
 end
@@ -541,15 +644,56 @@ function ENT:NWOverflowKill()
 end
 
 function ENT:OnPreEntityCopy()
-	self:SetDupeData("ExtraURLs", self.ExtraURLs)
+	BaseClass.OnPreEntityCopy(self)
+
+	local extraURLs = table.Copy(self.ExtraURLs)
+
+	extraURLs.Mode = extraURLs.Mode or ""
+
+	if extraURLs.Mode == "Dupe" then
+		extraURLs.Mode = ""
+	end
+
+	extraURLs.Dupe = ""
+
+	if not LIBUtil.IsValidURL(extraURLs.Tool) then
+		extraURLs.Tool = ""
+
+		if extraURLs.Mode == "Tool" then
+			extraURLs.Mode = ""
+		end
+	end
+
+	if not LIBUtil.IsValidURL(extraURLs.Wire) then
+		extraURLs.Wire = ""
+
+		if extraURLs.Mode == "Wire" then
+			extraURLs.Mode = ""
+		end
+	end
+
+	self:SetDupeData("ExtraURLs", extraURLs)
 end
 
 function ENT:DupeDataApply(key, value)
+	BaseClass.DupeDataApply(self, key, value)
+
 	if key ~= "ExtraURLs" then return end
 
-	local wireurl = self.ExtraURLs.Wire or ""
-	self.ExtraURLs = value
-	self.ExtraURLs.Wire = wireurl
+	local extraURLs = self.ExtraURLs
+
+	local mode = extraURLs.Mode
+	local wireurl = extraURLs.Wire or ""
+	local dupeurl = extraURLs.Dupe or ""
+
+	table.CopyFromTo(value, extraURLs)
+
+	extraURLs.Wire = wireurl
+	extraURLs.Dupe = dupeurl
+
+	if LIBUtil.IsValidURL(dupeurl) and extraURLs.Mode == "" and mode == "Dupe" then
+		extraURLs.Mode = "Dupe"
+	end
 end
 
 function ENT:PermaPropSave()
@@ -677,8 +821,8 @@ function ENT:OnWireInputTrigger(name, value, wired)
 			return
 		end
 
-		local hasTool = self:GetToolMode()
 		local hasWire = self:GetWireMode()
+		local hasTool = self:GetToolMode()
 
 		if hasWire then
 			self:OnWireMode()
@@ -713,7 +857,7 @@ function ENT:OnWireInputTrigger(name, value, wired)
 		return
 	end
 
-	if name == "LoopMode" then
+	if name == "Loop Mode" then
 		value = tobool(value)
 
 		if not wired then

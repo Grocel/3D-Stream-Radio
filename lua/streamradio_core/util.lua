@@ -49,7 +49,7 @@ end
 function LIB.Hash(str)
 	str = tostring(str or "")
 
-	local salt = "StreamRadioLib_Hash20230723"
+	local salt = "StreamRadioLib_Hash20230810"
 
 	local data = string.format(
 		"[%s][%s]",
@@ -176,17 +176,32 @@ function LIB.CreateCacheArray(limit)
 	return cache
 end
 
-function LIB.IsBlockedURLCode( url )
-	if ( not StreamRadioLib.BlockedURLCode ) then return false end
-	if ( StreamRadioLib.BlockedURLCode == "" ) then return false end
-
+function LIB.IsBlockedURLCode(url)
 	url = url or ""
-	local blocked = StreamRadioLib.BlockedURLCode
 
-	return url == blocked
+	local blockedURLCode = StreamRadioLib.BlockedURLCode or ""
+	local blockedURLCodeSequence = StreamRadioLib.BlockedURLCodeSequence or ""
+
+	if blockedURLCode == "" then
+		return false
+	end
+
+	if blockedURLCodeSequence == "" then
+		return false
+	end
+
+	if url == blockedURLCode then
+		return true
+	end
+
+	if string.find(url, blockedURLCodeSequence, 1, true) then
+		return true
+	end
+
+	return false
 end
 
-function LIB.IsBlockedCustomURL(url)
+function LIB.IsBlockedCustomURL(url, ply)
 	url = url or ""
 
 	if url == "" then
@@ -201,19 +216,37 @@ function LIB.IsBlockedCustomURL(url)
 		return false
 	end
 
-	if not StreamRadioLib.IsCustomURLsAllowed() then
+	if not StreamRadioLib.IsCustomURLsAllowed(ply) then
 		return true
 	end
 
 	return false
 end
 
-function LIB.FilterCustomURL(url)
-	if LIB.IsBlockedCustomURL(url) then
+function LIB.FilterCustomURL(url, ply, treatBlockedURLCodeAsEmpty)
+	if treatBlockedURLCodeAsEmpty and LIB.IsBlockedURLCode(url) then
+		return ""
+	end
+
+	if LIB.IsBlockedCustomURL(url, ply) then
 		return StreamRadioLib.BlockedURLCode
 	end
 
 	return url
+end
+
+function LIB.IsValidURL(url)
+	url = url or ""
+
+	if url == "" then
+		return false
+	end
+
+	if LIB.IsBlockedURLCode(url) then
+		return false
+	end
+
+	return true
 end
 
 local function NormalizeOfflineFilename( path )
@@ -464,6 +497,34 @@ function LIB.IsSameFrame(id)
 			g_LastFrameRegisterCount = g_LastFrameRegisterCount + 1
 		end
 
+		return false
+	end
+
+	return true
+end
+
+function LIB.IsAdmin(ply)
+	if CLIENT and not IsValid(ply) then
+		ply = LocalPlayer()
+	end
+
+	if not IsValid(ply) then
+		return false
+	end
+
+	if not ply:IsAdmin() then
+		return false
+	end
+
+	return true
+end
+
+function LIB.IsAdminForCMD(ply)
+	if not IsValid(ply) then
+		return true
+	end
+
+	if not LIB.IsAdmin(ply) then
 		return false
 	end
 

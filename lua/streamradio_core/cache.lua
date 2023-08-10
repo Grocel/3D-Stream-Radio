@@ -28,6 +28,11 @@ end
 
 do
 	local function Cache_Clear( ply, cmd, args )
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
+			StreamRadioLib.Print.Msg( ply, "You need to be an admin clear the server stream cache." )
+			return
+		end
+
 		if game.SinglePlayer() then
 			StreamRadioLib.Print.Msg( ply, "A server stream cache does not exist in single player!" )
 			return
@@ -38,23 +43,19 @@ do
 			return
 		end
 
-		if ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
-			if not StreamRadioLib.DataDirectory then
-				return
-			end
-
-			if not StreamRadioLib.Util.DeleteFolder( g_mainDir ) then
-				StreamRadioLib.Print.Msg( ply, "Server stream cache could not be cleared!" )
-				return
-			end
-
-			g_forbidden:Empty()
-			g_lastloaded:Empty()
-
-			StreamRadioLib.Print.Msg( ply, "Server stream cache cleared!" )
-		else
-			StreamRadioLib.Print.Msg( ply, "You need to be an admin clear the server stream cache." )
+		if not StreamRadioLib.DataDirectory then
+			return
 		end
+
+		if not StreamRadioLib.Util.DeleteFolder( g_mainDir ) then
+			StreamRadioLib.Print.Msg( ply, "Server stream cache could not be cleared!" )
+			return
+		end
+
+		g_forbidden:Empty()
+		g_lastloaded:Empty()
+
+		StreamRadioLib.Print.Msg( ply, "Server stream cache cleared!" )
 	end
 
 	concommand.Add( "sv_streamradio_cacheclear", Cache_Clear )
@@ -389,6 +390,7 @@ function LIB.Download(url, callback, saveas_url)
 		g_forbidden:Remove(cacheid)
 
 		if len <= g_maxFileSizeFast then
+			-- also cache in memory if the file isn't too big
 			g_lastloaded:Set(cacheid, data)
 		end
 

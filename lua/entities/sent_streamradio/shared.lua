@@ -27,7 +27,6 @@ function ENT:SetupDataTables( )
 	self:AddDTNetworkVar("Bool", "WireMode")
 	self:AddDTNetworkVar("Bool", "ToolMode")
 	self:AddDTNetworkVar("Entity", "LastUser")
-	self:AddDTNetworkVar("Entity", "RadioOwner")
 	self:AddDTNetworkVar("Entity", "LastUsingEntity")
 	self:AddDTNetworkVar("Entity", "MasterRadio")
 
@@ -181,23 +180,6 @@ function ENT:SetupDataTables( )
 
 		self:MarkForUpdatePlaybackLoopMode()
 	end)
-end
-
-function ENT:GetRealRadioOwner()
-	if isfunction(self.CPPIGetOwner) then
-		local owner = self:CPPIGetOwner()
-
-		if isentity(owner) and IsValid(owner) then
-			return owner
-		end
-	end
-
-	local owner = self:GetRadioOwner()
-	if IsValid(owner) then
-		return owner
-	end
-
-	return nil
 end
 
 function ENT:GetPlaybackLoopMode()
@@ -391,8 +373,8 @@ function ENT:MasterRadioSyncThink()
 			end
 		end
 
-		if self._StopInternal then
-			self:_StopInternal()
+		if self.StopStreamInternal then
+			self:StopStreamInternal()
 		end
 
 		if IsValid(oldmasterradio) and oldmasterradio.slavesradios then

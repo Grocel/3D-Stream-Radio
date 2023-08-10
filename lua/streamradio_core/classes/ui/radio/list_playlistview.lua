@@ -11,15 +11,12 @@ local g_mat_sound = StreamRadioLib.GetPNGIcon("sound")
 function CLASS:Create()
 	BASE.Create(self)
 
-	self.Playlist = {}
-	self.EntryOpen = 0
-
 	self.Path.Type = StreamRadioLib.TYPE_FOLDER
 	self.Path = self.Path + function(this, k, v_new, v_old)
 		if k ~= "Type" then return end
 
 		local v = v_new or StreamRadioLib.TYPE_FOLDER
-		local v_old = v_old or StreamRadioLib.TYPE_FOLDER
+		v_old = v_old or StreamRadioLib.TYPE_FOLDER
 
 		if v_new ~= v then
 			self.Path.Type = v
@@ -57,27 +54,15 @@ end
 
 function CLASS:OnItemClickInternal(button, value, buttonindex, ListX, ListY, i)
 	if CLIENT and self.Network.Active then return end
-	self:Play(value)
+	self:PlayItem(value)
 end
 
-function CLASS:Play(value)
+function CLASS:PlayItem(value)
 	if CLIENT then return end
 	if not self.Network.Active then return end
 	if not value then return end
 
-	local name = value.name
-	local url = value.url
-
-	self.EntryOpen = math.Clamp(value.index or 1, 1, #self.Playlist)
-	self:CallHook("OnPlay", name, url)
-end
-
-function CLASS:Stop()
-	if CLIENT then return end
-	if not self.Network.Active then return end
-
-	self.EntryOpen = 0
-	self:CallHook("OnStop")
+	self:CallHook("OnPlayItem", value)
 end
 
 function CLASS:CallErrorState()
@@ -110,24 +95,28 @@ function CLASS:BuildListInternal()
 	if CLIENT then return end
 	if not self.Network.Active then return end
 
+	self:CallHook("OnPlaylistStartBuild")
+
 	self:ClearData()
-	self:ApplaDataFromDupe()
 
 	if not self:IsVisible() then
 		self:UpdateButtons()
 		self:RestoreScrollPos()
-		return
-	end
 
-	self.DupeData = nil
-
-	if self.Path.Value == "" then
-		self:UpdateButtons()
-		self:RestoreScrollPos()
+		self:CallHook("OnPlaylistEndBuild")
 		return
 	end
 
 	self.PathUid = StreamRadioLib.Util.Uid()
+
+	if self.Path.Value == "" then
+		self:UpdateButtons()
+		self:RestoreScrollPos()
+
+		self:CallHook("OnPlaylistEndBuild")
+		return
+	end
+
 	local uid = self.PathUid
 
 	StreamRadioLib.Filesystem.Read(self.Path.Value, self.Path.Type, function(success, playlist)
@@ -138,6 +127,7 @@ function CLASS:BuildListInternal()
 		if not success then
 			self.tmperror = true
 			self:QueueCall("UpdateErrorState")
+			self:CallHook("OnPlaylistEndBuild")
 			return
 		end
 
@@ -150,12 +140,13 @@ function CLASS:_BuildListInternalAsyc(uid, playlist)
 		return
 	end
 
-	self.Playlist = {}
+	local playlistItems = {}
 
 	local len = #playlist
 	if len <= 0 then
 		self.tmperror = true
 		self:QueueCall("UpdateErrorState")
+		self:CallHook("OnPlaylistEndBuild", playlistItems)
 		return
 	end
 
@@ -166,34 +157,24 @@ function CLASS:_BuildListInternalAsyc(uid, playlist)
 			index = i,
 		}
 
+		playlistItems[i] = entry
+
 		local data = {}
 		data.value = entry
 		data.text = entry.name
 		data.icon = 0
 
-		self.Playlist[i] = entry
 		self:AddData(data, true)
 	end
 
 	if len == 1 then
-		local entry = self.Playlist[1]
-		self:Play(entry)
+		self:PlayItem(playlistItems[1])
 	end
 
 	self:UpdateButtons()
 	self:QueueCall("RestoreScrollPos")
-end
 
-function CLASS:IsSingleItem()
-	if CLIENT then
-		return false
-	end
-
-	if not self.Playlist then
-		return true
-	end
-
-	return #self.Playlist <= 1
+	self:CallHook("OnPlaylistEndBuild", playlistItems)
 end
 
 function CLASS:GetFile()
@@ -205,36 +186,6 @@ function CLASS:SetFile(path, ty)
 
 	self.Path.Value = path or ""
 	self.Path.Type = ty or StreamRadioLib.TYPE_FOLDER
-end
-
-function CLASS:PlayNext()
-	if CLIENT and self.Network.Active then return end
-
-	local len = #self.Playlist
-	if len <= 1 then return end
-
-	local index = self.EntryOpen + 1
-	if index > len then
-		index = 1
-	end
-
-	local value = self.Playlist[index]
-	self:Play(value)
-end
-
-function CLASS:PlayPrevious()
-	if CLIENT and self.Network.Active then return end
-
-	local len = #self.Playlist
-	if len <= 1 then return end
-
-	local index = self.EntryOpen - 1
-	if index <= 0 then
-		index = len
-	end
-
-	local value = self.Playlist[index]
-	self:Play(value)
 end
 
 function CLASS:ActivateNetworkedMode()
@@ -265,47 +216,30 @@ function CLASS:PreDupe()
 	data.Path = path
 	data.PathType = ty
 
-	data.Playlist = self.Playlist
-	data.EntryOpen = self.EntryOpen
-
 	return data
 end
 
-function CLASS:ApplaDataFromDupe()
-	local data = self.DupeData
+function CLASS:ApplyLegacyDataFromDupe(dupedata)
+	if not dupedata then return end
+
+	local data = dupedata.Playlist
+	local pos = dupedata.EntryOpen or 1
+
 	if not data then return end
+	if #data <= 1 then return end
 
-	self.Playlist = {}
+	local ent = self:GetEntity()
+	if not IsValid(ent) then return end
+	if not ent.DupeDataApply then return end
 
-	for i, v in ipairs(data.Playlist or {}) do
-		local url = string.Trim(tostring(v.url or v.uri or v.link or v.source or v.path or ""))
-		local name = string.Trim(tostring(v.name or v.title or ""))
+	-- Legacy support:
+	--  Old dupes still have the playlist data in this UI element.
+	--  We moved the playlist to the entity, so move the legacy playlist data as well.
 
-		if url == "" then
-			continue
-		end
-
-		if name == "" then
-			name = url
-		end
-
-		if StreamRadioLib.Util.IsBlockedCustomURL(url) then
-			continue
-		end
-
-		local index = #self.Playlist + 1
-
-		local entry = {
-			name = name,
-			url = url,
-			index = index,
-		}
-
-		self.Playlist[index] = entry
-	end
-
-	self.EntryOpen = math.Clamp(data.EntryOpen or 1, 1, #self.Playlist)
-	self:CallHook("OnDupePlaylistApply")
+	ent:DupeDataApply("PlaylistData", {
+		data = data,
+		pos = pos,
+	})
 end
 
 function CLASS:PostDupe(dupedata)
@@ -322,16 +256,13 @@ function CLASS:PostDupe(dupedata)
 
 		if not success or #data <= 0 then
 			self:SetFile("", type)
-			self:CallHook("OnInvalidDupeFilepath")
+			self:ApplyLegacyDataFromDupe(dupedata)
 
-			self.DupeData = dupedata
-			self:ApplaDataFromDupe()
+			self:CallHook("OnInvalidDupeFilepath")
 			return
 		end
 
 		self:SetFile(path, type)
-
-		self.DupeData = dupedata
-		self:ApplaDataFromDupe()
+		self:ApplyLegacyDataFromDupe(dupedata)
 	end)
 end

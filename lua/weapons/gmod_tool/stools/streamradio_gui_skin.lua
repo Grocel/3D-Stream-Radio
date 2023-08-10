@@ -187,17 +187,17 @@ function TOOL:AddFileControlPanel( panel )
 	local checkfile = function(filename)
 		filename = StreamRadioLib.Skin.SanitizeName(filename)
 
-		buttondelete:SetDisabled(false)
-		buttonopen:SetDisabled(false)
-		buttonsave:SetDisabled(false)
+		buttondelete:SetEnabled(true)
+		buttonopen:SetEnabled(true)
+		buttonsave:SetEnabled(true)
 
 		buttondelete:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.delete.desc"))
 		buttonopen:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.open.desc"))
 		buttonsave:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.save.desc"))
 
 		if filename == "" then
-			buttondelete:SetDisabled(true)
-			buttonopen:SetDisabled(true)
+			buttondelete:SetEnabled(false)
+			buttonopen:SetEnabled(false)
 
 			buttondelete:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.delete.error.empty"))
 			buttonopen:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.open.error.empty"))
@@ -206,16 +206,16 @@ function TOOL:AddFileControlPanel( panel )
 		end
 
 		if not StreamRadioLib.Skin.IsValidSkinFile(filename) then
-			buttondelete:SetDisabled(true)
-			buttonopen:SetDisabled(true)
+			buttondelete:SetEnabled(false)
+			buttonopen:SetEnabled(false)
 
 			buttondelete:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.delete.error.notfound"))
 			buttonopen:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.open.error.notfound"))
 		end
 
 		if filename == "default" then
-			buttondelete:SetDisabled(true)
-			buttonsave:SetDisabled(true)
+			buttondelete:SetEnabled(false)
+			buttonsave:SetEnabled(false)
 
 			buttondelete:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.delete.error.protected"))
 			buttonsave:SetTooltip(StreamRadioLib.Tool.GetLocale(self, "file.button.save.error.protected"))

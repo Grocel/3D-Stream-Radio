@@ -13,7 +13,7 @@ local CursorMat = StreamRadioLib.GetCustomPNG("cursor")
 local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 local g_gui_controller_listengroup = 0
-local g_loadedAtDelay = engine.TickInterval() * 4
+local g_loadedAtDelay = math.min(engine.TickInterval() * 16, 0.5)
 local g_visuallyReadyAtDelay = 1
 
 function CLASS:AssignToListenGroup()

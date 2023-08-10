@@ -123,7 +123,7 @@ function CLASS:Create()
 	self.BackButton:SetName("back")
 	self.BackButton:SetNWName("bk")
 	self.BackButton:SetSkinIdentifyer("button")
-	self.BackButton:SetTooltip("Go to previous playlist track")
+	self.BackButton:SetTooltip("Previous track")
 	self.BackButton.DoClick = function()
 		self:CallHook("OnPlaylistBack")
 	end
@@ -133,7 +133,7 @@ function CLASS:Create()
 	self.ForwardButton:SetName("forward")
 	self.ForwardButton:SetNWName("fw")
 	self.ForwardButton:SetSkinIdentifyer("button")
-	self.ForwardButton:SetTooltip("Go to next playlist track")
+	self.ForwardButton:SetTooltip("Next track")
 	self.ForwardButton.DoClick = function()
 		self:CallHook("OnPlaylistForward")
 	end
@@ -298,12 +298,6 @@ function CLASS:Create()
 		end
 
 		self:UpdatePlaybackLoopMode(self._currentLoopMode)
-
-		if SERVER then
-			self:SetNWBool(k, v)
-		end
-
-		self:ApplyNetworkVars()
 		self:InvalidateLayout()
 	end)
 
@@ -311,8 +305,6 @@ function CLASS:Create()
 	self:UpdatePlayBar()
 
 	self.PlayBar:SetSize(1,1)
-
-	self:QueueCall("ActivateNetworkedMode")
 
 	if CLIENT then
 		self:StartFastThink()
@@ -478,13 +470,6 @@ function CLASS:SetStream(stream)
 
 		self:QueueCall("UpdatePlayBar")
 		self:QueueCall("UpdateButtons")
-
-		if self:GetSyncMode() then return end
-		if not self.State.PlaylistEnabled then return end
-		if self._currentLoopMode ~= StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST then return end
-
-		self:CallHook("OnPlaylistForward")
-		stream:Play(true)
 	end)
 
 	local function OnVolumeChange(this, vol)
@@ -730,23 +715,4 @@ end
 
 function CLASS:GetSyncMode()
 	return self._syncmode or false
-end
-
-function CLASS:ActivateNetworkedMode()
-	BASE.ActivateNetworkedMode(self)
-
-	if SERVER then
-		self:SetNWBool("PlaylistEnabled", self.State.PlaylistEnabled)
-		return
-	end
-
-	self:SetNWVarCallback("PlaylistEnabled", "Bool", function(this, nwkey, oldvar, newvar)
-		self.State.PlaylistEnabled = newvar
-	end)
-end
-
-function CLASS:ApplyNetworkVarsInternal()
-	BASE.ApplyNetworkVarsInternal(self)
-
-	self.State.PlaylistEnabled = self:GetNWBool("PlaylistEnabled", false)
 end

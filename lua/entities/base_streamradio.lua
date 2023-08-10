@@ -103,11 +103,14 @@ function ENT:GetOrCreateStream()
 		return self.StreamObj
 	end
 
+	self.StreamObj = nil
+
 	local stream = StreamRadioLib.CreateOBJ("stream")
 	if not IsValid( stream ) then
-		self.StreamObj = nil
 		return nil
 	end
+
+	self.StreamObj = stream
 
 	local function call(name, ...)
 		if not IsValid( self ) then
@@ -147,6 +150,10 @@ function ENT:GetOrCreateStream()
 		return call("StreamOnMute", ...)
 	end
 
+	stream.OnTrackEnd = function( ... )
+		return call("StreamOnTrackEnd", ...)
+	end
+
 	stream:SetEvent("OnPlayModeChange", tostring(self) .. "_base", function(...)
 		return call("StreamOnPlayModeChange", ...)
 	end)
@@ -160,7 +167,6 @@ function ENT:GetOrCreateStream()
 	stream:ActivateNetworkedMode()
 	stream:OnClose()
 
-	self.StreamObj = stream
 	return stream
 end
 
@@ -309,6 +315,36 @@ function ENT:CheckDistanceToEntity(ent, maxDist, pos1, pos2)
 	return true
 end
 
+function ENT:GetRealRadioOwner()
+	local getCPPIOwner = self.CPPIGetOwner
+	if isfunction(getCPPIOwner) then
+		local owner = getCPPIOwner(self)
+
+		if isentity(owner) and IsValid(owner) then
+			return owner
+		end
+	end
+
+	local getRadioOwner = self.GetRadioOwner
+	if isfunction(getRadioOwner) then
+		local owner = getRadioOwner(self)
+
+		if IsValid(owner) then
+			return owner
+		end
+	end
+
+	return nil
+end
+
+function ENT:IsBlockedCustomURL(url)
+	return LIBUtil.IsBlockedCustomURL(url, self:GetRealRadioOwner())
+end
+
+function ENT:FilterCustomURL(url, treatBlockedURLCodeAsEmpty)
+	return LIBUtil.FilterCustomURL(url, self:GetRealRadioOwner(), treatBlockedURLCodeAsEmpty)
+end
+
 function ENT:Initialize()
 	if g_isLoaded then
 		StreamRadioLib.RegisterRadio(self)
@@ -443,8 +479,12 @@ function ENT:OnRemove()
 		LIBUtil.EmptyTableSafe(classobjs_nw_register)
 	end)
 
-	if g_isWiremodLoaded and SERVER then
-		WireLib.Remove(self)
+	if SERVER then
+		self:StopStreamInternal()
+
+		if g_isWiremodLoaded then
+			WireLib.Remove(self)
+		end
 	end
 
 	BaseClass.OnRemove(self)
@@ -548,6 +588,41 @@ function ENT:InternalSlowThink()
 	end
 end
 
+function ENT:StopStreamInternal()
+	if not SERVER then return end
+	if not IsValid(self.StreamObj) then return end
+
+	self.StreamObj:Stop()
+end
+
+function ENT:PlayStreamInternal(url, name)
+	if not SERVER then return end
+	if not IsValid(self.StreamObj) then return end
+
+	url = string.Trim(tostring(url or ""))
+	name = string.Trim(tostring(name or ""))
+
+	if url == "" then
+		self:StopStreamInternal()
+		return
+	end
+
+	if name == "" then
+		name = url
+	end
+
+	self.StreamObj:RemoveChannel(true)
+	self.StreamObj:SetURL(url)
+	self.StreamObj:SetStreamName(name)
+	self.StreamObj:Play(true)
+
+	self:OnPlayStreamInternal(url, name)
+end
+
+function ENT:OnPlayStreamInternal(url, name)
+	-- Override me
+end
+
 function ENT:GetStreamURL()
 	if not IsValid(self.StreamObj) then return "" end
 	return self.StreamObj:GetURL()
@@ -576,7 +651,7 @@ function ENT:IsDebug()
 		return self._isDebugCache
 	end
 
-	local isDebug = StreamRadioLib.Util.IsDebug()
+	local isDebug = LIBUtil.IsDebug()
 	self._isDebugCache = isDebug
 
 	return isDebug
@@ -912,35 +987,30 @@ else
 
 		local dupeData = table.Copy(ent.EntityMods.DupeData or {})
 
-		ent._WireData = dupeData.Wire
+		local WireData = dupeData.Wire
 		dupeData.Wire = nil
 
-		if g_isWiremodLoaded and ent._WireData then
-			timer.Simple(0.2, function()
-				if not IsValid(ent) then return end
-				if not ent._WireData then return end
+		if g_isWiremodLoaded and WireData then
+			WireLib.ApplyDupeInfo(ply, ent, WireData, function(id, default)
+				if id == nil then return default end
+				if id == 0 then return game.GetWorld() end
 
-				WireLib.ApplyDupeInfo(ply, ent, ent._WireData, function(id, default)
-					if id == nil then return default end
-					if id == 0 then return game.GetWorld() end
+				local ident = CreatedEntities[id]
 
-					local ident = CreatedEntities[id]
-
-					if not IsValid(ident) then
-						if isnumber(id) then
-							ident = ents.GetByIndex(id)
-						end
+				if not IsValid(ident) then
+					if isnumber(id) then
+						ident = ents.GetByIndex(id)
 					end
+				end
 
-					if not IsValid(ident) then
-						ident = default
-					end
+				if not IsValid(ident) then
+					ident = default
+				end
 
-					return ident
-				end)
-
-				ent._WireData = nil
+				return ident
 			end)
+
+			WireData = nil
 		end
 
 		local classobjs_data = dupeData.Classsystem
@@ -991,5 +1061,17 @@ else
 		end
 
 		self.StreamObj:LoadToDupe(data)
+	end
+
+	function ENT:OnSetupCopyData(data)
+		-- override me
+	end
+
+	function ENT:OnPreEntityCopy()
+		-- override me
+	end
+
+	function ENT:DupeDataApply(key, value)
+		-- override me
 	end
 end

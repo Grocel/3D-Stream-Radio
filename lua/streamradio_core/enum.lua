@@ -9,7 +9,8 @@ StreamRadioLib.STREAM_URLTYPE_ONLINE = 2
 StreamRadioLib.STREAM_URLTYPE_ONLINE_NOCACHE = 3
 
 -- Placeholder for Blocked URLs with non-Keyboard chars
-StreamRadioLib.BlockedURLCode = "__blocked_url_replaced_with_special_sequence___[" .. string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5) .. "]___pls_ignore_this!__"
+StreamRadioLib.BlockedURLCodeSequence = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5)
+StreamRadioLib.BlockedURLCode = string.format("__blocked_url_replaced_with_special_sequence___[%s]___pls_ignore_this!__", StreamRadioLib.BlockedURLCodeSequence)
 
 StreamRadioLib.PLAYBACK_LOOP_MODE_NONE = 0
 StreamRadioLib.PLAYBACK_LOOP_MODE_SONG = 1
@@ -116,4 +117,22 @@ StreamRadioLib.TAG_MP4 = 5
 StreamRadioLib.TAG_APE = 6
 StreamRadioLib.TAG_OGG = 7
 StreamRadioLib.TAG_VENDOR = 8
+
+StreamRadioLib.STREAM_URL_INFO = [[
+You can enter this as a Stream URL:
+
+Offline content:
+   - A path of a sound file inside your game's 'sound' folder.
+   - Mounted content is supported and included.
+   - E.g. music/hl1_song3.mp3
+
+Online content:
+   - An URL to an online file or stream.
+   - The URL must lead to valid sound content.
+   - No HTML, no Flash, no Videos, no YouTube
+   - E.g. https://stream.laut.fm/hiphop-forever
+]]
+
+StreamRadioLib.STREAM_URL_INFO = string.gsub(StreamRadioLib.STREAM_URL_INFO, "\r", "")
+StreamRadioLib.STREAM_URL_INFO = string.Trim(StreamRadioLib.STREAM_URL_INFO)
 

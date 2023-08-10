@@ -79,6 +79,9 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "nocollide", "Nocollide")
 	StreamRadioLib.Tool.AddLocale(TOOL, "spawnsettings", "Spawn settings:")
 
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlinfo", StreamRadioLib.STREAM_URL_INFO)
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlblocked", "Custom Stream URLs will not work!\nThey are disabled on this server!")
+
 	StreamRadioLib.Tool.Setup(TOOL)
 else
 	TOOL.Information = nil
@@ -112,15 +115,22 @@ function TOOL:BuildToolPanel(CPanel)
 	ModelinfoLabel:SetDark( true )
 	ModelinfoLabel:SetHighlight( false )
 
-	if not game.SinglePlayer() or game.IsDedicated() then
+	if game.IsDedicated() then
 		local ModelinfoMPLabel = self:AddLabel( CPanel, "modelinfo_mp", true )
 		ModelinfoMPLabel:SetDark( true )
 		ModelinfoMPLabel:SetHighlight( false )
 	end
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
 
+	self:AddCustomURLBlockedLabel( CPanel, "streamurlblocked", false )
 	self:AddURLTextEntry( CPanel, "streamurl", false )
+
+	local StreamUrlInfoText = self:AddReadOnlyText( CPanel, "streamurlinfo", false )
+	StreamUrlInfoText:SetTall(190)
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
+
 	self:AddCheckbox( CPanel, "play", true )
 	self:AddCheckbox( CPanel, "nodisplay", false )
 	self:AddCheckbox( CPanel, "noinput", true )
@@ -128,8 +138,7 @@ function TOOL:BuildToolPanel(CPanel)
 	self:AddCheckbox( CPanel, "noadvwire", true )
 	self:AddCheckbox( CPanel, "3dsound", false )
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
-
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
 
 	local iconPlaybackloopmodeNone = StreamRadioLib.GetPNGIconPath("arrow_not_refresh", true)
 	local iconPlaybackloopmodeSong = StreamRadioLib.GetPNGIconPath("arrow_refresh")
@@ -142,9 +151,7 @@ function TOOL:BuildToolPanel(CPanel)
 	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.song"), StreamRadioLib.PLAYBACK_LOOP_MODE_SONG, false, iconPlaybackloopmodeSong)
 	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.playlist"), StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST, false, iconPlaybackloopmodePlaylist)
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
 	self:AddCheckbox( CPanel, "mute", false )
 
@@ -158,9 +165,7 @@ function TOOL:BuildToolPanel(CPanel)
 	RadiusNumSlider:SetMax( 5000 )
 	RadiusNumSlider:SetDecimals( 0 )
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 
 	self:AddLabel( CPanel, "spawnsettings", false )
 	self:AddCheckbox( CPanel, "freeze", false )
@@ -196,6 +201,7 @@ function TOOL:BuildToolPanel(CPanel)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenSettingsButton())
+	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenAdminSettingsButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetPlaylistEditorButton())
 end
 

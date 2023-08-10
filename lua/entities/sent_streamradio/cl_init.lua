@@ -470,7 +470,9 @@ function ENT:StreamAnimModel()
 
 	local calcsl = self:HasModelFunction("SoundLevel")
 	local calcspeaker = self:HasModelFunction("Speaker")
-	local calcfft = self:HasModelFunction("FFT")
+	local fftFunc = self:GetModelFunction("FFT")
+
+	local modalData = self.ModelData
 
 	if calcsl then
 		self.AnimStopped = false
@@ -482,9 +484,9 @@ function ENT:StreamAnimModel()
 		self.AnimStopped = false
 
 		local speakerlevel = 0
-		local minfrq = self.ModelData.SpeakerMinFRQ
-		local maxfrq = self.ModelData.SpeakerMaxFRQ
-		local Resolution = self.ModelData.SpeakerFRQResolution or 10
+		local minfrq = modalData.SpeakerMinFRQ
+		local maxfrq = modalData.SpeakerMaxFRQ
+		local Resolution = modalData.SpeakerFRQResolution or 10
 
 		stream:GetSpectrumComplex(Resolution, function( index, frq, level_length, level_ang, level_R, level_I )
 			if not level_ang then
@@ -504,11 +506,11 @@ function ENT:StreamAnimModel()
 		self:CallModelFunction("Speaker", speakerlevel)
 	end
 
-	if calcfft then
+	if fftFunc then
 		self.AnimStopped = false
 
 		stream:GetSpectrumComplex( 7, function( index, frq, level_length, level_ang, level_R, level_I )
-			self:CallModelFunction( "FFT", index, frq, level_length )
+			fftFunc(modalData, index, frq, level_length)
 		end)
 	end
 end

@@ -16,12 +16,25 @@ local function callcallbacks(rq, ...)
 	rq.quene = nil
 	rq.started = nil
 
-	for func, v in pairs(tmp) do
+	for i, func in ipairs(tmp) do
 		if not isfunction(func) then continue end
 		func(...)
 	end
 end
 
+local function cleanDoneQuene()
+	for k, rq in pairs(g_request_quene) do
+		if not rq.quene then
+			g_request_quene[k] = nil
+			continue
+		end
+
+		if not rq.started then
+			g_request_quene[k] = nil
+			continue
+		end
+	end
+end
 
 local function request(url, callback, parameters, method, headers, body, type)
 	url = url or ""
@@ -45,11 +58,13 @@ local function request(url, callback, parameters, method, headers, body, type)
 	}
 
 	local requestname = StreamRadioLib.JSON.Encode(requestdata)
+	requestname = StreamRadioLib.Util.Hash(requestdata)
+
 	local rq = g_request_quene[requestname] or {}
 	g_request_quene[requestname] = rq
 
 	rq.quene = rq.quene or {}
-	rq.quene[callback] = true
+	table.insert(rq.quene, callback)
 
 	if rq.started then return true end
 
@@ -70,6 +85,8 @@ local function request(url, callback, parameters, method, headers, body, type)
 				type = requestdata.type,
 			},
 		})
+
+		cleanDoneQuene()
 	end
 
 	requestdata.success = function(code, body, headers)
@@ -101,6 +118,8 @@ local function request(url, callback, parameters, method, headers, body, type)
 				type = requestdata.type,
 			},
 		})
+
+		cleanDoneQuene()
 	end
 
 

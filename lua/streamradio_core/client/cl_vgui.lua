@@ -70,13 +70,7 @@ function PANEL:Init( )
 		self.URLText:SetPlaceholderText("Enter file path or online URL")
 	end
 
-	self.URLTooltip = [[
-You can enter this:
-   - A path of a sound file inside and relative to your game's sound folder. Mounted content is supported and included.
-   - An URL to an online file or stream. The URL must lead to valid sound content. (No HTML, no Flash, no Videos)
-]]
-
-	self.URLTooltip = string.Trim(self.URLTooltip)
+	self.URLTooltip = StreamRadioLib.STREAM_URL_INFO
 	self.URLText:SetTooltip(self.URLTooltip)
 
 	self.URLText.OnValueChange = function( panel, value, ... )
@@ -395,7 +389,7 @@ function PANEL:Init( )
 	self:SetCursorColor( Color( 0, 0, 0, 0 ) )
 	self:SetCursor( "arrow" )
 
-	self._SetText = self.SetText
+	self._SetText = self._SetText or self.SetText
 	self.SetText = function(this, text, ...)
 		this.m_text = tostring(text or "")
 		this:_SetText(this.m_text, ...)
@@ -404,6 +398,7 @@ end
 
 function PANEL:OnValueChange()
 	self:_SetText(self.m_text or "")
+	self:KillFocus()
 end
 
 vgui.Register( "Streamradio_VGUI_ReadOnlyTextEntry", PANEL, "DTextEntry" )

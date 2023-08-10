@@ -214,23 +214,38 @@ end
 
 function ENT:HasModelFunction(index)
 	if not index then return false end
-	if not self.ModelData then return false end
-	if not isfunction( self.ModelData[index] ) then return false end
+
+	local modalData = self.ModelData
+	if not modalData then return false end
+
+	local func = modalData[index]
+	if not isfunction(func) then return false end
 
 	return true
 end
 
+function ENT:GetModelFunction(index)
+	if not index then return end
+
+	local modalData = self.ModelData
+	if not modalData then return end
+
+	local func = modalData[index]
+	if not isfunction(func) then return end
+
+	return func
+end
+
 function ENT:CallModelFunction(index, ...)
-	if not self:HasModelFunction(index) then return end
+	if not index then return end
 
-	local status, err, a, b, c, d, e, f, g = pcall( self.ModelData[index], self.ModelData, self, ... )
+	local modalData = self.ModelData
+	if not modalData then return end
 
-	if not status and err then
-		StreamRadioLib.Util.ErrorNoHaltWithStack( err .. "\n" )
-		return nil
-	end
+	local func = modalData[index]
+	if not isfunction(func) then return end
 
-	return err, a, b, c, d, e, f, g
+	return func(modalData, self, ...)
 end
 
 function ENT:SetUpModel()
@@ -244,8 +259,8 @@ function ENT:SetUpModel()
 		return
 	end
 
-	self.ModelData = LIBModel.GetModelSettings(model)
-	local MD = self.ModelData or {}
+	self.ModelData = LIBModel.GetModelSettings(model) or {}
+	local MD = self.ModelData
 
 	self:CallModelFunction("Initialize", model)
 
@@ -307,14 +322,14 @@ function ENT:SetupGui(callback)
 	GUI:SetEntity(self)
 	GUI:ActivateNetworkedMode()
 
-	if self:IsDebug() then
+	if SERVER and self:IsDebug() then
 		self:SetEnableDebug(true)
 	end
 
 	GUI:SetDebug(self:GetEnableDebug())
 
 	if not IsValid(self.GUI_Main) then
-		self.GUI_Main = self.GUI:AddPanelByClassname("radio/gui_main")
+		self.GUI_Main = GUI:AddPanelByClassname("radio/gui_main")
 	end
 
 	local GUI_Main = self.GUI_Main
@@ -324,6 +339,7 @@ function ENT:SetupGui(callback)
 	GUI_Main:SetNWName("m")
 	GUI_Main:SetSkinIdentifyer("main")
 	GUI_Main:SetStream(self.StreamObj)
+	GUI_Main:SetHasPlaylist(self:GetHasPlaylist())
 
 	GUI_Main.OnToolButtonClick = function(this)
 		if not IsValid(self) then return end
@@ -343,6 +359,62 @@ function ENT:SetupGui(callback)
 	GUI_Main.OnPlayerShown = function(this)
 		if not IsValid(self) then return end
 		self:OnPlayerShown()
+	end
+
+	GUI_Main.OnPlaylistClose = function(this)
+		if not IsValid(self) then return end
+		self:ClearPlaylist()
+	end
+
+	if SERVER then
+		GUI_Main.OnPlaylistBack = function(this)
+			if not IsValid(self) then return end
+			self:PlayPreviousPlaylistItem()
+		end
+
+		GUI_Main.OnPlaylistForward = function(this)
+			if not IsValid(self) then return end
+			self:PlayNextPlaylistItem()
+		end
+
+		GUI_Main.OnPlaylistStartBuild = function(this)
+			if not IsValid(self) then return end
+
+			if self._dupePlaylistData then
+				self:ReapplyPlaylistFromDupe()
+				return
+			end
+
+			self:ClearPlaylist()
+		end
+
+		GUI_Main.OnPlaylistEndBuild = function(this, playlistItems)
+			if not IsValid(self) then return end
+
+			if self._dupePlaylistData then
+				self:ReapplyPlaylistFromDupe()
+				return
+			end
+
+			if not playlistItems then
+				self:ClearPlaylist()
+				return
+			end
+
+			self:SetPlaylist(playlistItems, 1, false)
+		end
+
+		GUI_Main.OnStop = function(this)
+			if not IsValid(self) then return end
+
+			self:StopStreamInternal()
+		end
+
+		GUI_Main.OnPlayItem = function(this, item)
+			if not IsValid(self) then return end
+
+			self:PlayFromPlaylistItem(item)
+		end
 	end
 
 	local model = self:GetModel()
@@ -405,6 +477,10 @@ function ENT:StreamOnClose(stream)
 	self:CallModelFunction("OnStop", stream)
 end
 
+function ENT:StreamOnTrackEnd(stream)
+	self:CallModelFunction("OnTrackEnd", stream)
+end
+
 function ENT:HasGUI()
 	if not IsValid(self.GUI) then
 		return false
@@ -447,6 +523,12 @@ function ENT:InternalThink()
 	if SERVER then
 		self:PollGuiSetup()
 	end
+end
+
+function ENT:InternalSlowThink()
+	BaseClass.InternalSlowThink(self)
+
+	self:PlaylistThink()
 end
 
 function ENT:NonDormantThink()
@@ -536,6 +618,9 @@ function ENT:SetupDataTables()
 
 	BaseClass.SetupDataTables(self)
 
+	self:AddDTNetworkVar( "Entity", "RadioOwner" )
+	self:AddDTNetworkVar( "Bool", "HasPlaylist" )
+
 	self:AddDTNetworkVar( "Bool", "DisableDisplay", {
 		KeyName = "DisableDisplay",
 		Edit = {
@@ -581,6 +666,11 @@ function ENT:SetupDataTables()
 		self.GUI:SetDebug(newv)
 	end)
 
+	LIBNetwork.SetDTVarCallback(self, "HasPlaylist", function(this, name, oldv, newv)
+		if not IsValid(self.GUI_Main) then return end
+		self.GUI_Main:SetHasPlaylist(newv)
+	end)
+
 	if CLIENT then
 		LIBNetwork.SetDTVarCallback(self, "DisableDisplay", function(this, name, oldv, newv)
 			if newv then
@@ -590,22 +680,223 @@ function ENT:SetupDataTables()
 	end
 end
 
-function ENT:IsPlaylistEnabled()
-	local GUI_Main = self.GUI_Main
+function ENT:AddItemToPlaylist(newItem, checkBlockedUrl)
+	if CLIENT then return end
 
-	if not IsValid(GUI_Main) then
+	local url = string.Trim(
+		tostring(
+			newItem.url or
+			newItem.uri or
+			newItem.link or
+			newItem.source or
+			newItem.path or ""
+		)
+	)
+
+	local name = string.Trim(
+		tostring(
+			newItem.name or
+			newItem.title or ""
+		)
+	)
+
+	if url == "" then
+		return
+	end
+
+	if name == "" then
+		name = url
+	end
+
+	if checkBlockedUrl and self:IsBlockedCustomURL(url) then
+		return
+	end
+
+	local playlistObj = self.PlaylistData
+	local data = playlistObj.data
+
+	local index = #data + 1
+
+	local entry = {
+		name = name,
+		url = url,
+		index = index,
+	}
+
+	data[index] = entry
+
+	self._updatedPlaylist = true
+
+	if index > 1 then
+		self:SetHasPlaylist(true)
+	end
+end
+
+function ENT:AddItemsToPlaylist(newItems, checkBlockedUrl)
+	if CLIENT then return end
+
+	for i, newItem in ipairs(newItems) do
+		self:AddItemToPlaylist(newItem, checkBlockedUrl)
+	end
+end
+
+function ENT:SetPlaylist(playlist, pos, checkBlockedUrl)
+	if CLIENT then return end
+
+	if not pos then
+		pos = 1
+	end
+
+	self:ClearPlaylist()
+	self:AddItemsToPlaylist(playlist, checkBlockedUrl)
+
+	local playlistObj = self.PlaylistData
+	playlistObj.pos = math.Clamp(pos or 1, 1, #playlistObj.data)
+end
+
+function ENT:ClearPlaylist()
+	if CLIENT then return end
+
+	local playlistObj = self.PlaylistData
+
+	StreamRadioLib.Util.EmptyTableSafe(playlistObj.data)
+	playlistObj.pos = 0
+
+	self._updatedPlaylist = true
+
+	self:SetHasPlaylist(false)
+end
+
+function ENT:HasPlaylistInternal()
+	if CLIENT then
 		return false
 	end
 
-	if not GUI_Main:IsPlaylistEnabled() then
+	local playlistObj = self.PlaylistData
+	local data = playlistObj.data
+
+	if #data <= 1 then
 		return false
 	end
 
 	return true
 end
 
+function ENT:PlayPreviousPlaylistItem()
+	if CLIENT then return end
+
+	local playlistObj = self.PlaylistData
+	local data = playlistObj.data
+
+	local len = #data
+	if len <= 1 then return end
+
+	local index = playlistObj.pos - 1
+	if index <= 0 then
+		index = len
+	end
+
+	index = math.Clamp(index, 1, len)
+
+	local playlistItem = data[index]
+	self:PlayFromPlaylistItem(playlistItem)
+end
+
+function ENT:PlayNextPlaylistItem()
+	if CLIENT then return end
+
+	local playlistObj = self.PlaylistData
+	local data = playlistObj.data
+
+	local len = #data
+	if len <= 1 then return end
+
+	local index = playlistObj.pos + 1
+	if index > len then
+		index = 1
+	end
+
+	index = math.Clamp(index, 1, len)
+
+	local playlistItem = data[index]
+	self:PlayFromPlaylistItem(playlistItem)
+end
+
+function ENT:PlayFromPlaylistItemByIndex(index)
+	if CLIENT then return end
+
+	local playlistObj = self.PlaylistData
+	local data = playlistObj.data
+
+	index = math.Clamp(index or 1, 1, #data)
+
+	local playlistItem = data[index]
+	if not playlistItem then return end
+
+	self:PlayFromPlaylistItem(playlistItem)
+end
+
+function ENT:PlayFromCurrentPlaylistItem()
+	if CLIENT then return end
+
+	local playlistObj = self.PlaylistData
+	self:PlayFromPlaylistItemByIndex(playlistObj.pos or 1)
+end
+
+function ENT:PlayFromPlaylistItem(playlistItem)
+	if CLIENT then return end
+	if not playlistItem then return end
+
+	local url = playlistItem.url
+	local name = playlistItem.name
+
+	local playlistObj = self.PlaylistData
+	local data = playlistObj.data
+
+	playlistObj.pos = math.Clamp(playlistItem.index or 1, 1, #data)
+	self:PlayStreamInternal(url, name)
+end
+
+function ENT:GetPlaylist()
+	if CLIENT then return end
+
+	local playlistObj = self.PlaylistData
+	local data = playlistObj.data
+
+	return data
+end
+
+function ENT:GetPlaylistPos()
+	if CLIENT then return end
+
+	local playlistObj = self.PlaylistData
+	local pos = playlistObj.pos or 1
+
+	return pos
+end
+
+function ENT:PlaylistThink()
+	if CLIENT then return end
+
+	if not self._updatedPlaylist then return end
+	self._updatedPlaylist = nil
+
+	self:SetHasPlaylist(self:HasPlaylistInternal())
+
+	self:OnPlaylistChanged()
+end
+
 function ENT:Initialize()
 	BaseClass.Initialize(self)
+
+	if SERVER then
+		self.PlaylistData = {
+			data = {},
+			pos = 0,
+		}
+
+		self:ClearPlaylist()
+	end
 
 	self:SetUpModel()
 end
@@ -613,6 +904,7 @@ end
 function ENT:OnRemove()
 	self:CallModelFunction("OnRemove", model)
 	self:RemoveGui()
+	self:ClearPlaylist()
 
 	BaseClass.OnRemove(self)
 end
@@ -622,6 +914,10 @@ function ENT:OnToolButtonClick()
 end
 
 function ENT:OnWireButtonClick()
+	-- Override me
+end
+
+function ENT:OnPlaylistChanged()
 	-- Override me
 end
 
@@ -638,8 +934,14 @@ function ENT:OnModelSetup()
 end
 
 function ENT:OnGUIReady()
-	if SERVER and self._postClasssystemPasteLoadDupeOnGUIReady then
+	if CLIENT then return end
+
+	if self._postClasssystemPasteLoadDupeOnGUIReady then
 		self:ReapplyClasssystemPaste()
+	end
+
+	if self._dupePlaylistData then
+		self:ReapplyPlaylistFromDupe()
 	end
 end
 
@@ -856,9 +1158,72 @@ else
 		return true
 	end
 
+	function ENT:ReapplyPlaylistFromDupe()
+		-- Reapply the duped playlist data once.
+		-- This is needed, because gui would override it on creation, which is not wanted.
+
+		local timerId = "KillDupePlaylist_" .. tostring(self)
+		StreamRadioLib.Timer.Remove(timerId)
+
+		if self.DisplayLess then
+			self._dupePlaylistData = nil
+			return
+		end
+
+		local playlist = self._dupePlaylistData
+		if not playlist then
+			return
+		end
+
+		StreamRadioLib.Timer.Once(timerId, 1, function()
+			if not IsValid(self) then
+				return
+			end
+
+			-- Remove the list data late to avoid any race conditions
+			self._dupePlaylistData = nil
+		end)
+
+		local data = playlist.data
+		if not data then return end
+
+		local pos = playlist.pos or 1
+
+		self:SetPlaylist(data, pos, true)
+	end
+
 	function ENT:OnSetupCopyData(data)
+		BaseClass.OnPreEntityCopy(self, data)
+
 		data.GUI = nil
 		data.GUI_Main = nil
+		data.PlaylistData = nil
+	end
+
+	function ENT:OnPreEntityCopy()
+		BaseClass.OnPreEntityCopy(self)
+
+		self:SetDupeData("PlaylistData", self.PlaylistData)
+	end
+
+	function ENT:DupeDataApply(key, value)
+		BaseClass.DupeDataApply(self, key, value)
+
+		if key ~= "PlaylistData" then return end
+
+		local data = value.data
+		if not data then return end
+
+		local pos = value.pos or 1
+
+		self:SetPlaylist(data, pos, true)
+
+		if self.DisplayLess then
+			self._dupePlaylistData = nil
+			return
+		end
+
+		self._dupePlaylistData = value
 	end
 
 	function ENT:PostClasssystemPaste(data)

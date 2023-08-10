@@ -719,7 +719,7 @@ do
 	end
 
 	concommand.Add("debug_streamradio_dump_nwstringtable", function(ply)
-		if IsValid(ply) and not ply:IsAdmin() then
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
 			return
 		end
 
@@ -727,7 +727,7 @@ do
 	end, nil, nil, concommandFlags)
 
 	concommand.Add("debug_streamradio_dump_nwstringtable_code", function(ply)
-		if IsValid(ply) and not ply:IsAdmin() then
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
 			return
 		end
 

@@ -3,6 +3,8 @@ local StreamRadioLib = StreamRadioLib
 StreamRadioLib.Settings = StreamRadioLib.Settings or {}
 local LIB = StreamRadioLib.Settings
 
+local LIBMenu = StreamRadioLib.Menu
+
 LIB.g_CV_List["vr"] = {}
 
 LIB.AddConVar("vr", "vr_enable_touch", "cl_streamradio_vr_enable_touch", "1", {
@@ -45,23 +47,17 @@ local function BuildMenuPanel(CPanel)
 	end
 
 	if not StreamRadioLib.VR.IsInstalled() then
-		local errorlabel = vgui.Create("DLabel")
-		errorlabel:SetDark(false)
-		errorlabel:SetHighlight(true)
-		errorlabel:SetText((StreamRadioLib.AddonPrefix or "") .. "\nVRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
-		errorlabel:SizeToContents()
+		CPanel:AddPanel(LIBMenu.GetVRErrorPanel())
 
-		CPanel:AddPanel(errorlabel)
+		CPanel:AddPanel(LIBMenu.GetSpacer())
 
-		CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
-
-		CPanel:AddPanel(StreamRadioLib.Menu.GetVRAddonButton())
-		CPanel:AddPanel(StreamRadioLib.Menu.GetVRFAQButton())
+		CPanel:AddPanel(LIBMenu.GetVRAddonButton())
+		CPanel:AddPanel(LIBMenu.GetVRFAQButton())
 		return
 	end
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetVRCreditsPanel())
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+	CPanel:AddPanel(LIBMenu.GetVRInfoPanel())
+	CPanel:AddPanel(LIBMenu.GetSpacer(5))
 
 	for i, v in ipairs(LIB.GetConVarListByNamespace("vr")) do
 		if not IsValid(v) then continue end
@@ -72,11 +68,12 @@ local function BuildMenuPanel(CPanel)
 		p:SetTooltip(v:GetPanellabel())
 	end
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
-	CPanel:AddPanel(StreamRadioLib.Menu.GetVRAddonPanelButton())
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
-	CPanel:AddPanel(StreamRadioLib.Menu.GetVRFAQButton())
-	CPanel:AddPanel(StreamRadioLib.Menu.GetCreditsPanel())
+	CPanel:AddPanel(LIBMenu.GetSpacer(5))
+	CPanel:AddPanel(LIBMenu.GetVRAddonPanelButton())
+	CPanel:AddPanel(LIBMenu.GetSpacer(5))
+	CPanel:AddPanel(LIBMenu.GetVRFAQButton())
+	CPanel:AddPanel(LIBMenu.GetCreditsPanel())
 end
 
 LIB.AddBuildMenuPanelHook("vr", "VR Settings", BuildMenuPanel)
+

@@ -29,6 +29,7 @@ function CLASS:Create()
 	self.Player:SetPadding(5)
 
 	self._showplaylist = true
+	self._hasplaylist = false
 
 	self.State = self:CreateListener({
 		PlayerOpened = false,
@@ -45,7 +46,9 @@ function CLASS:Create()
 			self.Browser:Close()
 			self.Player:ActivateNetworkedMode()
 			self.Player:Open()
+
 			self:EnablePlaylist(self._showplaylist)
+			self:SetHasPlaylist(self._hasplaylist)
 
 			if IsValid(self.StreamOBJ) then
 				self.StreamOBJ:Play(true)
@@ -59,9 +62,25 @@ function CLASS:Create()
 		self:InvalidateLayout()
 	end)
 
-	self.Browser.OnPlay = function(this, name, url)
+	self.Browser.OnPlayItem = function(this, item)
 		self:EnablePlaylist(true)
-		self:Play(name, url)
+		self:Play(item)
+	end
+
+	self.Browser.OnPlaylistStartBuild = function(this, ...)
+		return self:CallHook("OnPlaylistStartBuild", ...)
+	end
+
+	self.Browser.OnPlaylistEndBuild = function(this, ...)
+		return self:CallHook("OnPlaylistEndBuild", ...)
+	end
+
+	self.Browser.OnPlaylistOpen = function(this, ...)
+		return self:CallHook("OnPlaylistOpen", ...)
+	end
+
+	self.Browser.OnPlaylistClose = function(this, ...)
+		return self:CallHook("OnPlaylistClose", ...)
 	end
 
 	self.Browser.OnToolButtonClick = function()
@@ -72,22 +91,17 @@ function CLASS:Create()
 		self:CallHook("OnWireButtonClick")
 	end
 
-	self.Browser.OnDupePlaylistApply = function()
-		self:EnablePlaylist(self._showplaylist)
-	end
-
 	self.Player.OnClose = function()
-		self:Play("", "")
-		self.State.PlayerOpened = false
+		self:Stop()
 		self:CallHook("OnPlayerClosed")
 	end
 
 	self.Player.OnPlaylistBack = function()
-		self.Browser:PlayPrevious()
+		self:CallHook("OnPlaylistBack")
 	end
 
 	self.Player.OnPlaylistForward = function()
-		self.Browser:PlayNext()
+		self:CallHook("OnPlaylistForward")
 	end
 
 	self.Player.OnPlaybackLoopModeChange = function(this, newLoopMode)
@@ -98,20 +112,31 @@ function CLASS:Create()
 	self:InvalidateLayout()
 end
 
-function CLASS:Play(name, url)
-	if not IsValid(self.StreamOBJ) then return end
-
-	if url == "" then
-		self.StreamOBJ:Stop()
-		self.State.PlayerOpened = false
+function CLASS:Stop()
+	if not self.State.PlayerOpened then
 		return
 	end
 
-	self.StreamOBJ:RemoveChannel(true)
-	self.StreamOBJ:SetURL(url)
-	self.StreamOBJ:SetStreamName(name)
+	self:ClosePlayer()
+	self:CallHook("OnStop")
+end
 
+function CLASS:Play(item)
+	if not item then
+		self:Stop()
+		return
+	end
+
+	self:OpenPlayer()
+	self:CallHook("OnPlayItem", item)
+end
+
+function CLASS:OpenPlayer()
 	self.State.PlayerOpened = true
+end
+
+function CLASS:ClosePlayer()
+	self.State.PlayerOpened = false
 end
 
 function CLASS:PerformLayout(...)
@@ -143,7 +168,19 @@ end
 
 function CLASS:EnablePlaylist(bool)
 	self._showplaylist = bool
-	self.Player:EnablePlaylist(not self.Browser:IsSingleItem() and self._showplaylist)
+	self.Player:EnablePlaylist(bool and self._hasplaylist)
+end
+
+function CLASS:GetHasPlaylist()
+	return self._hasplaylist or false
+end
+
+function CLASS:SetHasPlaylist(bool)
+	self._hasplaylist = bool
+	self.Player:EnablePlaylist(bool and self._showplaylist)
+
+	self.Player:SetHasPlaylist(bool)
+	self.Browser:SetHasPlaylist(bool)
 end
 
 function CLASS:IsPlaylistEnabled()

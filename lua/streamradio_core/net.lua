@@ -5,6 +5,7 @@ local LIB = StreamRadioLib.Net
 
 local LIBNetwork = StreamRadioLib.Network
 
+LIBNetwork.AddNetworkString("StaticState")
 LIBNetwork.AddNetworkString("Control")
 LIBNetwork.AddNetworkString("PlaylistMenu")
 LIBNetwork.AddNetworkString("Playlist")
@@ -226,3 +227,24 @@ function StreamRadioLib.NetReceivePlaylistEntry( )
 
 	return ent, name, x, y
 end
+
+local function networkStaticAddonStates()
+	if SERVER then
+		StreamRadioLib.Hook.Add("PlayerInitialSpawn", "StaticState", function(ply)
+			if not IsValid(ply) then
+				return
+			end
+
+			LIB.Start("StaticState")
+				net.WriteBool(StreamRadioLib.Bass.IsInstalledOnServer())
+			net.Send(ply)
+		end)
+	else
+		LIB.Receive("StaticState", function()
+			StreamRadioLib.Bass.g_IsInstalledOnServer = net.ReadBool()
+		end)
+	end
+end
+
+networkStaticAddonStates()
+

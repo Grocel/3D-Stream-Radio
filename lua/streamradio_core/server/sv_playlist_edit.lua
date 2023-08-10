@@ -16,13 +16,20 @@ function LIB.GetPath( )
 end
 
 do
-	local function StopLoading( ply, cmd, args )
-		if ( IsValid( ply ) and not ply:IsAdmin( ) ) then return end
-		LIB.Reset( ply )
+	local function StopLoading(ply, cmd, args)
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
+			return
+		end
+
+		LIB.Reset(ply)
 	end
 
 	concommand.Add( "sv_streamradio_playlisteditor_reset", StopLoading )
 end
+
+StreamRadioLib.Hook.Add("PostCleanupMap", "reset_playlisteditor", function()
+	LIB.Reset()
+end)
 
 local OK_CODES = {
 	[StreamRadioLib.EDITOR_ERROR_OK] = true,

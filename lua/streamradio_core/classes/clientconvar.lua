@@ -326,7 +326,7 @@ function CLASS:BuildPanel(mainpanel, ...)
 	end
 
 	if self:GetDisabled() then
-		panel:SetDisabled(true)
+		panel:SetEnabled(false)
 	end
 
 	return panel

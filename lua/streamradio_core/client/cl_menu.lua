@@ -95,22 +95,168 @@ function LIB.GetLinkButton(text, urlStr)
 	return button
 end
 
-function LIB.GetCreditsPanel()
-	local credits = vgui.Create("DLabel")
-	credits:SetDark(true)
-	credits:SetText(StreamRadioLib.AddonPrefix .. "Made by Grocel")
-	credits:SizeToContents()
+function LIB.GetAdminButton(label)
+	local button = vgui.Create("DButton")
 
+	local function handleAdmin(this)
+		local lastIsAdmin = this._isAdmin
+
+		local isAdmin = StreamRadioLib.Util.IsAdmin()
+		this._isAdmin = isAdmin
+
+		return lastIsAdmin == isAdmin, isAdmin
+	end
+
+	local function handleVR(this)
+		local lastIsVR = this._isVR
+
+		local isVR = StreamRadioLib.VR.IsActive()
+		this._isVR = isVR
+
+		return lastIsVR == isVR, isVR
+	end
+
+	local oldThink = button.Think
+	button.Think = function(this)
+		oldThink(this)
+
+		local changeAdmin, isAdmin = handleAdmin(this)
+		local changeVR, isVR = handleVR(this)
+
+		if not changeAdmin and not changeVR then
+			return
+		end
+
+		local locked = isVR or not isAdmin
+
+		this:SetDisabled(locked)
+
+		local tooltip = label
+		local text = label
+
+		if locked then
+			tooltip = tooltip .. " (not available)"
+
+			if not isAdmin then
+				tooltip = tooltip .. "\n - You must be an admin!"
+				text = text .. " (Admin only!)"
+			end
+
+			if isVR then
+				tooltip = tooltip .. "\n - You must not be in VR!"
+				text = text .. " (Not in VR!)"
+			end
+		end
+
+		this:SetTooltip(tooltip)
+		this:SetText(text)
+
+		StreamRadioLib.VR.RenderMenu(this)
+	end
+
+	button:Think()
+
+	return button
+end
+
+function LIB.AddDangerButton(label, data)
+	local button = LIB.GetAdminButton(label)
+
+	local message = tostring(data.message or "")
+	local icon = data.icon or "icon16/error.png"
+
+	if message ~= "" then
+		message = message .. "\nThis can not be undone!"
+	end
+
+	button.DoClick = function(this)
+		Derma_Query(message, label, "Yes", function()
+			RunConsoleCommand(data.cmd)
+		end, "No" )
+	end
+
+	button:SetImage(icon)
+
+	return button
+end
+
+function LIB.GetLabel(text)
+	local label = vgui.Create("DLabel")
+
+	label:SetText(text)
+	label:SetTooltip(text)
+
+	label:SetDark(true)
+	label:SizeToContents()
+
+	return label
+end
+
+function LIB.GetWarnLabel(text)
+	local label = LIB.GetLabel(text)
+
+	label:SetDark(false)
+	label:SetHighlight(true)
+
+	return label
+end
+
+function LIB.GetCustomURLBlockedLabel(text)
+	local label = LIB.GetWarnLabel(text)
+
+	local function handleBlocked(this)
+		local lastIsCustomURLsAllowed = this._isCustomURLsAllowed
+
+		local isCustomURLsAllowed = StreamRadioLib.IsCustomURLsAllowed()
+		this._isCustomURLsAllowed = isCustomURLsAllowed
+
+		return lastIsCustomURLsAllowed == isCustomURLsAllowed, isCustomURLsAllowed
+	end
+
+	local oldThink = label.Think
+	label.Think = function(this)
+		oldThink(this)
+
+		local changeAllowed, isAllowed = handleBlocked(this)
+
+		if not changeAllowed then
+			return
+		end
+
+		if isAllowed then
+			this:SetTall(0)
+		else
+			this:SizeToContents()
+		end
+
+		local parent = this:GetParent()
+		if IsValid(parent) then
+			parent:InvalidateLayout()
+			StreamRadioLib.VR.RenderMenu(parent)
+		end
+
+		this:InvalidateLayout()
+		StreamRadioLib.VR.RenderMenu(this)
+	end
+
+	label:Think()
+
+	return label
+end
+
+function LIB.GetCreditsPanel()
+	local credits = LIB.GetLabel(StreamRadioLib.AddonPrefix .. "Made by Grocel")
 	return credits
 end
 
-function LIB.GetVRCreditsPanel()
-	local credits = vgui.Create("DLabel")
-	credits:SetDark(true)
-	credits:SetText("Powered by VRMod!\n  - VRMod is made by Catse\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
-	credits:SizeToContents()
+function LIB.GetVRInfoPanel()
+	local vrinfo = LIB.GetLabel("Powered by VRMod!\n  - VRMod is made by Catse\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
+	return vrinfo
+end
 
-	return credits
+function LIB.GetVRErrorPanel()
+	local vrinfo = LIB.GetWarnLabel((StreamRadioLib.AddonPrefix or "") .. "\nVRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
+	return vrinfo
 end
 
 function LIB.GetSpacer(height)
@@ -150,14 +296,13 @@ function LIB.GetSpacerLine()
 	return spacer
 end
 
-
 function LIB.GetFAQButton()
-	local button = LIB.GetLinkButton("Open FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/368542844488661960/")
+	local button = LIB.GetLinkButton("Show FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/368542844488661960/")
 	return button
 end
 
 function LIB.GetVRFAQButton()
-	local button = LIB.GetLinkButton("Open VR FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/2247805152838837222/")
+	local button = LIB.GetLinkButton("Show VR FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/2247805152838837222/")
 	return button
 end
 
@@ -169,7 +314,7 @@ end
 function LIB.GetVRAddonPanelButton()
 	local button = vgui.Create("DButton")
 
-	local maintext = "Open VRMod Panel"
+	local maintext = "Show VRMod Panel"
 
 	button.DoClick = function(this)
 		RunConsoleCommand("vrmod")
@@ -182,69 +327,11 @@ function LIB.GetVRAddonPanelButton()
 end
 
 function LIB.GetPlaylistEditorButton()
-	local button = vgui.Create("DButton")
-
-	local maintext = "Open Playlist Editor"
+	local button = LIB.GetAdminButton("Show Playlist Editor")
 
 	button.DoClick = function(this)
 		RunConsoleCommand("cl_streamradio_playlisteditor")
 	end
-
-	local function handleAdmin(this)
-		local lastIsAdmin = this._isAdmin
-		local isAdmin = LocalPlayer():IsAdmin()
-		this._isAdmin = isAdmin
-
-		return lastIsAdmin == isAdmin, isAdmin
-	end
-
-	local function handleVR(this)
-		local lastIsVR = this._isVR
-		local isVR = StreamRadioLib.VR.IsActive()
-		this._isVR = isVR
-
-		return lastIsVR == isVR, isVR
-	end
-
-	local oldThink = button.Think
-	button.Think = function(this)
-		oldThink(this)
-
-		local changeAdmin, isAdmin = handleAdmin(this)
-		local changeVR, isVR = handleVR(this)
-
-		if not changeAdmin and not changeVR then
-			return
-		end
-
-		local locked = isVR or not isAdmin
-
-		this:SetDisabled(locked)
-
-		local tooltip = maintext
-		local text = maintext
-
-		if locked then
-			tooltip = tooltip .. " (not available)"
-
-			if not isAdmin then
-				tooltip = tooltip .. "\n - You must be an admin!"
-				text = text .. " (Admin only!)"
-			end
-
-			if isVR then
-				tooltip = tooltip .. "\n - You must not be in VR!"
-				text = text .. " (Not in VR!)"
-			end
-		end
-
-		this:SetTooltip(tooltip)
-		this:SetText(text)
-
-		StreamRadioLib.VR.RenderMenu(this)
-	end
-
-	button:Think()
 
 	return button
 end
@@ -252,7 +339,7 @@ end
 function LIB.GetOpenToolButton()
 	local button = vgui.Create("DButton")
 
-	local maintext = "Open Stream Radio Tool"
+	local maintext = "Stream Radio Tool"
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("streamradio", false)
@@ -267,7 +354,7 @@ end
 function LIB.GetOpenSettingsButton()
 	local button = vgui.Create("DButton")
 
-	local maintext = "Open Settings"
+	local maintext = "General Settings"
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("StreamRadioSettingsPanel_general", true)
@@ -278,3 +365,41 @@ function LIB.GetOpenSettingsButton()
 
 	return button
 end
+
+function LIB.GetOpenAdminSettingsButton()
+	local button = LIB.GetAdminButton("Admin Settings")
+
+	button.DoClick = function(this)
+		spawnmenu.ActivateTool("StreamRadioSettingsPanel_admin", true)
+	end
+
+	return button
+end
+
+function LIB.PatchComboBox(combobox, label)
+	local parent = label:GetParent()
+
+	if IsValid(parent) then
+		parent:SetTall(35)
+	end
+
+	local updateIcon = function()
+		local index = combobox:GetSelectedID()
+
+		if not combobox.ChoiceIcons then
+			return
+		end
+
+		combobox:SetIcon(combobox.ChoiceIcons[index])
+	end
+
+	local oldSetText = combobox.SetText
+	combobox.SetText = function(this, ...)
+		oldSetText(this, ...)
+		StreamRadioLib.Timedcall(updateIcon)
+	end
+
+	StreamRadioLib.Timedcall(updateIcon)
+	return combobox
+end
+

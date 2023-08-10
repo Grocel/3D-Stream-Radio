@@ -324,8 +324,6 @@ local function printAddon()
 			MsgN()
 		end
 	else
-		
-
 		MsgC(g_colOk, "is loaded on the " .. realmname .. ".")
 		MsgN()
 	end

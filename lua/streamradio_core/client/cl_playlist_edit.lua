@@ -243,11 +243,6 @@ do
 			return
 		end
 
-		if StreamRadioLib.VR.IsActive(ply) then
-			StreamRadioLib.Print.Msg(ply, "The playlist editor is not available in VR.")
-			return
-		end
-
 		if not IsValid(MainPanel) then
 			CreateMainPanel()
 		end

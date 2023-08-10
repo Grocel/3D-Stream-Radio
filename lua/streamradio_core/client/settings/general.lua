@@ -3,6 +3,8 @@ local StreamRadioLib = StreamRadioLib
 StreamRadioLib.Settings = StreamRadioLib.Settings or {}
 local LIB = StreamRadioLib.Settings
 
+local LIBMenu = StreamRadioLib.Menu
+
 local g_drawdistance = 0
 local g_hidespectrumbars = false
 local g_spectrumdistance = 0
@@ -180,17 +182,11 @@ local function BuildMenuPanel(CPanel)
 	cvBass3Enable:SetDisabled(not StreamRadioLib.Bass.IsInstalled())
 
 	CPanel:Button(
-		"Clear Client Stream Cache",
+		"Clear client stream cache",
 		"cl_streamradio_cacheclear"
 	)
 
-	-- @TODO: Re add serverside cache button, if the server has GM_BASS3 installed. Otherwise it is without use and even confusing to the user.
-	-- CPanel:Button(
-	-- 	"Clear Server Stream Cache (Admin only!)",
-	-- 	"sv_streamradio_cacheclear"
-	-- )
-
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
+	CPanel:AddPanel(LIBMenu.GetSpacer())
 
 	for i, v in ipairs(LIB.GetConVarListByNamespace("general")) do
 		if not IsValid(v) then continue end
@@ -201,14 +197,15 @@ local function BuildMenuPanel(CPanel)
 		p:SetTooltip(v:GetPanellabel())
 	end
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
+	CPanel:AddPanel(LIBMenu.GetSpacer())
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenToolButton())
-	CPanel:AddPanel(StreamRadioLib.Menu.GetPlaylistEditorButton())
+	CPanel:AddPanel(LIBMenu.GetOpenToolButton())
+	CPanel:AddPanel(LIBMenu.GetOpenAdminSettingsButton())
+	CPanel:AddPanel(LIBMenu.GetPlaylistEditorButton())
 
-	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
-	CPanel:AddPanel(StreamRadioLib.Menu.GetFAQButton())
-	CPanel:AddPanel(StreamRadioLib.Menu.GetCreditsPanel())
+	CPanel:AddPanel(LIBMenu.GetSpacer(5))
+	CPanel:AddPanel(LIBMenu.GetFAQButton())
+	CPanel:AddPanel(LIBMenu.GetCreditsPanel())
 end
 
 LIB.AddBuildMenuPanelHook("general", "General Settings", BuildMenuPanel)
@@ -302,3 +299,4 @@ StreamRadioLib.Hook.Add("Think", "SettingsUpdate", function()
 	g_volume = LIB.GetConVarValue("volume")
 	g_coveredvolume = LIB.GetConVarValue("coveredvolume")
 end)
+

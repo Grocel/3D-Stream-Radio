@@ -456,6 +456,14 @@ function CLASS:PerformLayout(...)
 	self.CloseButton:SetPos(closex, closey)
 end
 
+function CLASS:GetHasPlaylist()
+	return self._hasplaylist or false
+end
+
+function CLASS:SetHasPlaylist(bool)
+	self._hasplaylist = bool
+end
+
 function CLASS:EnablePlaylist(...)
 	if not IsValid(self.ControlPanel) then
 		return

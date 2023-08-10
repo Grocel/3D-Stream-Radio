@@ -3,6 +3,8 @@ local StreamRadioLib = StreamRadioLib
 StreamRadioLib.Bass = StreamRadioLib.Bass or {}
 local LIB = StreamRadioLib.Bass
 
+LIB.g_IsInstalledOnServer = false
+
 local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 local g_dll = "bass3"
@@ -28,6 +30,8 @@ local g_cvar_cl_bass3_enable = nil
 local g_cvar_sv_bass3_enable = nil
 local g_cvar_sv_bass3_allow_client = nil
 
+local g_cvar_sv_bass3_installed = nil
+
 local function resetCache(...)
 	g_bass_loaded = nil
 	g_bass_can_loaded = nil
@@ -43,7 +47,6 @@ if CLIENT then
 end
 
 local g_colDefault = Color(255,255,255)
-local g_colError = Color(255,128,128)
 local g_colOk = Color(100,200,100)
 local g_colCL = Color(255,222,137)
 local g_colSV = Color(137,222,255)
@@ -53,31 +56,49 @@ local function printBass3Info()
 		return
 	end
 
+	local realmname = "CLIENT"
+
+	if SERVER then
+		realmname = "SERVER"
+	end
+
 	g_bass_info_shown = true
 
 	local baseString = string.format(
-		"%s [color:100,200,100]loaded %s (ver. %s, %s)",
-		StreamRadioLib.AddonTitle,
+		"loaded %s (ver. %s, %s)",
 		g_dllName,
 		BASS3.ModuleVersion or 0,
 		BASS3.Version or 0
 	)
 
 	local message = nil
+	local realmcol = nil
 
 	if SERVER then
-		message = "[color:100,200,100]Serverside streaming API for advanced wire outputs active!"
+		message = "Serverside streaming API for advanced wire outputs active!"
+		realmcol = g_colSV
 	else
-		message = "[color:100,200,100]Clientside streaming API active!"
+		message = "Clientside streaming API active!"
+		realmcol = g_colCL
 	end
 
-	message = string.format(
-		"%s:\n  %s",
-		baseString,
-		message
-	)
+	MsgN()
+	MsgN()
+	MsgC(realmcol, "###########################################################################")
+	MsgN()
+	MsgN()
 
-	-- StreamRadioLib.Print.Wrapped(message) -- @TODO: Rewrite the GM_BASS3 print.
+	MsgC(g_colDefault, "    ", StreamRadioLib.AddonTitle, " ")
+	MsgC(g_colOk, baseString)
+	MsgN()
+	MsgN()
+	MsgC(g_colOk, "    ", message)
+	MsgN()
+
+	MsgN()
+	MsgC(realmcol, "###########################################################################")
+	MsgN()
+	MsgN()
 end
 
 local function onLoadBASS3()
@@ -258,3 +279,12 @@ function LIB.LoadDLL()
 
 	return g_bass_loaded
 end
+
+function LIB.IsInstalledOnServer()
+	return LIB.g_IsInstalledOnServer or false
+end
+
+if SERVER then
+	LIB.g_IsInstalledOnServer = LIB.IsInstalled()
+end
+

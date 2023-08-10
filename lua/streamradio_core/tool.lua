@@ -217,9 +217,37 @@ function LIB.Setup(toolobj)
 	function toolobj:AddLabel( panel, name, descbool )
 		local label = vgui.Create( "DLabel" )
 		panel:AddPanel( label )
+
 		label:SetText(StreamRadioLib.Tool.GetLocale(self, name))
 		label:SetDark( true )
 		label:SizeToContents( )
+
+		if descbool then
+			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
+		end
+
+		return label
+	end
+
+	function toolobj:AddReadOnlyText( panel, name, descbool )
+		local label = vgui.Create( "Streamradio_VGUI_ReadOnlyTextEntry" )
+		panel:AddPanel( label )
+
+		label:SetText(StreamRadioLib.Tool.GetLocale(self, name))
+
+		if descbool then
+			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
+		end
+
+		label:DockMargin(0, 0, 0, 0)
+		label:DockPadding(0, 0, 0, 0)
+
+		return label
+	end
+
+	function toolobj:AddCustomURLBlockedLabel( panel, name, descbool )
+		local label = StreamRadioLib.Menu.GetCustomURLBlockedLabel(StreamRadioLib.Tool.GetLocale(self, name))
+		panel:AddPanel( label )
 
 		if descbool then
 			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
@@ -280,13 +308,15 @@ function LIB.Setup(toolobj)
 	end
 
 	function toolobj:AddComboBox( panel, command, descbool )
-		local checkbox = panel:ComboBox(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
+		local combobox, label = panel:ComboBox(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
+
+		StreamRadioLib.Menu.PatchComboBox(combobox, label)
 
 		if descbool then
-			checkbox:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
+			combobox:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
 		end
 
-		return checkbox
+		return combobox
 	end
 
 	function toolobj:AddTextEntry( panel, command, descbool )

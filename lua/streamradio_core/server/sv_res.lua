@@ -30,9 +30,8 @@ do
 		if not StreamRadioLib then return end
 		if not StreamRadioLib.Loaded then return end
 
-		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
 			StreamRadioLib.Print.Msg( ply, "You need to be an admin to rebuild the playlists." )
-
 			return
 		end
 
@@ -47,9 +46,8 @@ do
 		if not StreamRadioLib then return end
 		if not StreamRadioLib.Loaded then return end
 
-		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
 			StreamRadioLib.Print.Msg( ply, "You need to be an admin to rebuild the community playlists." )
-
 			return
 		end
 
@@ -68,9 +66,8 @@ do
 		if not StreamRadioLib.Loaded then return end
 		if not StreamRadioLib.DataDirectory then return end
 
-		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
 			StreamRadioLib.Print.Msg( ply, "You need to be an admin to reset the playlists." )
-
 			return
 		end
 
@@ -91,9 +88,8 @@ do
 		if not StreamRadioLib.Loaded then return end
 		if not StreamRadioLib.DataDirectory then return end
 
-		if not ( not ply or ( IsValid( ply ) and ply:IsAdmin( ) ) ) then
+		if not StreamRadioLib.Util.IsAdminForCMD(ply) then
 			StreamRadioLib.Print.Msg( ply, "You need to be an admin to reset the community playlists." )
-
 			return
 		end
 

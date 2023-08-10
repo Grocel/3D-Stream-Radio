@@ -139,6 +139,8 @@ function CLASS:Create()
 		end
 
 		if not v then
+			self:CallHook("OnPlaylistClose")
+
 			if IsValid(self.ListPlaylist) then
 				self.ListPlaylist:ClearData()
 				self.ListPlaylist:Close()
@@ -149,6 +151,8 @@ function CLASS:Create()
 				self.ListFiles:Open()
 			end
 		else
+			self:CallHook("OnPlaylistOpen")
+
 			if IsValid(self.ListFiles) then
 				self.ListFiles:ClearData()
 				self.ListFiles:Close()
@@ -168,9 +172,17 @@ function CLASS:Create()
 		self:InvalidateLayout()
 	end)
 
-	self.ListPlaylist.OnPlay = function(this, ...)
+	self.ListPlaylist.OnPlayItem = function(this, ...)
 		self:UpdatePath()
-		return self:CallHook("OnPlay", ...)
+		return self:CallHook("OnPlayItem", ...)
+	end
+
+	self.ListPlaylist.OnPlaylistStartBuild = function(this, ...)
+		return self:CallHook("OnPlaylistStartBuild", ...)
+	end
+
+	self.ListPlaylist.OnPlaylistEndBuild = function(this, ...)
+		return self:CallHook("OnPlaylistEndBuild", ...)
 	end
 
 	self.ListPlaylist.OnError = function(this, filename, filetype, ...)
@@ -192,37 +204,11 @@ function CLASS:Create()
 	end
 
 	self.ListPlaylist.OnInvalidDupeFilepath = function(this, filename, filetype, ...)
-		self.InValidPlaylistDupe = true
-		self.State.PlaylistOpened = false
-
-		if IsValid(self.Errorbox) then
-			self.Errorbox:Close()
-			self:InvalidateLayout()
-		end
-
-		self:Refresh()
-		self:QueueCall("Refresh")
-
-		self:UpdatePath()
+		self:QueueCall("OnInvalidDupeFilepath")
 	end
 
 	self.ListFiles.OnInvalidDupeFilepath = function(this)
-		self.InValidPlaylistDupe = true
-		self.State.PlaylistOpened = false
-
-		if IsValid(self.Errorbox) then
-			self.Errorbox:Close()
-			self:InvalidateLayout()
-		end
-
-		self:Refresh()
-		self:QueueCall("Refresh")
-
-		self:UpdatePath()
-	end
-
-	self.ListPlaylist.OnDupePlaylistApply = function(this)
-		self:CallHook("OnDupePlaylistApply")
+		self:QueueCall("OnInvalidDupeFilepath")
 	end
 
 	self.ListFiles.OnFileClick = function(this, value, ...)
@@ -277,17 +263,29 @@ function CLASS:Create()
 	self:UpdatePath()
 end
 
-function CLASS:IsSingleItem()
-	if not IsValid(self.ListPlaylist) then
-		return false
+function CLASS:OnInvalidDupeFilepath()
+	self.State.PlaylistOpened = false
+
+	if IsValid(self.Errorbox) then
+		self.Errorbox:Close()
 	end
 
-	return self.ListPlaylist:IsSingleItem()
+	self:Refresh()
+
+	self:UpdatePath()
+	self:InvalidateLayout()
+end
+
+function CLASS:GetHasPlaylist()
+	return self._hasplaylist or false
+end
+
+function CLASS:SetHasPlaylist(bool)
+	self._hasplaylist = bool
 end
 
 function CLASS:CloseSingleItem()
-	if CLIENT then return end
-	if not self:IsSingleItem() then return end
+	if self:GetHasPlaylist() then return end
 
 	self.State.PlaylistOpened = false
 end
@@ -408,16 +406,6 @@ function CLASS:Refresh()
 	if IsValid(self.ListFiles) and self.ListFiles:IsVisible() then
 		self.ListFiles:Refresh()
 	end
-end
-
-function CLASS:PlayNext()
-	if not IsValid(self.ListPlaylist) then return end
-	self.ListPlaylist:PlayNext()
-end
-
-function CLASS:PlayPrevious()
-	if not IsValid(self.ListPlaylist) then return end
-	self.ListPlaylist:PlayPrevious()
 end
 
 function CLASS:_PerformButtonLayout(buttonx, buttony)
@@ -545,5 +533,5 @@ function CLASS:PreDupe()
 end
 
 function CLASS:PostDupe(data)
-	self.State.PlaylistOpened = data.PlaylistOpened and not self.InValidPlaylistDupe
+	self.State.PlaylistOpened = data.PlaylistOpened
 end

@@ -22,13 +22,15 @@ local SERVER = SERVER
 local CLIENT = CLIENT
 
 local EmptyVector = Vector()
-local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 local BASS3 = nil
 
 local LIBNetwork = StreamRadioLib.Network
 local LIBBass = StreamRadioLib.Bass
 local LIBError = StreamRadioLib.Error
+local LIBUtil = StreamRadioLib.Util
+
+local catchAndErrorNoHaltWithStack = LIBUtil.CatchAndErrorNoHaltWithStack
 
 local BASE = CLASS:GetBaseClass()
 local g_maxSongLenForCache = 60 * 60 * 1.5 // 1.5 Hours
@@ -909,7 +911,7 @@ function CLASS:SetBASSEngineEnabled(bool)
 	bool = bool or false
 
 	if bool then
-		bool = LIBBass.LoadDLL()
+		bool = LoadBass()
 	end
 
 	self.State.HasBass = bool
@@ -963,7 +965,7 @@ function CLASS:Reconnect()
 		return false
 	end
 
-	if StreamRadioLib.Util.IsBlockedURLCode( self.URL.extern ) then
+	if LIBUtil.IsBlockedURLCode(self.URL.extern) then
 		self:AcceptStream( nil, 1000 )
 		return false
 	end
@@ -1028,7 +1030,7 @@ function CLASS:PlayStreamInternal(nodownload)
 		return true
 	end
 
-	local URL, URLtype = StreamRadioLib.Util.ConvertURL(self.URL.extern)
+	local URL, URLtype = LIBUtil.ConvertURL(self.URL.extern)
 	local URLonline = (URLtype ~= StreamRadioLib.STREAM_URLTYPE_FILE) and (URLtype ~= StreamRadioLib.STREAM_URLTYPE_CACHE)
 
 	self._isCached = URLtype == StreamRadioLib.STREAM_URLTYPE_CACHE
@@ -1292,7 +1294,7 @@ function CLASS:_PlayStreamInternal(URL, URLtype, no3d, noBlock, retrycount)
 		end
 	else
 		-- make sure we have a clean online url
-		URL = StreamRadioLib.Util.NormalizeURL(URL)
+		URL = LIBUtil.NormalizeURL(URL)
 	end
 
 	local playfunc = nil
@@ -1727,7 +1729,7 @@ function CLASS:_SetTimeToTargetInternal()
 
 		-- an attempt to ease it a bit on the performance impact
 		local random = math.random() * 2
-		local step = math.Clamp(StreamRadioLib.Util.RealTimeFps() * 0.03 + random, 2, 15)
+		local step = math.Clamp(LIBUtil.RealTimeFps() * 0.03 + random, 2, 15)
 		local time = math.Approach(thistime, targettime, step)
 
 		time = math.Clamp(time, 0, length)
@@ -1749,7 +1751,7 @@ end
 
 function CLASS:SyncTime()
 	if not self.Valid then return end
-	if StreamRadioLib.Util.GameIsPaused() then return end
+	if LIBUtil.GameIsPaused() then return end
 	if self:IsStopMode() then return end
 
 	local maxdelta = 1.5
@@ -1964,7 +1966,7 @@ function CLASS:GetTag(tag)
 	end
 
 	table.CopyFromTo(result, data)
-	return result
+	return data
 end
 
 function CLASS:GetMetaTags()
@@ -2256,8 +2258,8 @@ function CLASS:GetSpectrumTable( bars, SPout, func, ... )
 	return count
 end
 
-local tempArray_fft = {}
-local tempArray_fftc = {}
+local g_tempArray_fft = {}
+local g_tempArray_fftc = {}
 
 local g_powres_nobass = nil
 local g_powres_bass = nil
@@ -2306,6 +2308,29 @@ local function buildpowres()
 	end
 end
 
+local function getBarFrequency( index, size, samplerate )
+	index = math.floor( index or 0 )
+	size = math.floor( size or 0 )
+
+	if ( samplerate <= 0 ) then
+		return -1
+	end
+
+	if ( size <= 0 ) then
+		return -1
+	end
+
+	if ( index <= 0 ) then
+		return -1
+	end
+
+	if ( index > size ) then
+		size = index
+	end
+
+	return (index - 1) / (size * 2) * samplerate
+end
+
 function CLASS:GetSpectrum( resolution, func, minfrq, maxfrq )
 	if not self.Valid then return false end
 	if not IsValid(self.Channel) then return false end
@@ -2325,27 +2350,27 @@ function CLASS:GetSpectrum( resolution, func, minfrq, maxfrq )
 	minfrq = minfrq or 0
 	maxfrq = maxfrq or samplerate
 
-	local count = self.Channel:FFT( tempArray_fft, resolution )
+	local count = self.Channel:FFT( g_tempArray_fft, resolution )
 
 	local index = 0
 	for i = 1, count do
-		local level = tempArray_fft[i] or 0
+		local level = g_tempArray_fft[i] or 0
 
-		local frq = self:GetBarFrequency(i, count, samplerate)
+		local frq = getBarFrequency(i, count, samplerate)
 
-		if ( frq < 0 ) then
+		if frq < 0 then
 			continue
 		end
 
-		if ( frq < minfrq ) then
+		if frq < minfrq then
 			continue
 		end
 
-		if ( frq > maxfrq ) then
+		if frq > maxfrq then
 			break
 		end
 
-		if ( not func( index, frq, level ) ) then
+		if not func( index, frq, level ) then
 			break
 		end
 
@@ -2396,56 +2421,56 @@ function CLASS:GetSpectrumComplex( resolution, func, minfrq, maxfrq )
 	local index = 0
 
 	if self.State.HasBass then
-		count = self.Channel:FFTComplex( tempArray_fftc, resolution )
+		count = self.Channel:FFTComplex( g_tempArray_fftc, resolution )
 
 		for i = 1, count, 2 do
-			local level_R = tempArray_fftc[i] or 0
-			local level_I = tempArray_fftc[i+1] or 0
+			local level_R = g_tempArray_fftc[i] or 0
+			local level_I = g_tempArray_fftc[i + 1] or 0
 
-			local frq = self:GetBarFrequency(i, count / 2, samplerate)
+			local frq = getBarFrequency(i, count / 2, samplerate)
 
-			if ( frq < 0 ) then
+			if frq < 0 then
 				continue
 			end
 
-			if ( frq < minfrq ) then
+			if frq < minfrq then
 				continue
 			end
 
-			if ( frq > maxfrq ) then
+			if frq > maxfrq then
 				break
 			end
 
 			local level_length = calcLengthFromComplex(level_R, level_I);
 			local level_ang = calcAngleFromComplex(level_R, level_I);
 
-			if ( not func( index, frq, level_length, level_ang, level_R, level_I ) ) then
+			if not func( index, frq, level_length, level_ang, level_R, level_I ) then
 				break
 			end
 
 			index = index + 1
 		end
 	else
-		count = self.Channel:FFT( tempArray_fft, resolution )
+		count = self.Channel:FFT( g_tempArray_fft, resolution )
 
 		for i = 1, count do
-			local level = tempArray_fft[i] or 0
+			local level = g_tempArray_fft[i] or 0
 
-			local frq = self:GetBarFrequency(i, count, samplerate)
+			local frq = getBarFrequency(i, count, samplerate)
 
-			if ( frq < 0 ) then
+			if frq < 0 then
 				continue
 			end
 
-			if ( frq < minfrq ) then
+			if frq < minfrq then
 				continue
 			end
 
-			if ( frq > maxfrq ) then
+			if frq > maxfrq then
 				break
 			end
 
-			if ( not func( index, frq, level, nil, level, nil ) ) then
+			if not func( index, frq, level, nil, level, nil ) then
 				break
 			end
 
@@ -2456,34 +2481,16 @@ function CLASS:GetSpectrumComplex( resolution, func, minfrq, maxfrq )
 	return true
 end
 
-function CLASS:GetBarFrequency( index, size, samplerate )
-	index = math.floor( index or 0 )
-	size = math.floor( size or 0 )
-	samplerate = samplerate or self:GetSamplingRate()
-
-	if ( samplerate <= 0 ) then
-		return -1
-	end
-
-	if ( size <= 0 ) then
-		return -1
-	end
-
-	if ( index <= 0 ) then
-		return -1
-	end
-
-	if ( index > size ) then
-		size = index
-	end
-
-	return (index - 1) / (size * 2) * samplerate
-end
-
 function CLASS:PreDupe()
 	local data = {}
 
-	data.url = self:GetURL()
+	local url = self:GetURL()
+
+	if LIBUtil.IsBlockedURLCode(url) then
+		url = ""
+	end
+
+	data.url = url
 	data.streamname = self:GetStreamName()
 	data.loop = self:GetLoop()
 	data.volume = self:GetVolume()
@@ -2494,11 +2501,16 @@ function CLASS:PreDupe()
 end
 
 function CLASS:PostDupe(data)
-	self:SetURL(StreamRadioLib.Util.FilterCustomURL(data.url))
+	local ent = self:GetEntity()
 
-	self:SetStreamName(data.streamname)
+	if not IsValid(ent) then
+		return
+	end
+
 	self:SetLoop(data.loop)
 	self:SetVolume(data.volume)
+
+	ent:SetDupeURL(data.url, data.streamname, data.playstate ~= StreamRadioLib.STREAM_PLAYMODE_STOP)
 
 	self.State.PlayMode = data.playstate
 end
