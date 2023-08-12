@@ -60,4 +60,5 @@ function LIB.Decode(json)
 	return data
 end
 
-return LIB
+return true
+

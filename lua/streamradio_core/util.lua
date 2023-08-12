@@ -249,18 +249,34 @@ function LIB.IsValidURL(url)
 	return true
 end
 
+function LIB.SanitizeUrl(url)
+	url = tostring(url or "")
+
+	url = string.Trim(url)
+
+	url = string.Replace(url, "\n", "")
+	url = string.Replace(url, "\r", "")
+	url = string.Replace(url, "\t", "")
+	url = string.Replace(url, "\b", "")
+	url = string.Replace(url, "\v", "")
+
+	url = string.Trim(url)
+
+	url = string.sub(url, 0, StreamRadioLib.STREAM_URL_MAX_LEN_ONLINE)
+
+	url = string.Trim(url)
+
+	return url
+end
+
 local function NormalizeOfflineFilename( path )
-	path = path or ""
-	path = string.Replace( path, "\r", "" )
-	path = string.Replace( path, "\n", "" )
-	path = string.Replace( path, "\t", "" )
-	path = string.Replace( path, "\b", "" )
+	path = LIB.SanitizeUrl(path)
 
 	path = string.Replace( path, "\\", "/" )
 	path = string.Replace( path, "../", "" )
 	path = string.Replace( path, "//", "/" )
 
-	path = string.sub(path, 0, 260)
+	path = string.sub(path, 0, StreamRadioLib.STREAM_URL_MAX_LEN_OFFLINE)
 	return path
 end
 
@@ -281,7 +297,8 @@ function LIB.URIAddParameter(url, parameter)
 end
 
 function LIB.NormalizeURL(url)
-	url = tostring(url or "")
+	url = LIB.SanitizeUrl(url)
+
 	url = LIBNetURL.normalize(url)
 	url = tostring(url)
 
@@ -304,10 +321,10 @@ function LIB.IsOfflineURL( url )
 end
 
 function LIB.ConvertURL( url )
-	url = string.Trim(tostring(url or ""))
+	url = LIB.SanitizeUrl(url)
 
 	if LIB.IsOfflineURL( url ) then
-		local fileurl = string.Trim( string.match( url, ( ":[//\\][//\\]([ -~]+)" ) ) or "" )
+		local fileurl = LIB.SanitizeUrl( string.match( url, ( ":[//\\][//\\]([ -~]+)" ) ) or "" )
 
 		if ( fileurl ~= "" ) then
 			url = fileurl
@@ -318,14 +335,17 @@ function LIB.ConvertURL( url )
 		return url, StreamRadioLib.STREAM_URLTYPE_FILE
 	end
 
-	local URLType = StreamRadioLib.STREAM_URLTYPE_ONLINE
-
 	local Cachefile = StreamRadioLib.Cache.GetFile( url )
-	if ( Cachefile ) then
+	if Cachefile then
 		url = "data/" .. Cachefile
 		url = NormalizeOfflineFilename(url)
-		URLType = StreamRadioLib.STREAM_URLTYPE_CACHE
+
+		return url, StreamRadioLib.STREAM_URLTYPE_CACHE
 	end
+
+	local URLType = StreamRadioLib.STREAM_URLTYPE_ONLINE
+
+	url = LIB.NormalizeURL(url)
 
 	return url, URLType
 end
@@ -530,3 +550,6 @@ function LIB.IsAdminForCMD(ply)
 
 	return true
 end
+
+return true
+

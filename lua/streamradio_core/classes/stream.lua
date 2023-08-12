@@ -853,8 +853,16 @@ function CLASS:Remove()
 	BASE.Remove(self)
 end
 
+local g_string_format = string.format
+
 function CLASS:ToString()
-	local r = BASE.ToString(self)
+	local baseToString = BASE.ToString
+
+	if not baseToString then
+		return nil
+	end
+
+	local r = baseToString(self)
 	if not self.Valid then
 		return r
 	end
@@ -865,7 +873,7 @@ function CLASS:ToString()
 	local err = self:GetError()
 	local errName = LIBError.GetStreamErrorName(err) or ""
 
-	local str = string.format("%s <%s> [err: %i, %s]", r, channelStr, err, errName)
+	local str = g_string_format("%s <%s> [err: %i, %s]", r, channelStr, err, errName)
 	return str
 end
 

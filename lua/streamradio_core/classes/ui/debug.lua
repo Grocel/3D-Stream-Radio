@@ -178,7 +178,7 @@ function CLASS:BuildLines()
 	addLine(self, 2, "  2D3D:           %7.3f ms | %5.1f%% of GM", render_time * 1000, render_time_p)
 	addLine(self, 2, "  Content:        %7.3f ms | %5.1f%% of GM", rendertarget_time * 1000, rendertarget_time_p)
 	addLine(self, 2, "")
-	addLine(self, 2, " Memory:           %7.1f MB", memory / 1024)
+	addLine(self, 2, " Lua Memory:      %7.1f MB", memory / 1024)
 end
 
 

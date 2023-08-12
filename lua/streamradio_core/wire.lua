@@ -208,3 +208,6 @@ function LIB.WireUserTrace(ent)
 
 	return g_WireUserTraceCache[cacheID]
 end
+
+return true
+

@@ -44,6 +44,7 @@ function ENT:Initialize( )
 	self.ExtraURLs.Tool = ""
 	self.ExtraURLs.Wire = ""
 	self.ExtraURLs.Dupe = ""
+	self.ExtraURLs.Mode = ""
 
 	self.ActivateExtraURL = ""
 
@@ -58,6 +59,7 @@ function ENT:Initialize( )
 
 	BaseClass.Initialize( self )
 
+	self:AddWireInput("Stream URL", "STRING")
 	self:AddWireInput("Play", "NORMAL")
 	self:AddWireInput("Pause", "NORMAL")
 	self:AddWireInput("Mute", "NORMAL")
@@ -66,7 +68,14 @@ function ENT:Initialize( )
 	self:AddWireInput("Loop Mode", "NORMAL")
 	self:AddWireInput("Time", "NORMAL")
 	self:AddWireInput("3D Sound", "NORMAL")
-	self:AddWireInput("Stream URL", "STRING")
+
+	self:AddWireInput("Disable Display", "NORMAL")
+	self:AddWireInput("Disable User Input", "NORMAL")
+	self:AddWireInput("Disable Spectrum Visualizer", "NORMAL")
+
+	self:AddWireInput("Play Previous", "NORMAL")
+	self:AddWireInput("Play Next", "NORMAL")
+
 	self:AddWireInput("Master Radio", "ENTITY", "For synchronizing radios")
 
 
@@ -91,6 +100,10 @@ function ENT:Initialize( )
 	self:AddWireOutput("3D Sound", "NORMAL")
 	self:AddWireOutput("Stream Name", "STRING")
 	self:AddWireOutput("Stream URL", "STRING")
+
+	self:AddWireOutput("Display Disabled", "NORMAL")
+	self:AddWireOutput("User Input Disabled", "NORMAL")
+	self:AddWireOutput("Spectrum Visualizer Disabled", "NORMAL")
 
 	self:AddWireOutput("Advanced Outputs", "NORMAL", "Advanced Outputs available? Needs GM_BASS3.")
 	self:AddWireOutput("Playing", "NORMAL", "Adv. Output")
@@ -312,6 +325,10 @@ function ENT:WiremodThink()
 
 	self:TriggerWireOutput("Stream URL", url)
 
+	self:TriggerWireOutput("Display Disabled", self:GetDisableDisplay())
+	self:TriggerWireOutput("User Input Disabled", self:GetDisableInput())
+	self:TriggerWireOutput("Spectrum Visualizer Disabled", self:GetDisableSpectrum())
+
 	self:TriggerWireOutput("Advanced Outputs", hasadvoutputs)
 	self:TriggerWireOutput("Playing", streamObj:IsPlaying())
 	self:TriggerWireOutput("Loading", streamObj:IsLoading() or streamObj:IsBuffering() or streamObj:IsSeeking())
@@ -447,13 +464,15 @@ end
 function ENT:SetToolURL(url, setmode)
 	if not g_isLoaded then return end
 
-	self.ExtraURLs.Tool = url
+	local extraURLs = self.ExtraURLs
 
-	if not setmode and self.ExtraURLs.Mode == "Tool" then
-		self.ExtraURLs.Mode = ""
+	extraURLs.Tool = LIBUtil.NormalizeURL(url)
+
+	if not setmode and extraURLs.Mode == "Tool" then
+		extraURLs.Mode = ""
 	end
 
-	if setmode and (self.ExtraURLs.Mode == "" or self.ExtraURLs.Mode == "Tool") then
+	if setmode and (extraURLs.Mode == "" or extraURLs.Mode == "Tool") then
 		self.ActivateExtraName = ""
 		self:OnToolMode()
 	end
@@ -466,7 +485,7 @@ end
 function ENT:SetWireURL(url, setmode)
 	if not g_isLoaded then return end
 
-	self.ExtraURLs.Wire = url
+	self.ExtraURLs.Wire = LIBUtil.NormalizeURL(url)
 
 	if setmode then
 		self.ActivateExtraName = ""
@@ -484,7 +503,7 @@ function ENT:SetDupeURL(url, name, setmode)
 		name = "Duped URL"
 	end
 
-	self.ExtraURLs.Dupe = url
+	self.ExtraURLs.Dupe = LIBUtil.NormalizeURL(url)
 	self.ExtraNames.Dupe = name
 
 	if setmode then
@@ -513,6 +532,8 @@ function ENT:OnExtraURL(name, url)
 	if not IsValid(self.StreamObj) then
 		return
 	end
+
+	url = LIBUtil.NormalizeURL(url)
 
 	if url == "" then
 		self:StopStreamInternal()
@@ -550,8 +571,10 @@ function ENT:StopStreamInternal()
 	BaseClass.StopStreamInternal(self)
 
 	self.ExtraURLs = self.ExtraURLs or {}
-	self.ExtraURLs.Mode = ""
-	self.ExtraURLs.Dupe = ""
+	local extraURLs = self.ExtraURLs
+
+	extraURLs.Mode = ""
+	extraURLs.Dupe = ""
 
 	if IsValid(self.GUI_Main) then
 		self.GUI_Main:Stop()
@@ -575,7 +598,10 @@ function ENT:StreamOnTrackEnd(stream)
 		return
 	end
 
+	-- Song ended, so ignore cooldown
+	self._nextPlaylistSwitch = nil
 	self:PlayNextPlaylistItem()
+
 	stream:Play(true)
 end
 
@@ -792,6 +818,69 @@ function ENT:OnWireInputTrigger(name, value, wired)
 		end
 
 		self:SetSound3D(value)
+		return
+	end
+
+	if name == "Disable Display" then
+		value = tobool(value)
+
+		if not wired then
+			value = false
+		end
+
+		self:SetDisableDisplay(value)
+		return
+	end
+
+	if name == "Disable User Input" then
+		value = tobool(value)
+
+		if not wired then
+			value = false
+		end
+
+		self:SetDisableInput(value)
+		return
+	end
+
+	if name == "Disable Spectrum Visualizer" then
+		value = tobool(value)
+
+		if not wired then
+			value = false
+		end
+
+		self:SetDisableSpectrum(value)
+		return
+	end
+
+	if name == "Play Previous" then
+		value = tobool(value)
+
+		if not wired then
+			value = false
+		end
+
+		if not value then
+			return
+		end
+
+		self:PlayPreviousPlaylistItem()
+		return
+	end
+
+	if name == "Play Next" then
+		value = tobool(value)
+
+		if not wired then
+			value = false
+		end
+
+		if not value then
+			return
+		end
+
+		self:PlayNextPlaylistItem()
 		return
 	end
 

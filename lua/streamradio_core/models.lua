@@ -183,3 +183,6 @@ function LIB.RegisteredModels( )
 end
 
 LIB.LoadModelSettings( )
+
+return true
+

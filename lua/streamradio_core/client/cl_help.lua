@@ -198,3 +198,6 @@ end
 function StreamRadioLib.ShowPlaylistErrorHelp( )
 	StreamRadioLib.ShowErrorHelp(LIBError.PLAYLIST_ERROR_INVALID_FILE)
 end
+
+return true
+

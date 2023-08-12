@@ -54,7 +54,7 @@ function StreamRadioLib.IsCustomURLsAllowed(ply)
 	if g_allowCustomURLs then return true end
 
 	-- Admins can always use custom stream URLs
-	if LIBUtil.IsAdmin(ply) then return true end -- @TODO
+	if LIBUtil.IsAdmin(ply) then return true end
 
 	return false
 end
@@ -101,3 +101,6 @@ StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
 		g_lastThink = now + 1 + math.random()
 	end
 end)
+
+return true
+

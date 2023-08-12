@@ -136,3 +136,9 @@ Online content:
 StreamRadioLib.STREAM_URL_INFO = string.gsub(StreamRadioLib.STREAM_URL_INFO, "\r", "")
 StreamRadioLib.STREAM_URL_INFO = string.Trim(StreamRadioLib.STREAM_URL_INFO)
 
+
+StreamRadioLib.STREAM_URL_MAX_LEN_ONLINE = 480
+StreamRadioLib.STREAM_URL_MAX_LEN_OFFLINE = 260
+
+return true
+

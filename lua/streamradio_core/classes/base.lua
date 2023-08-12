@@ -195,30 +195,46 @@ end
 
 CLASS.print = CLASS.Print
 
-function CLASS:ToString()
+local g_string_format = string.format
+
+function CLASS:_ToStringFailback()
+	local classname = self.classname
+	if not classname then
+		classname = "!unknown_class!"
+	end
+
 	if not self.Valid then
-		return string.format("[%s][Removed]", self.classname)
+		return g_string_format("[%s][removed]", classname)
+	end
+
+	local id = self.ID
+	if not id then
+		return g_string_format("[%s][unknown_id]", classname)
 	end
 
 	local name = self.Name or ""
-
 	if name == "" then
-		return string.format("[%s][%i]", self.classname, self.ID)
+		return g_string_format("[%s][%i]", classname, id)
 	end
 
-	return string.format("[%s][%i][%s]", self.classname, self.ID, name)
+	return g_string_format("[%s][%i][%s]", classname, id, name)
+end
+
+function CLASS:ToString()
+	return self:_ToStringFailback()
 end
 
 function CLASS:__tostring()
 	local called = self._tostringcall
 	if called then
-		return string.format("[%s][%s]", self.classname, self.ID)
+		return self:_ToStringFailback()
 	end
 
 	self._tostringcall = true
-	local r = self:ToString() or ""
+	local _, result = pcall(self.ToString, self)
 	self._tostringcall = nil
 
+	local r = result or self:_ToStringFailback()
 	return r
 end
 

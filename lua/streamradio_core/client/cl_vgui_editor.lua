@@ -674,7 +674,7 @@ function PANEL:Init( )
 	self.PlaylistBottomPanel = self.PlaylistEditorPanel:Add( "DPanel" )
 	self.PlaylistBottomPanel:SetPaintBackground( false )
 	self.PlaylistBottomPanel:Dock( BOTTOM )
-	self.PlaylistBottomPanel:SetTall( 70 )
+	self.PlaylistBottomPanel:SetTall( 110 )
 	self.PlaylistBottomPanel:DockMargin( 0, 3, 0, 0 )
 
 	self.EditNamePanel = self.PlaylistBottomPanel:Add( "DPanel" )
@@ -686,7 +686,7 @@ function PANEL:Init( )
 	self.EditURLPanel = self.PlaylistBottomPanel:Add( "DPanel" )
 	self.EditURLPanel:SetPaintBackground( false )
 	self.EditURLPanel:Dock( TOP )
-	self.EditURLPanel:SetTall( 20 )
+	self.EditURLPanel:SetTall( 60 )
 	self.EditURLPanel:DockMargin( 0, 0, 0, 3 )
 
 	self.EditButtonsPanel = self.PlaylistBottomPanel:Add( "DPanel" )
@@ -722,7 +722,9 @@ function PANEL:Init( )
 	self.EditNameLabel:SetDark( true )
 	self.EditNameLabel:DockMargin( 6, 0, 0, 0 )
 	self.EditNameLabel:Dock( LEFT )
+
 	self.EditURLText = self.EditURLPanel:Add( "Streamradio_VGUI_URLTextEntry" )
+	self.EditURLText:SetMultiline(true)
 	self.EditURLText:DockMargin( 0, 0, 0, 0 )
 	self.EditURLText:Dock( FILL )
 
@@ -2039,3 +2041,6 @@ function PANEL:UpdateListNameLabel( )
 end
 
 vgui.Register( "Streamradio_VGUI_PlaylistEditor", PANEL, "DPanel" )
+
+return true
+

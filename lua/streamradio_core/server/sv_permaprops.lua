@@ -68,3 +68,6 @@ local function AddPermaPropsSupport()
 end
 
 StreamRadioLib.Timer.NextFrame("AddPermaPropsSupport", AddPermaPropsSupport)
+
+return true
+

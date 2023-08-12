@@ -406,3 +406,6 @@ function LIB.Download(url, callback, saveas_url)
 	local status = StreamRadioLib.Http.Request(url, onLoad)
 	return status
 end
+
+return true
+

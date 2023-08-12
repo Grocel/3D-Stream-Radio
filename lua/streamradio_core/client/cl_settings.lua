@@ -89,3 +89,6 @@ function LIB.AddBuildMenuPanelHook(namespace, title, buildFunction)
 		spawnmenu.AddToolMenuOption( "Utilities", "Stream Radio", "StreamRadioSettingsPanel_" .. namespace, title, "", "", buildFunction, {} )
 	end)
 end
+
+return true
+

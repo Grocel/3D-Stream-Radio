@@ -1,19 +1,70 @@
 -- 3D Stream Radio. Made By Grocel.
 
 if not StreamRadioLib then return end
+local LIB = StreamRadioLib
 
-local loadSH = StreamRadioLib.LoadSH
-local loadCL = StreamRadioLib.LoadCL
-local loadSV = StreamRadioLib.LoadSV
+local LIBLoadSH = LIB.LoadSH
+local LIBLoadCL = LIB.LoadCL
+local LIBLoadSV = LIB.LoadSV
 
-if not loadSH then return end
-if not loadCL then return end
-if not loadSV then return end
+if not LIBLoadSH then return end
+if not LIBLoadCL then return end
+if not LIBLoadSV then return end
 
-StreamRadioLib.DataDirectory = "streamradio"
+local g_ok = true
 
-local _, NetURL = StreamRadioLib.LoadSH("streamradio_core/neturl.lua")
-StreamRadioLib.NetURL = NetURL
+local function loadSH(lua, ...)
+    local status, loaded = LIBLoadSH(lua, ...)
+
+    if not status then
+        g_ok = false
+        return false
+    end
+
+    if not loaded then
+        g_ok = false
+        return false
+    end
+
+    return true
+end
+
+local function loadCL(lua, ...)
+    local status, loaded = LIBLoadCL(lua, ...)
+
+    if not status then
+        g_ok = false
+        return false
+    end
+
+    if CLIENT and not loaded then
+        g_ok = false
+        return false
+    end
+
+    return true
+end
+
+local function loadSV(lua, ...)
+    local status, loaded = LIBLoadSV(lua, ...)
+
+    if not status then
+        g_ok = false
+        return false
+    end
+
+    if SERVER and not loaded then
+        g_ok = false
+        return false
+    end
+
+    return true
+end
+
+LIB.DataDirectory = "streamradio"
+
+local _, NetURL = LIB.LoadSH("streamradio_core/neturl.lua")
+LIB.NetURL = NetURL
 
 loadSH("streamradio_core/api.lua")
 loadSH("streamradio_core/util.lua")
@@ -62,4 +113,9 @@ loadCL("streamradio_core/client/cl_playlist_edit.lua")
 loadCL("streamradio_core/client/cl_vgui.lua")
 loadCL("streamradio_core/client/cl_vgui_editor.lua")
 
+if not g_ok then
+    return
+end
+
 return true
+

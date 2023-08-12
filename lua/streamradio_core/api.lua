@@ -196,3 +196,6 @@ function StreamRadioLib.SpawnRadio( ply, model, pos, ang, settings )
 
 	return ent
 end
+
+return true
+

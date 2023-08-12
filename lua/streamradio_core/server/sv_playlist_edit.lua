@@ -304,3 +304,6 @@ LIBNet.Receive( "Editor_Request_Playlist", function( len, ply )
 	end
 end )
 --CreateDir
+
+return true
+

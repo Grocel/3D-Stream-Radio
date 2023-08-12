@@ -326,3 +326,6 @@ do
 
 	concommand.Add( "test_streamradio_channel_stop", testchannel_stop )
 end
+
+return true
+

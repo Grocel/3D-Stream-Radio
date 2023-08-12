@@ -72,3 +72,6 @@ function LIB.Translate(identifier, defaultEnglishText)
 end
 
 LIB.T = LIB.Translate
+
+return true
+

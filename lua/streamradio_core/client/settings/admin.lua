@@ -224,3 +224,5 @@ StreamRadioLib.Hook.Add("Think", "AdminSettingsUpdate", function()
 	end
 end)
 
+return true
+

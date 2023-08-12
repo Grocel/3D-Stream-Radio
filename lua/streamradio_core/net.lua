@@ -248,3 +248,5 @@ end
 
 networkStaticAddonStates()
 
+return true
+

@@ -247,3 +247,6 @@ function StreamRadioLib.CreateOBJ(name, ...)
 end
 
 StreamRadioLib.ReloadClasses()
+
+return true
+

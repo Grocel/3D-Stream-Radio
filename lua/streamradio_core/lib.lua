@@ -822,3 +822,6 @@ function StreamRadioLib.UnregisterRadio(entOrCreationID)
 
 	StreamRadioLib.SpawnedRadios[ent:GetCreationID()] = nil
 end
+
+return true
+

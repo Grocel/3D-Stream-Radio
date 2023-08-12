@@ -1,5 +1,88 @@
 local StreamRadioLib = StreamRadioLib or {}
+
 local LIBError = StreamRadioLib.Error
+local LIBUtil = StreamRadioLib.Util
+
+local PANEL = {}
+AccessorFunc( PANEL, "m_showLimit", "ShowLimit" )
+AccessorFunc( PANEL, "m_maxLength", "MaxLength" )
+
+function PANEL:Init()
+	self:SetShowLimit(false)
+	self:SetMaxLength(0)
+
+	self:SetDrawLanguageID(false)
+end
+
+function PANEL:PaintOver(w, h)
+	if not self:IsEditing() then
+		return
+	end
+
+	if not self:GetShowLimit() then
+		return
+	end
+
+	local maxLen = self:GetMaxLength()
+	if maxLen <= 0 then
+		return
+	end
+
+	local len = #self:GetText()
+
+	local cx, cy = self:LocalCursorPos()
+
+	local text = string.format("%i / %i", len, maxLen)
+
+	surface.SetFont(self:GetFont())
+	local tw, th = surface.GetTextSize(text)
+
+	local tpw, tph = tw + 6, th + 6
+
+	tpw = math.min(tpw, w - 2)
+	tph = math.min(tph, h - 2)
+
+	local tpx, tpy = w - tpw - 1, h - tph - 1
+
+	tpx = math.max(tpx, 0)
+	tpy = math.max(tpy, 0)
+
+	if cx >= tpx - 5 and cy >= tpy - 10 and cx < w and cy < h then
+		return
+	end
+
+	surface.SetDrawColor(190, 255, 255)
+	surface.DrawRect(tpx, tpy, tpw, tph)
+
+	surface.SetTextColor( 0, 0, 0)
+	surface.SetTextPos(tpx + 3, tpy + 3)
+	surface.DrawText(text)
+end
+
+function PANEL:GetLength()
+	local value = self:GetText()
+	return #value
+end
+
+function PANEL:AllowInput(change)
+	local maxLen = self:GetMaxLength()
+	if maxLen <= 0 then
+		return false
+	end
+
+	local valueLen = self:GetLength()
+	local changeLen = #change
+	local len = valueLen + changeLen
+
+	if len > maxLen then
+		-- Limit reached
+		return true
+	end
+
+	return false
+end
+
+vgui.Register( "Streamradio_VGUI_TextEntryWithLimit", PANEL, "DTextEntry" )
 
 
 local PANEL = {}
@@ -24,7 +107,7 @@ function PANEL:Init( )
 			return
 		end
 
-		self.URLText:OnEnter()
+		self.URLText:OnEnter(self.URLText:GetText())
 	end
 
 	self.URLIcon.DoRightClick = function( panel )
@@ -55,13 +138,17 @@ function PANEL:Init( )
 		StreamRadioLib.ShowErrorHelp(err, url)
 	end
 
-	self.URLText = self:Add( "DTextEntry" )
-	self.URLText:SetDrawLanguageID( false )
-	self.URLText:SetUpdateOnType( true )
-	self.URLText:SetHistoryEnabled( true )
-	self.URLText:SetEnterAllowed( false )
-	self.URLText:Dock( FILL )
+	self.URLText = self:Add( "Streamradio_VGUI_TextEntryWithLimit" )
+	self.URLText:SetDrawLanguageID(false)
+	self.URLText:SetUpdateOnType(true)
+	self.URLText:SetHistoryEnabled(false)
+	self.URLText:SetEnterAllowed(true)
+	self.URLText:SetMultiline(false)
+	self.URLText:Dock(FILL)
 	self.URLText:DockMargin( 0, 0, 2, 0 )
+
+	self.URLText:SetShowLimit(true)
+	self.URLText:SetMaxLength(StreamRadioLib.STREAM_URL_MAX_LEN_ONLINE)
 
 	if self.URLText.SetPlaceholderText then
 		-- Some client have some addon conflicts
@@ -73,40 +160,79 @@ function PANEL:Init( )
 	self.URLTooltip = StreamRadioLib.STREAM_URL_INFO
 	self.URLText:SetTooltip(self.URLTooltip)
 
-	self.URLText.OnValueChange = function( panel, value, ... )
-		if not IsValid(self) then
-			return
-		end
+	local function callChangeEvent(panel, value, enter)
+		local newValue = LIBUtil.SanitizeUrl(value)
 
-		self.m_strValue = tostring(value or "")
+		self.m_strValue = newValue
 		self:CheckURL()
 
-		if panel._OnEnterCall then
-			self:OnEnter(value, ...)
+		if enter then
+			self:OnEnter(newValue)
 		else
-			self:OnChange(value, ...)
+			self:OnChange(newValue)
 		end
-
-		panel._OnEnterCall = nil
 	end
 
-	self.URLText.OnEnter = function( panel, ... )
+	local oldGetText = self.URLText.GetText
+	self.URLText.GetText = function( panel, change )
+		local value = oldGetText(panel)
+
+		value = LIBUtil.SanitizeUrl(value)
+
+		return value
+	end
+
+	local oldOnValueChange = self.URLText.OnValueChange
+	self.URLText.OnValueChange = function( panel, value, ... )
+		if not IsValid(self) then
+			return oldOnValueChange( panel, value, ... )
+		end
+
+		callChangeEvent(panel, value, false)
+
+		return oldOnValueChange( panel, newValue, ... )
+	end
+
+	local oldOnKeyCode = self.URLText.OnKeyCode
+	self.URLText.OnKeyCode = function( panel, code, ... )
+		oldOnKeyCode( panel, code, ... )
+
 		if not IsValid(self) then
 			return
 		end
 
-		panel._OnEnterCall = true
-		panel:OnValueChange(panel:GetValue())
+		if code == KEY_ENTER then
+			panel:OnEnter(panel:GetText())
+			panel:FocusNext()
+		end
+	end
+
+	local oldOnEnter = self.URLText.OnEnter
+	self.URLText.OnEnter = function( panel, ... )
+		if not IsValid(self) then
+			return oldOnEnter( panel, ... )
+		end
+
+		local value = panel:GetText()
+		local newValue = LIBUtil.SanitizeUrl(value)
+
+		if value ~= newValue then
+			panel:SetText(newValue)
+		end
+
+		callChangeEvent(panel, newValue, true)
+
+		return oldOnEnter( panel, ... )
 	end
 
 	local oldOnLoseFocus = self.URLText.OnLoseFocus
 
 	self.URLText.OnLoseFocus = function( panel, ... )
 		if not IsValid(self) then
-			return
+			return oldOnLoseFocus( panel, ... )
 		end
 
-		panel:OnEnter()
+		panel:OnEnter(panel:GetText())
 		self:OnLoseFocus(...)
 
 		return oldOnLoseFocus( panel, ... )
@@ -203,6 +329,30 @@ function PANEL:SetText(value)
 	self:CheckURL()
 end
 
+function PANEL:SetShowLimit(showLimit)
+	self.URLText:SetShowLimit(showLimit)
+end
+
+function PANEL:GetShowLimit()
+	return self.URLText:GetShowLimit()
+end
+
+function PANEL:SetMaxLength(maxLen)
+	self.URLText:SetMaxLength(maxLen)
+end
+
+function PANEL:GetMaxLength()
+	return self.URLText:GetMaxLength()
+end
+
+function PANEL:SetMultiline(multiline)
+	self.URLText:SetMultiline(multiline)
+end
+
+function PANEL:GetMultiline()
+	return self.URLText:GetMultiline()
+end
+
 function PANEL:GetTextEntry()
 	return self.URLText
 end
@@ -230,7 +380,6 @@ function PANEL:UpdateURLState(state)
 	end
 
 	if state == STATE_ERROR then
-
 		local tooltipbase = "The URL is not valid!"
 		local tooltip = ""
 		local tooltipurl = ""
@@ -292,7 +441,7 @@ function PANEL:CheckURL()
 	if not IsValid(stream) then
 		self.Error = nil
 		self:UpdateURLState(STATE_ERROR)
-		return
+		return false
 	end
 
 	if not self.m_strValue then
@@ -313,7 +462,7 @@ function PANEL:CheckURL()
 		return false
 	end
 
-	stream:TimerOnce("gui_url_checker", 1, function()
+	stream:TimerOnce("gui_url_checker", 0.5, function()
 		if not IsValid(stream) then
 			return
 		end
@@ -346,27 +495,22 @@ function PANEL:OnRemove()
 		self.URLText:Remove()
 		self.URLText = nil
 	end
-
-	if IsValid(self.WireSoundBrowserIcon) then
-		self.WireSoundBrowserIcon:Remove()
-		self.WireSoundBrowserIcon = nil
-	end
 end
 
--- Override
 function PANEL:OnEnter( ... )
+	-- Override me
 end
 
--- Override
 function PANEL:OnChange( ... )
+	-- Override me
 end
 
--- Override
 function PANEL:OnLoseFocus( ... )
+	-- Override me
 end
 
--- Override
 function PANEL:OnURLCheck( ... )
+	-- Override me
 end
 
 vgui.Register( "Streamradio_VGUI_URLTextEntry", PANEL, "DPanel" )
@@ -402,4 +546,6 @@ function PANEL:OnValueChange()
 end
 
 vgui.Register( "Streamradio_VGUI_ReadOnlyTextEntry", PANEL, "DTextEntry" )
+
+return true
 

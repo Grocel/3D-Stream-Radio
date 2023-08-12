@@ -1258,3 +1258,6 @@ function LIB.GetStreamUrlById(id)
 
 	return url
 end
+
+return true
+

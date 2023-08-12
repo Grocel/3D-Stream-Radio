@@ -15,11 +15,11 @@ end
 local function CallHooks(hookData, ...)
 	-- Called by all hooks the addon adds the game, including think and tick.
 	-- It is a proxy that distribute calls to all internal addon hooks.
+	-- This reduces overhead from the native hook library.
 
 	-- Prevent error spams when the addon is not completely loaded
 	if not StreamRadioLib then return end
 	if not StreamRadioLib.Loaded then return end
-
 
 	local byOrder = hookData.byOrder
 	if not byOrder then
@@ -102,6 +102,7 @@ function LIB.Add(eventName, identifier, func, order)
 	byName[identifier] = {
 		order = order,
 		func = func,
+		identifier = identifier,
 	}
 
 	hookData.benchmark = hookData.benchmark or 0
@@ -160,3 +161,6 @@ function LIB.GetBenchmark(eventName)
 
 	return benchmark, benchmarkAvg
 end
+
+return true
+

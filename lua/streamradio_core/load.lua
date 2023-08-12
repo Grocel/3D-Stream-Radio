@@ -111,7 +111,7 @@ local function registerErrorFeedbackHook()
 			net.Start("3DStreamRadio_LoadError")
 				net.WriteUInt(count, 8)
 
-				for i, thiserr in ipairs(errors) do
+				for i, err in ipairs(errors) do
 					net.WriteString(err)
 				end
 			net.Send(ply)
@@ -252,6 +252,7 @@ local function loadAddon()
 		throwError(versionError)
 	else
 		LIB.Loaded = true
+		LIB.Loading = true
 
 		local status, loaded = LIB.LoadSH("streamradio_core/init.lua")
 
@@ -267,6 +268,8 @@ local function loadAddon()
 	if not g_loader_ok then
 		LIB.Loaded = nil
 	end
+
+	LIB.Loading = nil
 end
 
 local g_colDefault = Color(255,255,255)

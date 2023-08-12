@@ -775,3 +775,6 @@ Help URL: %s
 
 	concommand.Add( "info_streamradio_errorcode", ShowErrorInfo )
 end
+
+return true
+

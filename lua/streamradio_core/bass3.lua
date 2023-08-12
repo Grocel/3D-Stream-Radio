@@ -288,3 +288,5 @@ if SERVER then
 	LIB.g_IsInstalledOnServer = LIB.IsInstalled()
 end
 
+return true
+

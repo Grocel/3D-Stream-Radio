@@ -17,6 +17,8 @@ local g_mode_pause = 1
 local g_mode_stop = 2
 local g_mode_previous_track = 3
 local g_mode_next_track = 4
+local g_mode_rewind = 5
+local g_mode_fastforward = 6
 
 local g_mode_mute = 0
 local g_mode_unmute = 1
@@ -135,7 +137,7 @@ local function addMainOption()
 
 			local submenuPanel = option:AddSubMenu()
 
-			submenuPanel:SetMinimumWidth(200)
+			submenuPanel:SetMinimumWidth(215)
 
 			for k, subOption in SortedPairsByMemberValue( g_subOptions, "Order" ) do
 				if not subOption.Filter then continue end
@@ -347,7 +349,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	optionPanel.DoClickInternal = g_emptyFunction
 
 	optionPanel:SetTextInset(5, 0)
-	optionPanel:DockPadding(38,5,5,5)
+	optionPanel:DockPadding(5,5,5,5)
 
 	local ply = LocalPlayer()
 
@@ -461,6 +463,50 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 		panel:Think()
 	end
 
+	local rewindButton = vgui.Create( "DButton", optionPanel )
+	optionPanel._rewindButton = rewindButton
+
+	rewindButton:Dock(LEFT)
+	rewindButton:SetImage(StreamRadioLib.GetPNGIconPath("control_rewind"))
+	rewindButton:SetText("")
+	rewindButton:DockMargin(5,0,0,0)
+	rewindButton:SetTooltip("Rewind 10 seconds")
+
+	rewindButton.DoClick = function(panel)
+		if not self.Rewind then
+			return
+		end
+
+		if not self:Filter(ent, ply) then
+			return
+		end
+
+		self:Rewind(ent)
+		panel:Think()
+	end
+
+	local fastForwardButton = vgui.Create( "DButton", optionPanel )
+	optionPanel._fastForwardButton = fastForwardButton
+
+	fastForwardButton:Dock(LEFT)
+	fastForwardButton:SetImage(StreamRadioLib.GetPNGIconPath("control_fastforward"))
+	fastForwardButton:SetText("")
+	fastForwardButton:DockMargin(5,0,0,0)
+	fastForwardButton:SetTooltip("Fast forward 10 seconds")
+
+	fastForwardButton.DoClick = function(panel)
+		if not self.FastForward then
+			return
+		end
+
+		if not self:Filter(ent, ply) then
+			return
+		end
+
+		self:FastForward(ent)
+		panel:Think()
+	end
+
 	-- bypass hardcoded size in internal PerformLayout
 	optionPanel._SetSize = optionPanel.SetSize
 
@@ -473,6 +519,8 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 		stopButton:SetSize(buttonSize, buttonSize)
 		previousTrackButton:SetSize(buttonSize, buttonSize)
 		nextTrackButton:SetSize(buttonSize, buttonSize)
+		rewindButton:SetSize(buttonSize, buttonSize)
+		fastForwardButton:SetSize(buttonSize, buttonSize)
 
 		return panel:_SetSize(x, y)
 	end
@@ -690,10 +738,18 @@ LIB.AddSubOption("playlist_controls", {
 	Filter = function( self, ent, ply )
 		if not LIB.CanBeTargeted( ent, ply ) then return false end
 		if not LIB.CanProperty("playlist_controls", ent, ply ) then return false end
-		if not ent:GetHasPlaylist() then return false end
 
-		local streamObj = ent.StreamObj
-		if not IsValid(streamObj) then return false end
+		local streamObj = ent:GetStreamObject()
+		if not IsValid(streamObj) then
+			return false
+		end
+
+		local hasPlaylist = ent:GetHasPlaylist()
+		local url = ent:GetStreamURL()
+
+		if not hasPlaylist and url == "" then
+			return false
+		end
 
 		return true
 	end,
@@ -728,16 +784,31 @@ LIB.AddSubOption("playlist_controls", {
 		self:DoControl(ent, g_mode_next_track)
 	end,
 
+	Rewind = function( self, ent )
+		self:DoControl(ent, g_mode_rewind)
+	end,
+
+	FastForward = function( self, ent )
+		self:DoControl(ent, g_mode_fastforward)
+	end,
+
 	Think = function( self, optionPanel, ent )
-		local streamObj = ent.StreamObj
+		local streamObj = ent:GetStreamObject()
 		if not IsValid(streamObj) then return end
 
 		local isPlayMode = streamObj:IsPlayMode()
 		local isStopMode = streamObj:IsStopMode()
+		local isEndless = streamObj:IsEndless()
+
+		local hasPlaylist = ent:GetHasPlaylist()
 
 		local playButton = optionPanel._playButton
 		local pauseButton = optionPanel._pauseButton
 		local stopButton = optionPanel._stopButton
+		local previousTrackButton = optionPanel._previousTrackButton
+		local nextTrackButton = optionPanel._nextTrackButton
+		local rewindButton = optionPanel._rewindButton
+		local fastForwardButton = optionPanel._fastForwardButton
 
 		if IsValid(stopButton) then
 			stopButton:SetEnabled(not isStopMode)
@@ -750,6 +821,22 @@ LIB.AddSubOption("playlist_controls", {
 		if IsValid(pauseButton) then
 			pauseButton:SetVisible(isPlayMode)
 		end
+
+		if IsValid(previousTrackButton) then
+			previousTrackButton:SetEnabled(hasPlaylist)
+		end
+
+		if IsValid(nextTrackButton) then
+			nextTrackButton:SetEnabled(hasPlaylist)
+		end
+
+		if IsValid(rewindButton) then
+			rewindButton:SetEnabled(not isEndless)
+		end
+
+		if IsValid(fastForwardButton) then
+			fastForwardButton:SetEnabled(not isEndless)
+		end
 	end,
 
 	MenuOpen = g_PlaylistControlsMenuOpen,
@@ -760,25 +847,43 @@ LIB.AddSubOption("playlist_controls", {
 
 		if not self:Filter( ent, ply ) then return end
 
-		local stream = ent.StreamObj
+		local streamObj = ent:GetStreamObject()
 
 		if mode == g_mode_play then
-			local hasEnded = stream:HasEnded()
-			local isPauseMode = stream:IsPauseMode()
+			local hasEnded = streamObj:HasEnded()
+			local isPauseMode = streamObj:IsPauseMode()
 
 			if isPauseMode and not hasEnded then
-				stream:Play(hasEnded)
+				streamObj:Play(hasEnded)
 			else
 				ent:PlayFromCurrentPlaylistItem()
 			end
 		elseif mode == g_mode_pause then
-			stream:Pause()
+			streamObj:Pause()
 		elseif mode == g_mode_stop then
-			stream:Stop()
+			streamObj:Stop()
 		elseif mode == g_mode_previous_track then
 			ent:PlayPreviousPlaylistItem()
 		elseif mode == g_mode_next_track then
 			ent:PlayNextPlaylistItem()
+		elseif mode == g_mode_rewind then
+			local length = streamObj:GetMasterLength()
+
+			if length > 0 then
+				local time = streamObj:GetMasterTime()
+				local newtime = math.Clamp(time - 10, 0, length - 0.1)
+
+				streamObj:SetTime(newtime, true)
+			end
+		elseif mode == g_mode_fastforward then
+			local length = streamObj:GetMasterLength()
+
+			if length > 0 then
+				local time = streamObj:GetMasterTime()
+				local newtime = math.Clamp(time + 10, 0, length - 0.1)
+
+				streamObj:SetTime(newtime, true)
+			end
 		end
 	end
 })
@@ -879,4 +984,6 @@ LIB.AddSubOption("serverside_volume", {
 		end
 	end
 })
+
+return true
 

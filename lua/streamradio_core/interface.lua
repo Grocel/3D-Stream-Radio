@@ -353,3 +353,6 @@ function LIB.Convert(url, callback)
 end
 
 LIB.Load()
+
+return true
+

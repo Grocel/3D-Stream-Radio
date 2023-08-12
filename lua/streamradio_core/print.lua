@@ -82,3 +82,6 @@ function LIB.Log(ply, msgstring)
 
 	MsgN(msgstring)
 end
+
+return true
+

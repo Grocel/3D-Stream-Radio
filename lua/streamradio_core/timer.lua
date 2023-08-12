@@ -50,3 +50,6 @@ function LIB.Remove(identifier)
 	local name = LIB.GetName(identifier)
 	timer.Remove(name)
 end
+
+return true
+

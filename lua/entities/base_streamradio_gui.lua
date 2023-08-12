@@ -635,7 +635,7 @@ function ENT:SetupDataTables()
 		KeyName = "DisableInput",
 		Edit = {
 			category = "GUI",
-			title = "Disable input",
+			title = "Disable user input",
 			type = "Boolean",
 			order = 11
 		}
@@ -726,6 +726,7 @@ function ENT:AddItemToPlaylist(newItem, checkBlockedUrl)
 	data[index] = entry
 
 	self._updatedPlaylist = true
+	self._nextPlaylistSwitch = nil
 
 	if index > 1 then
 		self:SetHasPlaylist(true)
@@ -763,6 +764,7 @@ function ENT:ClearPlaylist()
 	playlistObj.pos = 0
 
 	self._updatedPlaylist = true
+	self._nextPlaylistSwitch = nil
 
 	self:SetHasPlaylist(false)
 end
@@ -847,6 +849,12 @@ function ENT:PlayFromPlaylistItem(playlistItem)
 	if CLIENT then return end
 	if not playlistItem then return end
 
+	local now = RealTime()
+	if self._nextPlaylistSwitch and self._nextPlaylistSwitch > now then
+		-- Prevent playlist abuse/spam
+		return
+	end
+
 	local url = playlistItem.url
 	local name = playlistItem.name
 
@@ -855,6 +863,8 @@ function ENT:PlayFromPlaylistItem(playlistItem)
 
 	playlistObj.pos = math.Clamp(playlistItem.index or 1, 1, #data)
 	self:PlayStreamInternal(url, name)
+
+	self._nextPlaylistSwitch = now + 0.25
 end
 
 function ENT:GetPlaylist()

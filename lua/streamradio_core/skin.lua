@@ -1252,3 +1252,6 @@ function LIB.GetDefaultSkin()
 
 	return table.Copy(LIB._default)
 end
+
+return true
+

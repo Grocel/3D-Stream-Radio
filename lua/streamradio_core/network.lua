@@ -734,3 +734,6 @@ do
 		LIBDebug.DumpDTNetworkStringTableCode()
 	end, nil, nil, concommandFlags)
 end
+
+return true
+

@@ -229,20 +229,22 @@ function LIB.Setup(toolobj)
 		return label
 	end
 
-	function toolobj:AddReadOnlyText( panel, name, descbool )
+	function toolobj:AddReadOnlyTextBox( panel, name )
+		local boxPanel = vgui.Create("DForm")
+		boxPanel:SetName(StreamRadioLib.Tool.GetLocale(self, name))
+
+		panel:AddPanel(boxPanel)
+
 		local label = vgui.Create( "Streamradio_VGUI_ReadOnlyTextEntry" )
-		panel:AddPanel( label )
+		boxPanel:AddItem( label )
 
-		label:SetText(StreamRadioLib.Tool.GetLocale(self, name))
-
-		if descbool then
-			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
-		end
+		local desc = StreamRadioLib.Tool.GetLocale(self, name .. ".desc")
+		label:SetText(desc)
 
 		label:DockMargin(0, 0, 0, 0)
 		label:DockPadding(0, 0, 0, 0)
 
-		return label
+		return boxPanel, label
 	end
 
 	function toolobj:AddCustomURLBlockedLabel( panel, name, descbool )
@@ -343,12 +345,15 @@ function LIB.Setup(toolobj)
 		label:SetText(StreamRadioLib.Tool.GetLocale(self, command))
 		label:SetDark( true )
 		label:SizeToContents( )
-		label:Dock( LEFT )
+		label:Dock( TOP )
 
 		local URLTextEntry = vgui.Create( "Streamradio_VGUI_URLTextEntry", bgpanel )
 		URLTextEntry:SetConVar( self.Mode .. "_" .. command )
 		URLTextEntry:Dock( FILL )
-		URLTextEntry:DockMargin( 5, 2, 0, 2 )
+		URLTextEntry:DockMargin(0, 5, 0, 0)
+		URLTextEntry:SetMultiline(true)
+
+		bgpanel:SetTall(78)
 
 		return URLTextEntry
 	end
@@ -495,3 +500,6 @@ function LIB.CallClientToolHook(tool, toolhook)
 		net.WriteString(toolhook)
 	net.Send(owner)
 end
+
+return true
+

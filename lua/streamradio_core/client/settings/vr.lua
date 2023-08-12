@@ -77,3 +77,5 @@ end
 
 LIB.AddBuildMenuPanelHook("vr", "VR Settings", BuildMenuPanel)
 
+return true
+

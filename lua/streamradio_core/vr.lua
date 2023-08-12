@@ -439,3 +439,6 @@ if CLIENT then
 
 	clearMenus()
 end
+
+return true
+

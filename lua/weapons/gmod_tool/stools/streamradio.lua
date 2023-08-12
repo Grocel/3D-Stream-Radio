@@ -53,7 +53,7 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo.desc", "Some models (usually speakers) don't have a display.\nUse this tool or Wiremod to control those.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp.desc", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
-	StreamRadioLib.Tool.AddLocale(TOOL, "play", "Play on spawn or on apply")
+	StreamRadioLib.Tool.AddLocale(TOOL, "play", "Start playback")
 	StreamRadioLib.Tool.AddLocale(TOOL, "play.desc", "If set, the radio will try to play a given URL on spawn or apply.\nThe URL can be set by this Tools or via Wiremod.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "nodisplay", "Disable display")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noadvwire", "Disable advanced wire outputs")
@@ -79,7 +79,9 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "nocollide", "Nocollide")
 	StreamRadioLib.Tool.AddLocale(TOOL, "spawnsettings", "Spawn settings:")
 
-	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlinfo", StreamRadioLib.STREAM_URL_INFO)
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlinfo", "What can I put in as Stream URL?")
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlinfo.desc", StreamRadioLib.STREAM_URL_INFO)
+
 	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlblocked", "Custom Stream URLs will not work!\nThey are disabled on this server!")
 
 	StreamRadioLib.Tool.Setup(TOOL)
@@ -126,8 +128,8 @@ function TOOL:BuildToolPanel(CPanel)
 	self:AddCustomURLBlockedLabel( CPanel, "streamurlblocked", false )
 	self:AddURLTextEntry( CPanel, "streamurl", false )
 
-	local StreamUrlInfoText = self:AddReadOnlyText( CPanel, "streamurlinfo", false )
-	StreamUrlInfoText:SetTall(190)
+	local _, StreamUrlInfoText = self:AddReadOnlyTextBox( CPanel, "streamurlinfo" )
+	StreamUrlInfoText:SetTall(225)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
 

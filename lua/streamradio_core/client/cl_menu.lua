@@ -403,3 +403,5 @@ function LIB.PatchComboBox(combobox, label)
 	return combobox
 end
 
+return true
+

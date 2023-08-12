@@ -1136,3 +1136,6 @@ StreamRadioLib.Hook.Add("Think", "Playlist_Filesystem", function()
 end)
 
 LIB.Load()
+
+return true
+

@@ -148,3 +148,6 @@ function StreamRadioLib.Timedcall( callback, ... )
 		callback( ... )
 	end, nil, ... )
 end
+
+return true
+

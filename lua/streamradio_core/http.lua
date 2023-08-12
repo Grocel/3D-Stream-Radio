@@ -164,3 +164,6 @@ function LIB.RequestHeader(url, callback, parameters, headers)
 
 	return req
 end
+
+return true
+

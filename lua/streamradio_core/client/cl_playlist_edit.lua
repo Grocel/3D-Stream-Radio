@@ -259,3 +259,6 @@ do
 	concommand.Add("+cl_streamradio_playlisteditor", OpenPanel)
 	concommand.Add("-cl_streamradio_playlisteditor", ClosePanel)
 end
+
+return true
+

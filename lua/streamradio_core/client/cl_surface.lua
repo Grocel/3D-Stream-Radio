@@ -34,9 +34,7 @@ local g_font_template = {
 local LoadingMat = StreamRadioLib.GetCustomPNG("loading")
 
 local pi = math.pi
-local color_gray = Color( 160, 160, 160, 180 )
 local color_white = color_white
-local color_black = color_black
 
 function LIB.Loading( x, y, w, h, color, cycles )
 	surface.SetMaterial( LoadingMat )
@@ -98,3 +96,6 @@ function LIB.AddFont(size, weight, base, additional_data)
 	LIB._CreatedFonts[ID] = true
 	return ID
 end
+
+return true
+

@@ -137,3 +137,5 @@ StreamRadioLib.Timedcall( function()
 	end
 end )
 
+return true
+

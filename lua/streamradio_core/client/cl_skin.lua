@@ -146,3 +146,6 @@ function LIB.GetList()
 
 	return found
 end
+
+return true
+

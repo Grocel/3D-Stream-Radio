@@ -300,3 +300,5 @@ StreamRadioLib.Hook.Add("Think", "SettingsUpdate", function()
 	g_coveredvolume = LIB.GetConVarValue("coveredvolume")
 end)
 
+return true
+

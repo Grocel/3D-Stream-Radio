@@ -721,3 +721,6 @@ local function createpresets( ply, cmd, args )
 end
 
 concommand.Add( "streamradio_convertpresets", createpresets ) -- ]]
+
+return true
+
