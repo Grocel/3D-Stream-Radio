@@ -724,7 +724,6 @@ function PANEL:Init( )
 	self.EditNameLabel:Dock( LEFT )
 
 	self.EditURLText = self.EditURLPanel:Add( "Streamradio_VGUI_URLTextEntry" )
-	self.EditURLText:SetMultiline(true)
 	self.EditURLText:DockMargin( 0, 0, 0, 0 )
 	self.EditURLText:Dock( FILL )
 

@@ -666,6 +666,23 @@ LIB.AddStreamErrorCode({
 })
 
 LIB.AddStreamErrorCode({
+	id = 1100,
+	name = "STREAM_ERROR_BAD_DRIVE_LETTER_PATH",
+	description = "Drive letter paths are not supported, use relative paths",
+	helptext = [[
+Do not use drive letter paths. Use relative paths instead.
+
+A relative path never starts with a drive letter such as "C:/" or "D:/".
+
+This is a relative path:
+  music/hl1_song3.mp3
+
+This is NOT a relative path:
+  C:/Program Files (x86)/Steam/steamapps/common/GarrysMod/garrysmod/sound/music/hl1_song3.mp3
+]],
+})
+
+LIB.AddStreamErrorCode({
 	id = 2000,
 	name = "PLAYLIST_ERROR_INVALID_FILE",
 	description = "Invalid Playlist",

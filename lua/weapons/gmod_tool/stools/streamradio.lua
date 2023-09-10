@@ -129,7 +129,7 @@ function TOOL:BuildToolPanel(CPanel)
 	self:AddURLTextEntry( CPanel, "streamurl", false )
 
 	local _, StreamUrlInfoText = self:AddReadOnlyTextBox( CPanel, "streamurlinfo" )
-	StreamUrlInfoText:SetTall(225)
+	StreamUrlInfoText:SetTall(245)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
 

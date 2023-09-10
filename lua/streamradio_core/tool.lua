@@ -351,7 +351,6 @@ function LIB.Setup(toolobj)
 		URLTextEntry:SetConVar( self.Mode .. "_" .. command )
 		URLTextEntry:Dock( FILL )
 		URLTextEntry:DockMargin(0, 5, 0, 0)
-		URLTextEntry:SetMultiline(true)
 
 		bgpanel:SetTall(78)
 

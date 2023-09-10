@@ -1047,6 +1047,11 @@ function CLASS:PlayStreamInternal(nodownload)
 	self.Metadata = {}
 
 	if not URLonline then
+		if LIBUtil.IsDriveLetterOfflineURL(URL) then
+			self:AcceptStream(nil, LIBError.STREAM_ERROR_BAD_DRIVE_LETTER_PATH)
+			return true
+		end
+
 		return self:_PlayStreamInternal(URL, URLtype)
 	end
 

@@ -521,9 +521,6 @@ function ENT:FastThink()
 
 			channeltext = string.format("Sound pos, channel: %s", channeltext)
 
-			-- Crashfix: Workaround for: https://github.com/Facepunch/garrysmod-issues/issues/5554
-			channeltext = string.Replace(channeltext, "%", "?")
-
 			debugoverlay.Axis(pos, ang, 5, 0.05, color_white)
 			debugoverlay.EntityTextAtPosition(pos, 1, channeltext, 0.05, color_white)
 		end

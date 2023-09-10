@@ -276,7 +276,12 @@ local function NormalizeOfflineFilename( path )
 	path = string.Replace( path, "../", "" )
 	path = string.Replace( path, "//", "/" )
 
+	path = string.Trim(path)
+
 	path = string.sub(path, 0, StreamRadioLib.STREAM_URL_MAX_LEN_OFFLINE)
+
+	path = string.Trim(path)
+
 	return path
 end
 
@@ -299,34 +304,54 @@ end
 function LIB.NormalizeURL(url)
 	url = LIB.SanitizeUrl(url)
 
-	url = LIBNetURL.normalize(url)
-	url = tostring(url)
+	if not LIB.IsOfflineURL(url) then
+		url = LIBNetURL.normalize(url)
+		url = tostring(url)
+	end
+
+	url = string.Trim(url)
 
 	return url
 end
 
 function LIB.IsOfflineURL( url )
 	url = string.Trim( url or "" )
-	local protocol = string.Trim( string.match( url, ( "([ -~]+):[//\\][//\\]" ) ) or "" )
+	local protocol = string.Trim( string.match( url, ( "^([ -~]+):[//\\][//\\]" ) ) or "" )
 
-	if ( protocol == "" ) then
+	if protocol == "" then
 		return true
 	end
 
-	if ( protocol == "file" ) then
+	if protocol == "file" then
 		return true
 	end
 
 	return false
 end
 
+function LIB.IsDriveLetterOfflineURL( url )
+	if not LIB.IsOfflineURL(url) then
+		return false
+	end
+
+	url = string.Trim( url or "" )
+
+	local driveLetter = string.Trim( string.match( url, ( "([a-zA-Z]+):[//\\]" ) ) or "" )
+
+	if driveLetter == "" then
+		return false
+	end
+
+	return true
+end
+
 function LIB.ConvertURL( url )
 	url = LIB.SanitizeUrl(url)
 
 	if LIB.IsOfflineURL( url ) then
-		local fileurl = LIB.SanitizeUrl( string.match( url, ( ":[//\\][//\\]([ -~]+)" ) ) or "" )
+		local fileurl = LIB.SanitizeUrl( string.match( url, ( ":[//\\][//\\]([ -~]+)$" ) ) or "" )
 
-		if ( fileurl ~= "" ) then
+		if fileurl ~= "" then
 			url = fileurl
 		end
 

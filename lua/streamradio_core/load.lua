@@ -234,7 +234,7 @@ local function loadAddon()
 		-- Sometimes the version is not known, yet.
 
 		if CLIENT then
-			local NEED_VERSION = 230714
+			local NEED_VERSION = 230904
 
 			if VERSION < NEED_VERSION then
 				versionError = string.format("Your GMod-Client (version: %s) is too old!\nPlease update the GMod-Client to version %s or newer!", VERSION, NEED_VERSION)

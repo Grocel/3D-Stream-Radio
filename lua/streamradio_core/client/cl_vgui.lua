@@ -143,7 +143,7 @@ function PANEL:Init( )
 	self.URLText:SetUpdateOnType(true)
 	self.URLText:SetHistoryEnabled(false)
 	self.URLText:SetEnterAllowed(true)
-	self.URLText:SetMultiline(false)
+	self.URLText:SetMultiline(true)
 	self.URLText:Dock(FILL)
 	self.URLText:DockMargin( 0, 0, 2, 0 )
 
@@ -151,7 +151,7 @@ function PANEL:Init( )
 	self.URLText:SetMaxLength(StreamRadioLib.STREAM_URL_MAX_LEN_ONLINE)
 
 	if self.URLText.SetPlaceholderText then
-		-- Some client have some addon conflicts
+		-- Some client have addon conflicts
 		-- This causes them to not have the panel:SetPlaceholderText() function
 
 		self.URLText:SetPlaceholderText("Enter file path or online URL")
@@ -201,9 +201,25 @@ function PANEL:Init( )
 			return
 		end
 
-		if code == KEY_ENTER then
-			panel:OnEnter(panel:GetText())
-			panel:FocusNext()
+		if code == KEY_ENTER or
+			code == KEY_PAD_ENTER or
+			code == KEY_ESCAPE
+		then
+			timer.Simple(0, function()
+				if not IsValid(self) then
+					return
+				end
+
+				if not IsValid(panel) then
+					return
+				end
+
+				local text = panel:GetText()
+				panel:SetText(text)
+
+				panel:OnEnter(text)
+				panel:FocusNext()
+			end)
 		end
 	end
 

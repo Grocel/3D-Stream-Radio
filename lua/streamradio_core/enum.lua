@@ -122,15 +122,18 @@ StreamRadioLib.STREAM_URL_INFO = [[
 You can enter this as a Stream URL:
 
 Offline content:
-   - A path of a sound file inside your game's 'sound' folder.
+   - A relative path inside your game's 'sound' folder.
+   - The path must lead to a valid sound file.
    - Mounted content is supported and included.
-   - E.g. music/hl1_song3.mp3
+   - Like: music/hl1_song3.mp3
+   - NOT: sound/music/hl1_song3.mp3
+   - NOT: C:/.../sound/music/hl1_song3.mp3
 
 Online content:
    - An URL to an online file or stream.
    - The URL must lead to valid sound content.
    - No HTML, no Flash, no Videos, no YouTube
-   - E.g. https://stream.laut.fm/hiphop-forever
+   - Like: https://stream.laut.fm/hiphop-forever
 ]]
 
 StreamRadioLib.STREAM_URL_INFO = string.gsub(StreamRadioLib.STREAM_URL_INFO, "\r", "")
