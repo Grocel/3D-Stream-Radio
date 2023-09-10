@@ -21,9 +21,11 @@ RADIOFS._validsoundtypes = {
 	["aac"] = true,
 	["aifc"] = true,
 	["aiff"] = true,
+	["flac"] = true,
 	["it"] = true,
 	["m4a"] = true,
 	["mod"] = true,
+	["webm"] = true,
 	["wma"] = true,
 	["xm"] = true,
 }
