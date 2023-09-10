@@ -1859,7 +1859,11 @@ function CLASS:HasEnded()
 	local length = self:GetLength()
 	local timeleft = length - curtime
 
-	if timeleft > 0 then
+	-- Sometimes the time can actually lag a bit behind the actual playback position.
+	-- So we add a small tolerance to make sure it doesn't get stuck at like 99.999% of the track.
+	local minTimeLeft = engine.TickInterval() * 2
+
+	if timeleft > minTimeLeft then
 		return false
 	end
 
