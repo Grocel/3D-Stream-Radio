@@ -787,9 +787,11 @@ else
 
 	function ENT:IsConnectedInputWire(name)
 		if not g_isWiremodLoaded then return false end
-		if not istable(self.Inputs) then return false end
 
-		local wireinput = self.Inputs[name]
+		local wireinputs = self.Inputs
+		if not istable(wireinputs) then return false end
+
+		local wireinput = wireinputs[name]
 		if not istable(wireinput) then return false end
 		if not IsValid(wireinput.Src) then return false end
 
@@ -798,9 +800,11 @@ else
 
 	function ENT:IsConnectedOutputWire(name)
 		if not g_isWiremodLoaded then return false end
-		if not istable(self.Outputs) then return false end
-		local wireoutput = self.Outputs[name]
 
+		local wireoutputs = self.Outputs
+		if not istable(wireoutputs) then return false end
+
+		local wireoutput = wireoutputs[name]
 		if not istable(wireoutput) then return false end
 		if not istable(wireoutput.Connected) then return false end
 		if not istable(wireoutput.Connected[1]) then return false end
@@ -809,8 +813,43 @@ else
 		return true
 	end
 
+	function ENT:HasWirelink(name)
+		if not g_isWiremodLoaded then return false end
+
+		local wireoutputs = self.Outputs
+		if not istable(wireoutputs) then return false end
+
+		local wireoutput = wireoutputs[name]
+		if not istable(wireoutput) then return false end
+
+		local value = wireoutput.Value
+		if not isentity(value) then return false end
+		if not IsValid(value) then return false end
+
+		return true
+	end
+
+	local g_wirelinkName = "wirelink"
+
 	function ENT:IsConnectedWirelink()
-		return self:IsConnectedOutputWire("wirelink");
+		if not g_isWiremodLoaded then return false end
+
+		if not self.extended then
+			-- wirelink had not been created yet
+			return false
+		end
+
+		if self:HasWirelink(g_wirelinkName) then
+			-- wirelink had been triggered via E2 code
+			return true
+		end
+
+		if self:IsConnectedOutputWire(g_wirelinkName) then
+			-- wirelink had been connected via Wire Tool
+			return true
+		end
+
+		return false
 	end
 
 	function ENT:TriggerWireOutput(name, value)
