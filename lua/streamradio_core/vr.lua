@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.VR = StreamRadioLib.VR or {}
+
 local LIB = StreamRadioLib.VR
+table.Empty(LIB)
 
 function LIB.IsInstalled()
 	return istable(vrmod)

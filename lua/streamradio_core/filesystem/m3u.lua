@@ -11,7 +11,7 @@ RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = 10000
 RADIOFS.default = true
-
+RADIOFS.loadToWhitelist = true
 
 local function decodeM3U(RawPlaylist)
 	local RawPlaylistTab = string.Split( RawPlaylist, "\n" )

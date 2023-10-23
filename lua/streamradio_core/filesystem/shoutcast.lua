@@ -4,12 +4,17 @@ if not istable( RADIOFS ) then
 	return
 end
 
+local LIBShoutcast = StreamRadioLib.Shoutcast
+local LIBWhitelist = StreamRadioLib.Whitelist
+local LIBFilesystem = StreamRadioLib.Filesystem
+
 RADIOFS.name = "SHOUTcast"
 RADIOFS.type = "shoutcast"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("sound")
 
 RADIOFS.priority = 50000
 RADIOFS.nocreate = true
+RADIOFS.loadToWhitelist = false
 
 local g_playlistfile = "> Browse Stations <"
 
@@ -105,7 +110,7 @@ function RADIOFS:Find(globalpath, vfolder, callback)
 		return false
 	end
 
-	local genre = StreamRadioLib.Shoutcast.GetGenre(hierarchy)
+	local genre = LIBShoutcast.GetGenre(hierarchy)
 	if not genre then
 		callback(false, nil, nil)
 		return false
@@ -132,7 +137,7 @@ function RADIOFS:Exists(globalpath, vpath)
 		return false
 	end
 
-	if not StreamRadioLib.Shoutcast.GenreExists(hierarchy) then
+	if not LIBShoutcast.GenreExists(hierarchy) then
 		return false
 	end
 
@@ -153,7 +158,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 		return false
 	end
 
-	local status = StreamRadioLib.Shoutcast.GetListOfGenre(hierarchy, function(success, list)
+	local status = LIBShoutcast.GetListOfGenre(hierarchy, function(success, items)
 		if not success then
 			callback(false, nil)
 			return
@@ -161,7 +166,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 
 		local playlist = {}
 
-		for i, v in ipairs(list) do
+		for i, v in ipairs(items) do
 			local item = {
 				name = v.name,
 				url = v.streamUrl,
@@ -176,3 +181,20 @@ function RADIOFS:Read(globalpath, vpath, callback)
 
 	return status
 end
+
+LIBWhitelist.AddCheckFunction("shoutcast", function(url)
+	if not LIBFilesystem.IsEnabledFilesystem("shoutcast") then
+		return nil
+	end
+
+	if not LIBShoutcast.IsShoutcastUrl(url) then
+		return nil
+	end
+
+	--[[
+		Shoutcast gets a spacial treatment to avoid its auto/dynamic playlist needing to be iterated.
+		This would cause like 100+ HTTP calls on every server start up otherwise.
+	]]
+
+	return true
+end)

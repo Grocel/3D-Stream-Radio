@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Hook = StreamRadioLib.Hook or {}
+
 local LIB = StreamRadioLib.Hook
+table.Empty(LIB)
 
 local g_nameprefix = "3DStreamRadio_mainHook_"
 local g_hooks = {}

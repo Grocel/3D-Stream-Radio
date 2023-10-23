@@ -243,47 +243,53 @@ function CLASS:Create()
 	self.PlayBar:SetNWName("pbar")
 	self.PlayBar:SetSkinIdentifyer("progressbar")
 	self.PlayBar.FractionChangeText = function(this, v)
-		if not IsValid(self.StreamOBJ) then return end
+		local stream = self.StreamOBJ
+		if not IsValid(stream) then return end
 
-		if self.StreamOBJ:GetMuted() then
+		if stream:GetMuted() then
 			return "Muted"
 		end
 
-		if self.StreamOBJ:IsBuffering() then
+		if stream:IsCheckingUrl() then
+			return "Checking URL..."
+		end
+
+		if stream:IsBuffering() then
 			return "Buffering..."
 		end
 
-		if self.StreamOBJ:IsStopMode() then
+		if stream:IsStopMode() then
 			return "Stopped"
 		end
 
-		if self.StreamOBJ:HasError() then
+		if stream:HasError() then
 			return "Error!"
 		end
 
-		if self.StreamOBJ:IsDownloading() then
+		if stream:IsDownloading() then
 			return "Downloading..."
 		end
 
-		if self.StreamOBJ:IsLoading() then
+		if stream:IsLoading() then
 			return "Loading..."
 		end
 
-		local len = self.StreamOBJ:GetLength()
-		local time = self.StreamOBJ:GetTime()
+		local len = stream:GetLength()
+		local time = stream:GetTime()
 
 		return FormatTimeleft(time, len)
 	end
 
 	-- @TODO: Fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT
 	self.PlayBar.OnFractionChangeEdit = function(this, v)
-		if not IsValid(self.StreamOBJ) then return end
+		local stream = self.StreamOBJ
+		if not IsValid(stream) then return end
 
 		local noise = math.random() * 0.00001
-		local len = self.StreamOBJ:GetMasterLength()
+		local len = stream:GetMasterLength()
 
 		-- add a minimal noise to the value, so we force the change in any case
-		self.StreamOBJ:SetTime(len * v - noise, true)
+		stream:SetTime(len * v - noise, true)
 	end
 
 	self.State = self:CreateListener({
@@ -449,12 +455,11 @@ function CLASS:UpdatePlayBar()
 end
 
 function CLASS:SetStream(stream)
-	local oldStreamOBJ = self.StreamOBJ
-	self.StreamOBJ = stream
-
-	if oldStreamOBJ == stream then
+	if self.StreamOBJ == stream then
 		return
 	end
+
+	self.StreamOBJ = stream
 
 	self:SetFastThinkRate(0)
 

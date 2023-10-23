@@ -272,6 +272,7 @@ function CLASS:Remove()
 
 	self:RemoveFromNwRegisterInternal(self.entityClassobjsNwRegister)
 	self.entityClassobjsNwRegister = nil
+	self._entityTableGetter = nil
 
 	self.Network.Active = false
 
@@ -859,15 +860,40 @@ function CLASS:RemoveFromNwRegister(nwRegister)
 	self:RemoveFromNwRegisterInternal(nwRegister)
 end
 
-function CLASS:SetEntity(ent)
-	self.Entity = ent
-	self:SetReferenceClassobjsNWRegister(ent._3dstraemradio_classobjs_nw_register)
-
-	self:ApplyNetworkedMode()
-end
-
 function CLASS:GetEntity()
 	return self.Entity
+end
+
+function CLASS:GetEntityTable()
+	if not self._entityTableGetter then
+		return nil
+	end
+
+	return self._entityTableGetter()
+end
+
+function CLASS:SetEntity(ent)
+	if not IsValid(ent) then
+		self.Entity = nil
+		self._entityTableGetter = nil
+
+		self:RemoveFromNwRegister(self.entityClassobjsNwRegister)
+
+		self:ApplyNetworkedMode()
+		return
+	end
+
+	self.Entity = ent
+	local entTable = ent:GetTable()
+
+	self._entityTableGetter = function()
+		-- avoid storing the entity table directly, so we dont leak memory
+		return entTable
+	end
+
+	self:SetReferenceClassobjsNWRegister(entTable._3dstraemradio_classobjs_nw_register)
+
+	self:ApplyNetworkedMode()
 end
 
 function CLASS:SetNWName(nwname)
@@ -883,21 +909,22 @@ function CLASS:GetNWName(name)
 end
 
 do
-	local loopThis = function(k, v)
-		if not string.find(k, "^[G|S]etNW") then return end
+	local loopThis = function(funcName, func)
+		if not isfunction(func) then return end
 
-		if not v then return end
-		if k == "SetNWVarCallback" then return end
+		if funcName == "SetNWVarCallback" then return end
+		if not string.find(funcName, "^[G|S]etNW") then return end
 
-		CLASS[k] = function(this, key, value, ...)
+		CLASS[funcName] = function(this, key, value, ...)
 			if not this.Valid then return value end
-			local ent = this:GetEntity()
-			if not IsValid(ent) then return value end
+
+			local entTable = this:GetEntityTable()
+			if not entTable then return value end
 
 			local prefix = this:GetNWName()  .. "/"
 			key = prefix .. tostring(key or "")
 
-			local r = v(ent, key, value, ...)
+			local r = func(entTable, key, value, ...)
 
 			if r == nil then
 				r = value
@@ -907,15 +934,16 @@ do
 		end
 	end
 
-	for k, v in pairs(LIBNetwork) do
-		loopThis(k, v)
+	for funcName, func in pairs(LIBNetwork) do
+		loopThis(funcName, func)
 	end
 end
 
 function CLASS:SetNWVarCallback(key, datatype, func, ...)
 	if not self.Valid then return end
-	local ent = self:GetEntity()
-	if not IsValid(ent) then return end
+
+	local entTable = self:GetEntityTable()
+	if not entTable then return end
 
 	func = self:GetFunction(func)
 	assert(func, "argument #2 must be a function!")
@@ -923,11 +951,13 @@ function CLASS:SetNWVarCallback(key, datatype, func, ...)
 	local prefix = self:GetNWName() .. "/"
 	key = prefix .. tostring(key or "")
 
+	local prefixReg = "^" .. string.PatternSafe(prefix)
+
 	local proxyfunc = function(this, nwkey, ...)
 		if not IsValid(self) then return end
 		if not self.Network.Active then return end
 
-		nwkey = string.gsub(nwkey, "^" .. string.PatternSafe(prefix), "", 1 )
+		nwkey = string.gsub(nwkey, prefixReg, "", 1 )
 
 		self._nw_proxycall = true
 		local ret = {func(self, nwkey, ...)}
@@ -936,7 +966,7 @@ function CLASS:SetNWVarCallback(key, datatype, func, ...)
 		return unpack(ret)
 	end
 
-	return LIBNetwork.SetNWVarCallback(ent, datatype, key, proxyfunc, ...)
+	return LIBNetwork.SetNWVarCallback(entTable, datatype, key, proxyfunc, ...)
 end
 
 function CLASS:NetReceive(id, func)

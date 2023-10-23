@@ -161,9 +161,7 @@ function ENT:SetupDataTables( )
 		return this:_radio_EditValue(variable, value)
 	end
 
-	LIBNetwork.SetDTVarCallback(self, "Loop", function(this, name, oldv, newv)
-		if not IsValid(self) then return end
-
+	self:SetDTVarCallback("Loop", function(this, name, oldv, newv)
 		if newv and SERVER then
 			self:SetPlaylistLoop(false)
 		end
@@ -171,9 +169,7 @@ function ENT:SetupDataTables( )
 		self:MarkForUpdatePlaybackLoopMode()
 	end)
 
-	LIBNetwork.SetDTVarCallback(self, "PlaylistLoop", function(this, name, oldv, newv)
-		if not IsValid(self) then return end
-
+	self:SetDTVarCallback("PlaylistLoop", function(this, name, oldv, newv)
 		if newv and SERVER then
 			self:SetLoop(false)
 		end

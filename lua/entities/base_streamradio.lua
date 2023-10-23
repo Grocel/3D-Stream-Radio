@@ -25,7 +25,21 @@ function ENT:AddDTNetworkVar(datatype, name, ...)
 		return
 	end
 
-	return LIBNetwork.AddDTNetworkVar(self, datatype, name, ...)
+	return LIBNetwork.AddDTNetworkVar(self:GetTable(), datatype, name, ...)
+end
+
+function ENT:SetDTVarCallback(name, callback)
+	if not g_isLoaded then
+		return
+	end
+
+	LIBNetwork.SetDTVarCallback(self:GetTable(), name, function(...)
+		if not IsValid(self) then
+			return
+		end
+
+		callback(...)
+	end)
 end
 
 function ENT:SetupDataTables()
@@ -33,6 +47,7 @@ function ENT:SetupDataTables()
 		return
 	end
 
+	StreamRadioLib.RegisterRadio(self)
 	LIBNetwork.SetupDataTables(self)
 end
 
@@ -335,14 +350,6 @@ function ENT:GetRealRadioOwner()
 	end
 
 	return nil
-end
-
-function ENT:IsBlockedCustomURL(url)
-	return LIBUtil.IsBlockedCustomURL(url, self:GetRealRadioOwner())
-end
-
-function ENT:FilterCustomURL(url, treatBlockedURLCodeAsEmpty)
-	return LIBUtil.FilterCustomURL(url, self:GetRealRadioOwner(), treatBlockedURLCodeAsEmpty)
 end
 
 function ENT:Initialize()

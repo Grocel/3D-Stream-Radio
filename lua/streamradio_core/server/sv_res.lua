@@ -37,9 +37,10 @@ do
 
 		CopyFiles( StreamRadioLib.DataDirectory .. "/playlists" )
 
+		StreamRadioLib.Whitelist.BuildWhitelist()
+
 		StreamRadioLib.Editor.Reset( ply )
-		local msgstring = StreamRadioLib.AddonPrefix .. "Playlists rebuilt"
-		StreamRadioLib.Print.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, "Playlists rebuilt" )
 	end
 
 	local function Rebuild_CommunityPlaylists( ply, cmd, args )
@@ -53,9 +54,10 @@ do
 
 		CopyFiles( StreamRadioLib.DataDirectory .. "/playlists/community" )
 
+		StreamRadioLib.Whitelist.BuildWhitelist()
+
 		StreamRadioLib.Editor.Reset( ply )
-		local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists rebuilt"
-		StreamRadioLib.Print.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, "Community playlists rebuilt" )
 	end
 
 	concommand.Add( "sv_streamradio_rebuildplaylists", Rebuild_Playlists )
@@ -73,13 +75,11 @@ do
 
 		local deleted = StreamRadioLib.Util.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists" )
 		if not deleted then
-			local msgstring = StreamRadioLib.AddonPrefix .. "Playlists could not be rebuilt"
-			StreamRadioLib.Print.Msg( ply, msgstring )
+			StreamRadioLib.Print.Msg( ply, "Playlists could not be rebuilt" )
 			return
 		end
 
-		local msgstring = StreamRadioLib.AddonPrefix .. "Playlists deleted"
-		StreamRadioLib.Print.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, "Playlists deleted" )
 		Rebuild_Playlists( ply, cmd, args )
 	end
 
@@ -95,13 +95,11 @@ do
 
 		local deleted = StreamRadioLib.Util.DeleteFolder( StreamRadioLib.DataDirectory .. "/playlists/community" )
 		if not deleted then
-			local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists could not be rebuilt"
-			StreamRadioLib.Print.Msg( ply, msgstring )
+			StreamRadioLib.Print.Msg( ply, "Community playlists could not be rebuilt" )
 			return
 		end
 
-		local msgstring = StreamRadioLib.AddonPrefix .. "Community playlists deleted"
-		StreamRadioLib.Print.Msg( ply, msgstring )
+		StreamRadioLib.Print.Msg( ply, "Community playlists deleted" )
 		Rebuild_CommunityPlaylists( ply, cmd, args )
 	end
 

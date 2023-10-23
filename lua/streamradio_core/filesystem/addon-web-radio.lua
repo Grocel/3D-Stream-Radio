@@ -16,6 +16,7 @@ RADIOFS.addonid = g_addonid
 
 RADIOFS.priority = 90
 RADIOFS.nocreate = true
+RADIOFS.loadToWhitelist = true
 
 RADIOFS._filepath = "webradiobookmarks.txt"
 RADIOFS._filename = g_addonname
@@ -51,11 +52,17 @@ function RADIOFS:IsInstalled()
 		return true
 	end
 
-	if not file.Exists(self._filepath, "DATA") then
-		return false
+	if self._isInstalled ~= nil then
+		return self._isInstalled
 	end
 
-	return true
+	if not file.Exists(self._filepath, "DATA") then
+		self._isInstalled = false
+		return self._isInstalled
+	end
+
+	self._isInstalled = true
+	return self._isInstalled
 end
 
 function RADIOFS:IsType(globalpath, vpath)

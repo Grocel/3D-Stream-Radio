@@ -7,6 +7,8 @@ end
 
 local LIBNetwork = StreamRadioLib.Network
 local LIBError = StreamRadioLib.Error
+local LIBUtil = StreamRadioLib.Util
+local LIBError = StreamRadioLib.Error
 
 local BASE = CLASS:GetBaseClass()
 
@@ -104,6 +106,12 @@ function CLASS:Create()
 
 			self.State.Error = 0
 			self:ResetStream()
+		end
+
+		self.Errorbox.OnWhitelist = function()
+			if not IsValid(self.StreamOBJ) then return end
+
+			StreamRadioLib.Whitelist.QuickWhitelistAdd(self.StreamOBJ:GetURL())
 		end
 
 		self.Errorbox:SetZPos(100)
@@ -204,12 +212,11 @@ function CLASS:ResetStream(nosend)
 end
 
 function CLASS:SetStream(stream)
-	local oldStreamOBJ = self.StreamOBJ
-	self.StreamOBJ = stream
-
-	if oldStreamOBJ == stream then
+	if self.StreamOBJ == stream then
 		return
 	end
+
+	self.StreamOBJ = stream
 
 	self:SetFastThinkRate(0)
 
@@ -249,9 +256,11 @@ function CLASS:SetStream(stream)
 	end
 
 	if CLIENT then
-		local updateErrorState = function(err)
+		local updateErrorState = function()
 			if not IsValid(self) then return end
 			if not self.State then return end
+
+			local err = stream:GetError()
 
 			if err == LIBError.STREAM_OK then
 				self.State.Error = LIBError.STREAM_OK
@@ -264,27 +273,13 @@ function CLASS:SetStream(stream)
 			end
 		end
 
-		stream:SetEvent("OnClose", self:GetID(), function()
-			updateErrorState(LIBError.STREAM_OK)
-		end)
+		stream:SetEvent("OnClose", self:GetID(), updateErrorState)
+		stream:SetEvent("OnSearch", self:GetID(), updateErrorState)
+		stream:SetEvent("OnConnect", self:GetID(), updateErrorState)
+		stream:SetEvent("OnError", self:GetID(), updateErrorState)
+		stream:SetEvent("OnMute", self:GetID(), updateErrorState)
 
-		stream:SetEvent("OnSearch", self:GetID(), function()
-			updateErrorState(LIBError.STREAM_OK)
-		end)
-
-		stream:SetEvent("OnConnect", self:GetID(), function()
-			updateErrorState(LIBError.STREAM_OK)
-		end)
-
-		stream:SetEvent("OnError", self:GetID(), function(this, err)
-			updateErrorState(err)
-		end)
-
-		stream:SetEvent("OnMute", self:GetID(), function()
-			updateErrorState(LIBError.STREAM_OK)
-		end)
-
-		updateErrorState(stream:GetError())
+		updateErrorState()
 	end
 
 	self:UpdateFromStream()
@@ -306,31 +301,30 @@ if CLIENT then
 	end
 end
 
-function CLASS:UpdateFromStream()
+function CLASS:UpdateHeaderTextFromStream()
 	if SERVER then return end
 
 	local stream = self.StreamOBJ
-
 	if not IsValid(stream) then return end
-	if not IsValid(self.HeaderText) then return end
+
+	local headerText = self.HeaderText
+	if not IsValid(headerText) then return end
 
 	local textlist = {}
 
 	local name = stream:GetStreamName()
-	local isOnline = stream:IsOnline()
+	local isOnlineUrl = stream:IsOnlineUrl()
 	local isCached = stream:IsCached()
 	local url = stream:GetURL()
 
-	if StreamRadioLib.Util.IsBlockedURLCode(url) then
-		url = "(Blocked URL)"
-		isCached = false
-		isOnline = true
+	if url == "" then
+		url = "(Unknown URL)"
 	end
 
 	local urlprefix = "URL: "
 	local urlpostfix = ""
 
-	if not isOnline and not isCached then
+	if not isOnlineUrl then
 		urlprefix = "File: "
 	end
 
@@ -369,7 +363,32 @@ function CLASS:UpdateFromStream()
 		table.insert(textlist, metaname)
 	end
 
-	self.HeaderText:SetList(textlist)
+	headerText:SetList(textlist)
+end
+
+function CLASS:WhitelistButtonFromStream()
+	if SERVER then return end
+
+	local stream = self.StreamOBJ
+	if not IsValid(stream) then return end
+
+	local errorbox = self.Errorbox
+	if not IsValid(errorbox) then return end
+
+	local isAdmin = LIBUtil.IsAdmin()
+	local isOnlineUrl = stream:IsOnlineUrl()
+	local isWhitelistError = stream:GetError() == LIBError.STREAM_ERROR_URL_NOT_WHITELISTED
+	local showButton = isAdmin and isWhitelistError and isOnlineUrl
+
+	errorbox:SetAdminWhitelistButtonVisible(showButton)
+end
+
+function CLASS:UpdateFromStream()
+	if SERVER then return end
+	if not IsValid(self.StreamOBJ) then return end
+
+	self:WhitelistButtonFromStream()
+	self:UpdateHeaderTextFromStream()
 end
 
 function CLASS:PerformLayout(...)

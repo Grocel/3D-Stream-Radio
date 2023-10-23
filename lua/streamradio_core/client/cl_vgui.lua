@@ -1,7 +1,7 @@
-local StreamRadioLib = StreamRadioLib or {}
+local StreamRadioLib = StreamRadioLib
 
 local LIBError = StreamRadioLib.Error
-local LIBUtil = StreamRadioLib.Util
+local LIBUrl = StreamRadioLib.Url
 
 local PANEL = {}
 AccessorFunc( PANEL, "m_showLimit", "ShowLimit" )
@@ -161,7 +161,7 @@ function PANEL:Init( )
 	self.URLText:SetTooltip(self.URLTooltip)
 
 	local function callChangeEvent(panel, value, enter)
-		local newValue = LIBUtil.SanitizeUrl(value)
+		local newValue = LIBUrl.SanitizeUrl(value)
 
 		self.m_strValue = newValue
 		self:CheckURL()
@@ -177,7 +177,7 @@ function PANEL:Init( )
 	self.URLText.GetText = function( panel, change )
 		local value = oldGetText(panel)
 
-		value = LIBUtil.SanitizeUrl(value)
+		value = LIBUrl.SanitizeUrl(value)
 
 		return value
 	end
@@ -230,7 +230,7 @@ function PANEL:Init( )
 		end
 
 		local value = panel:GetText()
-		local newValue = LIBUtil.SanitizeUrl(value)
+		local newValue = LIBUrl.SanitizeUrl(value)
 
 		if value ~= newValue then
 			panel:SetText(newValue)

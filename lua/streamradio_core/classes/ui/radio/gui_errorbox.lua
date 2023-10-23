@@ -12,6 +12,7 @@ local BASE = CLASS:GetBaseClass()
 local g_mat_help = StreamRadioLib.GetPNGIcon("help")
 local g_mat_cross = StreamRadioLib.GetPNGIcon("cross")
 local g_mat_arrow_refresh = StreamRadioLib.GetPNGIcon("arrow_refresh")
+local g_mat_shield_add = StreamRadioLib.GetPNGIcon("shield_add")
 
 function CLASS:Create()
 	BASE.Create(self)
@@ -65,19 +66,53 @@ function CLASS:Create()
 		self:CallHook("OnRetry")
 	end
 
+	self.AdminWhitelistButton = self:AddPanelByClassname("button", true)
+	self.AdminWhitelistButton:SetSize(40, 40)
+	self.AdminWhitelistButton:SetIcon(g_mat_shield_add)
+	self.AdminWhitelistButton:SetDrawAlpha(0.5)
+	self.AdminWhitelistButton:SetTooltip("Add to quick whitelist (admin only)")
+	self.AdminWhitelistButton:SetName("whitelist")
+	self.AdminWhitelistButton:SetNWName("wl")
+	self.AdminWhitelistButton:SetSkinIdentifyer("button")
+	self.AdminWhitelistButton.DoClick = function()
+		self:CallHook("OnWhitelist")
+	end
+
+	self:SetEvent("OnClose", "HideAdminWhitelistButton", "HideAdminWhitelistButton")
+
 	self.SideButtons = {
 		self.CloseButton,
 		self.RetryButton,
 		self.HelpButton,
+		self.AdminWhitelistButton,
 	}
+
+	self:HideAdminWhitelistButton()
+end
+
+function CLASS:HideAdminWhitelistButton()
+	self:SetAdminWhitelistButtonVisible(false)
+end
+
+function CLASS:SetAdminWhitelistButtonVisible(visible)
+	local adminWhitelistButton = self.AdminWhitelistButton
+
+	if not IsValid(adminWhitelistButton) then
+		return
+	end
+
+	local oldVisible = adminWhitelistButton.Layout.Visible
+	if oldVisible == visible then
+		return
+	end
+
+	adminWhitelistButton:SetVisible(visible)
+
+	self:InvalidateLayout(true, false)
 end
 
 function CLASS:SetPlaylistError(url)
 	url = tostring(url or "")
-
-	if StreamRadioLib.Util.IsBlockedURLCode(url) then
-		url = ""
-	end
 
 	self.Error = LIBError.PLAYLIST_ERROR_INVALID_FILE
 	self.URL = url
@@ -105,10 +140,6 @@ end
 function CLASS:SetErrorCode(err, url)
 	err = tonumber(err or 0) or 0
 	url = tostring(url or "")
-
-	if StreamRadioLib.Util.IsBlockedURLCode(url) then
-		url = ""
-	end
 
 	self.Error = err
 	self.URL = url
@@ -182,10 +213,10 @@ function CLASS:PerformLayout(...)
 
 	local margin = self:GetMargin()
 
-	self:_PerformButtonLayout(margin, margin)
-
 	if IsValid(self.BodyPanelText) and self.BodyPanelText.Layout.Visible then
 		self.BodyPanelText:SetPos(0, 0)
 		self.BodyPanelText:SetSize(w, h)
 	end
+
+	self:_PerformButtonLayout(margin, margin)
 end

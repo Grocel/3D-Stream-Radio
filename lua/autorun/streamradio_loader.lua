@@ -37,7 +37,10 @@ local function initStreamRadioLibGlobal()
 
 			prefixlabel:SetDark(true)
 			prefixlabel:SetHighlight(false)
+			prefixlabel:SetWrap(true)
 			prefixlabel:SetText(addonPrefix)
+
+			prefixlabel:SetAutoStretchVertical(true)
 			prefixlabel:SizeToContents()
 
 			CPanel:AddPanel(prefixlabel)
@@ -57,8 +60,11 @@ local function initStreamRadioLibGlobal()
 
 			errorlabel:SetDark(false)
 			errorlabel:SetHighlight(true)
+			errorlabel:SetWrap(true)
 			errorlabel:SetText(i .. ". " .. thiserr)
 			errorlabel:SetTooltip(thiserr)
+
+			errorlabel:SetAutoStretchVertical(true)
 			errorlabel:SizeToContents()
 
 			CPanel:AddPanel(errorlabel)
@@ -72,8 +78,11 @@ local function initStreamRadioLibGlobal()
 
 			messagelabel:SetDark(false)
 			messagelabel:SetHighlight(true)
+			messagelabel:SetWrap(true)
 			messagelabel:SetText(message)
 			messagelabel:SetTooltip(message)
+
+			messagelabel:SetAutoStretchVertical(true)
 			messagelabel:SizeToContents()
 
 			CPanel:AddPanel(messagelabel)

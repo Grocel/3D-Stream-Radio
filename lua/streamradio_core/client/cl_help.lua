@@ -187,11 +187,6 @@ function StreamRadioLib.ShowErrorHelp( errorcode, url )
 	local helptext = errorInfo.helptext or ""
 	local helpurl = errorInfo.helpurl or ""
 
-	url = tostring(url or "")
-	if StreamRadioLib.Util.IsBlockedURLCode(url) then
-		url = ""
-	end
-
 	OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
 end
 

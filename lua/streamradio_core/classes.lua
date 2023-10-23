@@ -1,4 +1,6 @@
-StreamRadioLib.Classes = {}
+StreamRadioLib.Classes = StreamRadioLib.Classes or {}
+table.Empty(StreamRadioLib.Classes)
+
 local LuaClassDirectory = "streamradio_core/classes"
 
 local function normalize_classname(name)
@@ -185,7 +187,7 @@ local function AddClass(name, parentname)
 end
 
 function StreamRadioLib.ReloadClasses()
-	StreamRadioLib.Classes = {}
+	table.Empty(StreamRadioLib.Classes)
 
 	AddClass("base")
 	AddClass("base_listener", "base")

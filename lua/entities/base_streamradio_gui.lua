@@ -401,7 +401,7 @@ function ENT:SetupGui(callback)
 				return
 			end
 
-			self:SetPlaylist(playlistItems, 1, false)
+			self:SetPlaylist(playlistItems, 1)
 		end
 
 		GUI_Main.OnStop = function(this)
@@ -615,7 +615,6 @@ end
 
 function ENT:SetupDataTables()
 	if not g_isLoaded then return end
-
 	BaseClass.SetupDataTables(self)
 
 	self:AddDTNetworkVar( "Entity", "RadioOwner" )
@@ -661,18 +660,18 @@ function ENT:SetupDataTables()
 		}
 	})
 
-	LIBNetwork.SetDTVarCallback(self, "EnableDebug", function(this, name, oldv, newv)
+	self:SetDTVarCallback("EnableDebug", function(this, name, oldv, newv)
 		if not IsValid(self.GUI) then return end
 		self.GUI:SetDebug(newv)
 	end)
 
-	LIBNetwork.SetDTVarCallback(self, "HasPlaylist", function(this, name, oldv, newv)
+	self:SetDTVarCallback("HasPlaylist", function(this, name, oldv, newv)
 		if not IsValid(self.GUI_Main) then return end
 		self.GUI_Main:SetHasPlaylist(newv)
 	end)
 
 	if CLIENT then
-		LIBNetwork.SetDTVarCallback(self, "DisableDisplay", function(this, name, oldv, newv)
+		self:SetDTVarCallback("DisableDisplay", function(this, name, oldv, newv)
 			if newv then
 				self:RemoveGui()
 			end
@@ -680,7 +679,7 @@ function ENT:SetupDataTables()
 	end
 end
 
-function ENT:AddItemToPlaylist(newItem, checkBlockedUrl)
+function ENT:AddItemToPlaylist(newItem)
 	if CLIENT then return end
 
 	local url = string.Trim(
@@ -708,10 +707,6 @@ function ENT:AddItemToPlaylist(newItem, checkBlockedUrl)
 		name = url
 	end
 
-	if checkBlockedUrl and self:IsBlockedCustomURL(url) then
-		return
-	end
-
 	local playlistObj = self.PlaylistData
 	local data = playlistObj.data
 
@@ -733,15 +728,15 @@ function ENT:AddItemToPlaylist(newItem, checkBlockedUrl)
 	end
 end
 
-function ENT:AddItemsToPlaylist(newItems, checkBlockedUrl)
+function ENT:AddItemsToPlaylist(newItems)
 	if CLIENT then return end
 
 	for i, newItem in ipairs(newItems) do
-		self:AddItemToPlaylist(newItem, checkBlockedUrl)
+		self:AddItemToPlaylist(newItem)
 	end
 end
 
-function ENT:SetPlaylist(playlist, pos, checkBlockedUrl)
+function ENT:SetPlaylist(playlist, pos)
 	if CLIENT then return end
 
 	if not pos then
@@ -749,7 +744,7 @@ function ENT:SetPlaylist(playlist, pos, checkBlockedUrl)
 	end
 
 	self:ClearPlaylist()
-	self:AddItemsToPlaylist(playlist, checkBlockedUrl)
+	self:AddItemsToPlaylist(playlist)
 
 	local playlistObj = self.PlaylistData
 	playlistObj.pos = math.Clamp(pos or 1, 1, #playlistObj.data)
@@ -1199,7 +1194,7 @@ else
 
 		local pos = playlist.pos or 1
 
-		self:SetPlaylist(data, pos, true)
+		self:SetPlaylist(data, pos)
 	end
 
 	function ENT:OnSetupCopyData(data)
@@ -1226,7 +1221,7 @@ else
 
 		local pos = value.pos or 1
 
-		self:SetPlaylist(data, pos, true)
+		self:SetPlaylist(data, pos)
 
 		if self.DisplayLess then
 			self._dupePlaylistData = nil

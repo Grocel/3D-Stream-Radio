@@ -16,6 +16,7 @@ RADIOFS.addonid = g_addonid
 
 RADIOFS.priority = 100
 RADIOFS.nocreate = true
+RADIOFS.loadToWhitelist = true
 
 RADIOFS._filepath = "mxradio.txt"
 RADIOFS._filename = g_addonname
@@ -51,15 +52,22 @@ function RADIOFS:IsInstalled()
 		return true
 	end
 
+	if self._isInstalled ~= nil then
+		return self._isInstalled
+	end
+
 	if not isfunction(SetUpStationTable) then
-		return false
+		self._isInstalled = false
+		return self._isInstalled
 	end
 
 	if not file.Exists(self._filepath, "DATA") then
-		return false
+		self._isInstalled = false
+		return self._isInstalled
 	end
 
-	return true
+	self._isInstalled = true
+	return self._isInstalled
 end
 
 function RADIOFS:IsType(globalpath, vpath)

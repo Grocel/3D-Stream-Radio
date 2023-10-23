@@ -8,7 +8,7 @@ StreamRadioLib.STREAM_URLTYPE_CACHE = 1
 StreamRadioLib.STREAM_URLTYPE_ONLINE = 2
 StreamRadioLib.STREAM_URLTYPE_ONLINE_NOCACHE = 3
 
--- Placeholder for Blocked URLs with non-Keyboard chars
+-- Placeholder for Blocked URLs with non-Keyboard chars (legacy)
 StreamRadioLib.BlockedURLCodeSequence = string.char(124, 245, 142, 188, 5, 6, 2, 1, 2, 54, 12, 7, 5)
 StreamRadioLib.BlockedURLCode = string.format("__blocked_url_replaced_with_special_sequence___[%s]___pls_ignore_this!__", StreamRadioLib.BlockedURLCodeSequence)
 

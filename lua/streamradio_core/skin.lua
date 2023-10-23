@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Skin = StreamRadioLib.Skin or {}
+
 local LIB = StreamRadioLib.Skin
+table.Empty(LIB)
 
 local _default_json = [[
 {

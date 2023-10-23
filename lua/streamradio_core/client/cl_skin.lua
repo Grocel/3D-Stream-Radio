@@ -1,8 +1,8 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Skin = StreamRadioLib.Skin or {}
-local LIB = StreamRadioLib.Skin
 
+local LIB = StreamRadioLib.Skin
 local MainPath = StreamRadioLib.DataDirectory .. "/skin"
 
 local function CreateDirForFile(filename)

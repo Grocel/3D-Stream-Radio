@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Language = StreamRadioLib.Language or {}
+
 local LIB = StreamRadioLib.Language
+table.Empty(LIB)
 
 local g_nameprefix = "3dstreamradio."
 local g_translated = {}

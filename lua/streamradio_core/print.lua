@@ -1,25 +1,36 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Print = StreamRadioLib.Print or {}
+
 local LIB = StreamRadioLib.Print
+table.Empty(LIB)
+
+local LIBString = StreamRadioLib.String
+
+function LIB.Format(format, ...)
+	format = tostring(format or "")
+	if format == "" then return "" end
+
+	local empty = table.IsEmpty({...})
+	if empty then
+		return format
+	end
+
+	local result = string.format(format, ...)
+	return result
+end
 
 function LIB.Debug(format, ...)
 	if not StreamRadioLib.Util.IsDebug() then return end
 
-	format = tostring(format or "")
-	if format == "" then return end
-
-	local msgstring = string.format(format, ...)
+	local msgstring = LIB.Format(format, ...)
 	msgstring = string.Trim(msgstring)
 
 	if msgstring == "" then return end
 
-	local tmp = string.Explode("\n", msgstring, false)
-	for i, v in ipairs(tmp) do
-		tmp[i] = "  " .. v .. "\n"
-	end
+	msgstring = LIBString.NormalizeNewlines(msgstring, "\n")
+	msgstring = LIBString.IndentTextBlock(msgstring, 1, "  ")
 
-	msgstring = table.concat(tmp)
 	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
 
 	if StreamRadioLib.VR.IsActive() then
@@ -29,14 +40,24 @@ function LIB.Debug(format, ...)
 	end
 end
 
-function LIB.Msg(ply, msgstring)
-	msgstring = tostring(msgstring or "")
+function LIB.Msg(ply, format, ...)
+	local msgstring = LIB.Format(format, ...)
+	msgstring = string.Trim(msgstring)
+
 	if msgstring == "" then return end
 
-	if IsValid(ply) then
-		ply:PrintMessage(HUD_PRINTTALK, msgstring)
-	else
-		MsgN(msgstring)
+	msgstring = LIBString.NormalizeNewlines(msgstring, "\n")
+	msgstring = LIBString.IndentTextBlock(msgstring, 1, "  ")
+
+	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
+
+	local lines = string.Explode("\n", msgstring, false)
+	for i, line in ipairs(lines) do
+		if IsValid(ply) then
+			ply:PrintMessage(HUD_PRINTTALK, line)
+		else
+			MsgN(line)
+		end
 	end
 end
 
@@ -44,7 +65,7 @@ function LIB.GetPlayerString(ply)
 	local playerStr = ""
 
 	if IsValid(ply) then
-		playerStr = string.format("%s (%s)", ply:Nick(), ply:SteamID())
+		playerStr = string.format("%s (%s)", ply:Name(), ply:SteamID())
 	end
 
 	return playerStr
@@ -55,8 +76,10 @@ local g_colorDateTime = Color(180,180,180)
 local g_colorAddonName = Color(0,200,0)
 local g_colorPlayer = Color(200,200,0)
 
-function LIB.Log(ply, msgstring)
-	msgstring = tostring(msgstring or "")
+function LIB.Log(ply, format, ...)
+	local msgstring = LIB.Format(format, ...)
+	msgstring = string.Trim(msgstring)
+
 	if msgstring == "" then return end
 
 	local playerStr = LIB.GetPlayerString(ply)

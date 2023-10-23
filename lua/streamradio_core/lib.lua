@@ -1,21 +1,14 @@
-local Color = Color
 local tostring = tostring
 local tonumber = tonumber
-local type = type
 local IsValid = IsValid
-local MsgN = MsgN
-local MsgC = MsgC
 local LocalPlayer = LocalPlayer
-local file = file
-local sound = sound
-local debug = debug
 local util = util
 local string = string
 local math = math
 local hook = hook
 local SERVER = SERVER
 local CLIENT = CLIENT
-local BASS3 = BASS3 or {}
+
 local StreamRadioLib = StreamRadioLib
 
 function StreamRadioLib.IsGUIHidden(ply)
@@ -807,6 +800,7 @@ function StreamRadioLib.RegisterRadio(ent)
 		return
 	end
 
+	StreamRadioLib.Network.SetupEntityTable(ent)
 	StreamRadioLib.SpawnedRadios[ent:GetCreationID()] = ent
 end
 

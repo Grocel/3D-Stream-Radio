@@ -1,12 +1,19 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Filesystem = StreamRadioLib.Filesystem or {}
+
 local LIB = StreamRadioLib.Filesystem
+table.Empty(LIB)
+
+
+local LIBString = StreamRadioLib.String
 
 local g_playlistdir = ( StreamRadioLib.DataDirectory or "" ) .. "/playlists"
 local LuaFilesystemDirectory = "streamradio_core/filesystem"
-local Filesystem = {}
-local FilesystemBlacklist = {}
+local g_Filesystem = {}
+local g_FilesystemBlacklist = {}
+
+local g_emptyFunction = function() end
 
 local g_FolderID = 1
 local g_VirtualFolderID = 250
@@ -19,20 +26,20 @@ StreamRadioLib.TYPE_DEFAULT = nil
 StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST = ""
 
 local function getFS(id)
-	if not Filesystem then return nil end
-	if not Filesystem.id then return nil end
-	if not Filesystem.type then return nil end
-	if not Filesystem.name then return nil end
+	if not g_Filesystem then return nil end
+	if not g_Filesystem.id then return nil end
+	if not g_Filesystem.type then return nil end
+	if not g_Filesystem.name then return nil end
 
 	if not id then return nil end
 
-	local fs = Filesystem.id[id] or Filesystem.type[id] or Filesystem.name[id]
+	local fs = g_Filesystem.id[id] or g_Filesystem.type[id] or g_Filesystem.name[id]
 	if not fs then return nil end
 
 	if fs.type ~= g_GenericID then
-		if FilesystemBlacklist[fs.id] then return nil end
-		if FilesystemBlacklist[fs.type] then return nil end
-		if FilesystemBlacklist[fs.name] then return nil end
+		if g_FilesystemBlacklist[fs.id] then return nil end
+		if g_FilesystemBlacklist[fs.type] then return nil end
+		if g_FilesystemBlacklist[fs.name] then return nil end
 	end
 
 	if isfunction(fs.IsInstalled) and not fs:IsInstalled() then
@@ -286,17 +293,17 @@ function LIB.Load()
 		table.insert(filesystems, fs)
 	end
 
-	Filesystem = {}
-	Filesystem.id = {}
-	Filesystem.type = {}
-	Filesystem.name = {}
+	g_Filesystem = {}
+	g_Filesystem.id = {}
+	g_Filesystem.type = {}
+	g_Filesystem.name = {}
 
 	table.SortByMember(filesystems, "priority", false)
 
 	local index = g_FolderID -- first is folder
 	local formats = {}
 
-	for _, fs in pairs(filesystems) do
+	for _, fs in ipairs(filesystems) do
 		fs.id = index
 
 		local id = fs.id
@@ -304,9 +311,9 @@ function LIB.Load()
 		local name = fs.name
 		local extension = fs.extension or ""
 
-		Filesystem.id[id] = fs
-		Filesystem.type[type] = fs
-		Filesystem.name[name] = fs
+		g_Filesystem.id[id] = fs
+		g_Filesystem.type[type] = fs
+		g_Filesystem.name[name] = fs
 
 		index = index + 1
 
@@ -333,130 +340,6 @@ function LIB.Load()
 	collectgarbage("collect")
 end
 
-local g_sanitized_filenames_cache = {}
-local g_sanitized_filepaths_cache = {}
-
-function LIB.SanitizeFilename(filenameInput)
-	filenameInput = tostring(filenameInput or "")
-
-	if filenameInput == "" then
-		return ""
-	end
-
-	if g_sanitized_filenames_cache[filenameInput] then
-		return g_sanitized_filenames_cache[filenameInput]
-	end
-
-	g_sanitized_filenames_cache[filenameInput] = nil
-
-	local filename = LIB.NormalizeSlashes(filenameInput)
-
-	filename = string.gsub(filename, "%:", '-')
-	filename = string.gsub(filename, "%/", '-')
-
-	filename = LIB.SanitizeFilepath(filename)
-
-	g_sanitized_filenames_cache[filenameInput] = filename
-	g_sanitized_filenames_cache[filename] = filename
-
-	return filename
-end
-
-function LIB.SanitizeFilepath(filepathInput)
-	filepathInput = tostring(filepathInput or "")
-
-	if filepathInput == "" then
-		return ""
-	end
-
-	if g_sanitized_filepaths_cache[filepathInput] then
-		return g_sanitized_filepaths_cache[filepathInput]
-	end
-
-	g_sanitized_filepaths_cache[filepathInput] = nil
-
-	local filepath = LIB.NormalizeSlashes(filepathInput)
-
-	if LIB.IsVirtualPath(filepath) then
-		g_sanitized_filepaths_cache[filepathInput] = filepath
-		g_sanitized_filepaths_cache[filepath] = filepath
-
-		return filepath
-	end
-
-	filepath = string.Trim(filepath)
-	filepath = string.gsub(filepath, "%s+", '_')
-
-	filepath = string.gsub(filepath, ".", {
-		["*"] = "-",
-		[":"] = "-",
-		["?"] = "-",
-		[">"] = "-",
-		["<"] = "-",
-		["|"] = "-",
-		["´"] = "-",
-		["`"] = "-",
-		["~"] = "-",
-		["'"] = "-",
-		['"'] = "-",
-		['#'] = "-",
-	})
-
-	filepath = string.gsub(filepath, "[^%g]", '')
-	filepath = string.Trim(filepath)
-	filepath = string.lower(filepath)
-
-	g_sanitized_filepaths_cache[filepathInput] = filepath
-	g_sanitized_filepaths_cache[filepath] = filepath
-
-	return filepath
-end
-
-function LIB.NormalizeSlashes(filepath)
-	filepath = tostring(filepath or "")
-
-	if filepath == "" then
-		return ""
-	end
-
-	filepath = string.gsub(filepath, "[%/%\\]", '/')
-	filepath = string.gsub(filepath, "%.%./", '/')
-	filepath = string.gsub(filepath, "%./", '/')
-
-	return filepath
-end
-
-function LIB.IsValidFilepath(filepath)
-	filepath = tostring(filepath or "")
-	filepath = LIB.NormalizeSlashes(filepath)
-	filepath = string.lower(filepath)
-	filepath = string.Trim(filepath)
-
-	local sanitizeFilepath = LIB.SanitizeFilepath(filepath)
-	if sanitizeFilepath ~= filepath then
-		return false
-	end
-
-	return true
-end
-
-function LIB.IsValidFilename(filename)
-	filename = tostring(filename or "")
-	filename = string.lower(filename)
-	filename = string.Trim(filename)
-
-	local sanitizeFilename = LIB.SanitizeFilename(filename)
-	if sanitizeFilename ~= filename then
-		return false
-	end
-
-	if string.Trim(string.StripExtension(" " .. filename) or "") == "" then
-		return false
-	end
-
-	return true
-end
-
 function LIB.FilterInvalidFilesnames(filenames)
 	if not istable(filenames) then
 		filenames = {filenames}
@@ -465,7 +348,7 @@ function LIB.FilterInvalidFilesnames(filenames)
 	local results = {}
 
 	for i, filename in ipairs(filenames) do
-		if not LIB.IsValidFilename(filename) then
+		if not LIBString.IsValidFilename(filename) then
 			continue
 		end
 
@@ -483,7 +366,7 @@ function LIB.FilterInvalidFilepaths(filepaths)
 	local results = {}
 
 	for i, filepath in ipairs(filepaths) do
-		if not LIB.IsValidFilepath(filepath) then
+		if not LIBString.IsValidFilepath(filepath) then
 			continue
 		end
 
@@ -615,14 +498,28 @@ function LIB.GetTypeExt(filetype)
 	return fs.type
 end
 
-function LIB.IsVirtualPath(vpath)
-	vpath = vpath or ""
-
-	if vpath == "" then
-		return false
+function LIB.CanLoadToWhitelist(filetype)
+	if not filetype then
+		return LIB.CanLoadToWhitelist(g_GenericID)
 	end
 
-	if not string.match(vpath, "^%:") then
+	local fs = getFS(filetype)
+
+	if not fs then
+		if filetype == g_GenericID then
+			return true
+		end
+
+		return LIB.CanLoadToWhitelist(g_GenericID)
+	end
+
+	return fs.loadToWhitelist or false
+end
+
+function LIB.IsEnabledFilesystem(fsid)
+	local fs = getFS(fsid)
+
+	if not fs then
 		return false
 	end
 
@@ -630,7 +527,7 @@ function LIB.IsVirtualPath(vpath)
 end
 
 function LIB.CreateFolder(vpath, callback)
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 
 	if not StreamRadioLib.DataDirectory then
 		callback(false)
@@ -644,24 +541,32 @@ function LIB.CreateFolder(vpath, callback)
 		return false
 	end
 
-	if LIB.IsVirtualPath(vpath) then
+	if LIBString.IsVirtualPath(vpath) then
 		callback(false)
 		return false
 	end
 
-	if not LIB.IsValidFilepath(vpath) then
+	if not LIBString.IsValidFilepath(vpath) then
 		callback(false)
 		return false
 	end
 
 	local globalpath = VirtualPathToGlobal(vpath, true)
 
+	if LIB.Exists(vpath, g_FolderID) then
+		callback(true)
+		return true
+	end
+
 	file.CreateDir(globalpath)
 
-	local exists = LIB.Exists(vpath, g_FolderID)
+	if not LIB.Exists(vpath, g_FolderID) then
+		callback(false)
+		return false
+	end
 
-	callback(exists)
-	return exists
+	callback(true)
+	return true
 end
 
 function LIB.CanReadFormat(filetype)
@@ -720,7 +625,7 @@ end
 
 function LIB.CanDeleteFormat(filetype)
 	if LIB.IsFolder(filetype) then
-		if LIB.IsVirtualPath(vpath) then
+		if LIBString.IsVirtualPath(vpath) then
 			return false
 		end
 
@@ -741,7 +646,7 @@ function LIB.CanDeleteFormat(filetype)
 end
 
 function LIB.Read(vpath, filetype, callback)
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 
 	if not StreamRadioLib.DataDirectory then
 		callback(false, nil)
@@ -755,7 +660,7 @@ function LIB.Read(vpath, filetype, callback)
 		return false
 	end
 
-	if not LIB.IsValidFilepath(vpath) then
+	if not LIBString.IsValidFilepath(vpath) then
 		callback(false, nil)
 		return false
 	end
@@ -796,12 +701,18 @@ function LIB.Read(vpath, filetype, callback)
 		end
 
 		data = SanitizeData(data)
+
+		if SERVER then
+			local urls = table.MemberValuesFromKey(data, "url")
+			StreamRadioLib.Whitelist.UpdateFromPlaylist(vpath, urls)
+		end
+
 		callback(success, data)
 	end)
 end
 
 function LIB.Write(vpath, filetype, data, callback)
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 
 	if not StreamRadioLib.DataDirectory then
 		callback(false)
@@ -815,12 +726,12 @@ function LIB.Write(vpath, filetype, data, callback)
 		return false
 	end
 
-	if not LIB.IsValidFilepath(vpath) then
+	if not LIBString.IsValidFilepath(vpath) then
 		callback(false)
 		return false
 	end
 
-	if not LIB.IsValidFilepath(vpath) then
+	if not LIBString.IsValidFilepath(vpath) then
 		callback(false)
 		return false
 	end
@@ -845,11 +756,19 @@ function LIB.Write(vpath, filetype, data, callback)
 		return false
 	end
 
-	return fs:Write(globalpath, vpath, data, callback)
+	return fs:Write(globalpath, vpath, data, function(success, ...)
+		if SERVER and success then
+			local urls = table.MemberValuesFromKey(data, "url")
+			StreamRadioLib.Whitelist.UpdateFromPlaylist(vpath, urls)
+			StreamRadioLib.Whitelist.InvalidateCache()
+		end
+
+		callback(success, ...)
+	end)
 end
 
 function LIB.Delete(vpath, filetype, callback)
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 
 	if not StreamRadioLib.DataDirectory then
 		callback(false)
@@ -863,7 +782,7 @@ function LIB.Delete(vpath, filetype, callback)
 		return false
 	end
 
-	if not LIB.IsValidFilepath(vpath) then
+	if not LIBString.IsValidFilepath(vpath) then
 		callback(false)
 		return false
 	end
@@ -882,7 +801,14 @@ function LIB.Delete(vpath, filetype, callback)
 		return false
 	end
 
-	return fs:Delete(globalpath, vpath, callback)
+	return fs:Delete(globalpath, vpath, function(success, ...)
+		if SERVER and success then
+			StreamRadioLib.Whitelist.RemoveByPlaylist(vpath)
+			StreamRadioLib.Whitelist.InvalidateCache()
+		end
+
+		callback(success, ...)
+	end)
 end
 
 function LIB.Exists(vpath, filetype)
@@ -911,7 +837,7 @@ function LIB.Exists(vpath, filetype)
 	return fs:Exists(globalpath, vpath)
 end
 
-local isvname = LIB.IsVirtualPath
+local isvname = LIBString.IsVirtualPath
 local lower = string.lower
 
 local function sorter(a, b)
@@ -937,7 +863,7 @@ local function sorter(a, b)
 end
 
 function LIB.Find(vfolder, callback)
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 
 	if not StreamRadioLib.DataDirectory then
 		callback(false, nil)
@@ -945,7 +871,7 @@ function LIB.Find(vfolder, callback)
 	end
 
 	vfolder = string.lower(vfolder or "")
-	if not LIB.IsValidFilepath(vfolder) then
+	if not LIBString.IsValidFilepath(vfolder) then
 		callback(false, nil)
 		return false
 	end
@@ -954,19 +880,17 @@ function LIB.Find(vfolder, callback)
 
 	local wait = {}
 
-	local folderlist = {};
-	local filelist = {};
-	local nodouble_folder = {};
-	local nodouble_files = {};
+	local folderlist = {}
+	local filelist = {}
+	local nodouble_folder = {}
+	local nodouble_files = {}
 
-	for id, fs in ipairs(Filesystem.id) do
+	for id, fs in ipairs(g_Filesystem.id or {}) do
 		if not fs then continue end
 		if not getFS(id) then continue end
 		if not fs.Find then continue end
 
-		if started then
-			wait[id] = true
-		end
+		wait[id] = true
 
 		local started = fs:Find(globalpath, vfolder, function(success, files, folders)
 			files = files or {}
@@ -987,6 +911,7 @@ function LIB.Find(vfolder, callback)
 				local item = {
 					isfolder = true,
 					type = typeid,
+					fsid = id,
 					file = name,
 					path = filepath,
 				}
@@ -1006,6 +931,7 @@ function LIB.Find(vfolder, callback)
 				local item = {
 					isfolder = false,
 					type = id,
+					fsid = id,
 					file = name,
 					path = filepath,
 				}
@@ -1054,13 +980,13 @@ function LIB.GuessType(vpath)
 		return nil
 	end
 
-	if not LIB.IsValidFilepath(vpath) then
+	if not LIBString.IsValidFilepath(vpath) then
 		return nil
 	end
 
 	local globalpath = VirtualPathToGlobal(vpath)
 
-	for id, fs in ipairs(Filesystem.id) do
+	for id, fs in ipairs(g_Filesystem.id or {}) do
 		if not fs then continue end
 		if not getFS(id) then continue end
 		if not fs.IsType then continue end
@@ -1082,7 +1008,7 @@ do
 		MsgN(string.format(lineFormat, "ID", "Name", "Type", "Active"))
 		MsgN(string.rep("-", #topLine))
 
-		for id, fs in ipairs(Filesystem.id) do
+		for id, fs in ipairs(g_Filesystem.id or {}) do
 			if not fs then continue end
 			if fs.id == g_GenericID then continue end
 			if fs.type == g_GenericID then continue end
@@ -1102,11 +1028,11 @@ local function updateBlacklistFromString(backlist)
 	backlist = tostring(backlist or "")
 	backlist = string.Explode("[%,%;%|]", backlist, true)
 
-	FilesystemBlacklist = {}
+	g_FilesystemBlacklist = {}
 
 	for i, v in ipairs(backlist) do
 		v = string.Trim(v)
-		FilesystemBlacklist[v] = true
+		g_FilesystemBlacklist[v] = true
 	end
 end
 
@@ -1134,8 +1060,6 @@ StreamRadioLib.Hook.Add("Think", "Playlist_Filesystem", function()
 	oldCVValue = CVvalue
 	updateBlacklistFromString(CVvalue)
 end)
-
-LIB.Load()
 
 return true
 

@@ -49,10 +49,10 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "Cleaned_", "Cleaned up all Stream Radios")
 
 	StreamRadioLib.Tool.AddLocale(TOOL, "model", "Model:")
-	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo", "Some models (usually speakers) don't have a display.\nUse this tool or Wiremod to control those.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo", "Some models (usually speakers) don't have a display. Use this tool or Wiremod to control those.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo.desc", "Some models (usually speakers) don't have a display.\nUse this tool or Wiremod to control those.")
-	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
-	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp.desc", "Some selectable models might not be available\non the server. It will be replaced by a default model.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp", "Some selectable models might not be available on the server. Those will be replaced by a default model.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "modelinfo_mp.desc", "Some selectable models might not be available on the server.\nThose will be replaced by a default model.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "play", "Start playback")
 	StreamRadioLib.Tool.AddLocale(TOOL, "play.desc", "If set, the radio will try to play a given URL on spawn or apply.\nThe URL can be set by this Tools or via Wiremod.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "nodisplay", "Disable display")
@@ -79,10 +79,13 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "nocollide", "Nocollide")
 	StreamRadioLib.Tool.AddLocale(TOOL, "spawnsettings", "Spawn settings:")
 
-	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlinfo", "What can I put in as Stream URL?")
-	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlinfo.desc", StreamRadioLib.STREAM_URL_INFO)
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurl_info", "What can I put in as Stream URL?")
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurl_info.desc", StreamRadioLib.STREAM_URL_INFO)
 
-	StreamRadioLib.Tool.AddLocale(TOOL, "streamurlblocked", "Custom Stream URLs will not work!\nThey are disabled on this server!")
+	StreamRadioLib.Tool.AddLocale(TOOL, "mute_volume_info", "NOTE: These are entity options too. So they only affect the radio they are applied on. The global settings for your client are at 'General Settings'.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "mute_volume_info.desc", "NOTE: These are entity options too. So they only affect the radio they are applied on. The global settings for your client are at 'General Settings'.")
+
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurl_whitelist_info", "Only whitelisted Stream URLs will work on this server!")
 
 	StreamRadioLib.Tool.Setup(TOOL)
 else
@@ -113,22 +116,18 @@ function TOOL:BuildToolPanel(CPanel)
 		4
 	)
 
-	local ModelinfoLabel = self:AddLabel( CPanel, "modelinfo", true )
-	ModelinfoLabel:SetDark( true )
-	ModelinfoLabel:SetHighlight( false )
+	self:AddLabel( CPanel, "modelinfo", true )
 
 	if game.IsDedicated() then
-		local ModelinfoMPLabel = self:AddLabel( CPanel, "modelinfo_mp", true )
-		ModelinfoMPLabel:SetDark( true )
-		ModelinfoMPLabel:SetHighlight( false )
+		self:AddLabel( CPanel, "modelinfo_mp", true )
 	end
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
 
-	self:AddCustomURLBlockedLabel( CPanel, "streamurlblocked", false )
 	self:AddURLTextEntry( CPanel, "streamurl", false )
+	self:AddWhitelistEnabledLabel( CPanel, "streamurl_whitelist_info", false )
 
-	local _, StreamUrlInfoText = self:AddReadOnlyTextBox( CPanel, "streamurlinfo" )
+	local _, StreamUrlInfoText = self:AddReadOnlyTextBox( CPanel, "streamurl_info" )
 	StreamUrlInfoText:SetTall(245)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
@@ -154,6 +153,8 @@ function TOOL:BuildToolPanel(CPanel)
 	PlaybackLoopModeComboBox:AddChoice(StreamRadioLib.Tool.GetLocale(self, "playbackloopmode.option.playlist"), StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST, false, iconPlaybackloopmodePlaylist)
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
+
+	self:AddLabel( CPanel, "mute_volume_info", true )
 
 	self:AddCheckbox( CPanel, "mute", false )
 
@@ -300,9 +301,7 @@ end
 function TOOL:SetSettings(settings)
 	local url = settings.StreamUrl or ""
 
-	if StreamRadioLib.Util.IsBlockedURLCode(url) then
-		url = ""
-	end
+	url = StreamRadioLib.Url.SanitizeUrl(url)
 
 	self:SetClientInfo("streamurl", url)
 

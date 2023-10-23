@@ -2,11 +2,14 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.properties = StreamRadioLib.properties or {}
+
 local LIB = StreamRadioLib.properties
+table.Empty(LIB)
 
 local LIBNet = StreamRadioLib.Net
 local LIBNetwork = StreamRadioLib.Network
 local LIBError = StreamRadioLib.Error
+local LIBUtil = StreamRadioLib.Util
 
 local g_mainOptionAdded = false
 local g_subOptions = {}
@@ -26,8 +29,6 @@ local g_mode_volume_up = 2
 local g_mode_volume_down = 3
 
 if SERVER then
-	LIBNetwork.AddNetworkString("properties")
-
 	LIBNet.Receive("properties", function(len, client)
 		if not IsValid(client) then return end
 
@@ -983,6 +984,81 @@ LIB.AddSubOption("serverside_volume", {
 			ent:SetVolume(volume)
 		end
 	end
+})
+
+LIB.AddSubOption("admin_title", {
+	MenuLabel = "Admin Options",
+	Order = 300,
+	PrependSpacer = true,
+
+	Filter = function( self, ent, ply )
+		if not LIBUtil.IsAdmin( ply ) then return false end
+		if not LIB.CanBeTargeted( ent, ply ) then return false end
+
+		local allowed = LIB.CheckFilters(
+			{
+				"admin_whitelist_add",
+				"admin_whitelist_remove",
+			},
+			ent,
+			ply
+		)
+
+		return allowed
+	end,
+
+	Action = function( self, ent )
+	end,
+
+	OnCreate = g_titleOnCreate,
+})
+
+LIB.AddSubOption("admin_whitelist_add", {
+	MenuLabel = "Add to quick whitelist",
+	Order = 310,
+	MenuIcon = StreamRadioLib.GetPNGIconPath("shield_add"),
+	PrependSpacer = true,
+
+	Filter = function( self, ent, ply )
+		if not LIBUtil.IsAdmin( ply ) then return false end
+		if not LIB.CanBeTargeted( ent, ply ) then return false end
+
+		local url = ent:GetStreamURL()
+		if url == "" then return false end
+
+		if StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
+
+		return true
+	end,
+
+	Action = function( self, ent )
+		local url = ent:GetStreamURL()
+		StreamRadioLib.Whitelist.QuickWhitelistAdd(url)
+	end,
+})
+
+LIB.AddSubOption("admin_whitelist_remove", {
+	MenuLabel = "Remove from quick whitelist",
+	Order = 320,
+	MenuIcon = StreamRadioLib.GetPNGIconPath("shield_delete"),
+	PrependSpacer = true,
+
+	Filter = function( self, ent, ply )
+		if not LIBUtil.IsAdmin( ply ) then return false end
+		if not LIB.CanBeTargeted( ent, ply ) then return false end
+
+		local url = ent:GetStreamURL()
+		if url == "" then return false end
+
+		if not StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
+
+		return true
+	end,
+
+	Action = function( self, ent )
+		local url = ent:GetStreamURL()
+		StreamRadioLib.Whitelist.QuickWhitelistRemove(url)
+	end,
 })
 
 return true

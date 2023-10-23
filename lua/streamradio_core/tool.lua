@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Tool = StreamRadioLib.Tool or {}
+
 local LIB = StreamRadioLib.Tool
+table.Empty(LIB)
 
 local LIBNetwork = StreamRadioLib.Network
 local LIBNet = StreamRadioLib.Net
@@ -215,12 +217,15 @@ function LIB.Setup(toolobj)
 	if SERVER then return end
 
 	function toolobj:AddLabel( panel, name, descbool )
-		local label = vgui.Create( "DLabel" )
+		local label = vgui.Create("DLabel")
 		panel:AddPanel( label )
 
+		label:SetDark(true)
+		label:SetWrap(true)
 		label:SetText(StreamRadioLib.Tool.GetLocale(self, name))
-		label:SetDark( true )
-		label:SizeToContents( )
+
+		label:SetAutoStretchVertical(true)
+		label:SizeToContents()
 
 		if descbool then
 			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
@@ -247,8 +252,8 @@ function LIB.Setup(toolobj)
 		return boxPanel, label
 	end
 
-	function toolobj:AddCustomURLBlockedLabel( panel, name, descbool )
-		local label = StreamRadioLib.Menu.GetCustomURLBlockedLabel(StreamRadioLib.Tool.GetLocale(self, name))
+	function toolobj:AddWhitelistEnabledLabel( panel, name, descbool )
+		local label = StreamRadioLib.Menu.GetWhitelistEnabledLabel(StreamRadioLib.Tool.GetLocale(self, name))
 		panel:AddPanel( label )
 
 		if descbool then

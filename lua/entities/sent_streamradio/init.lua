@@ -7,6 +7,7 @@ local StreamRadioLib = StreamRadioLib
 local LIBError = StreamRadioLib.Error
 local LIBWire = StreamRadioLib.Wire
 local LIBUtil = StreamRadioLib.Util
+local LIBUrl = StreamRadioLib.Url
 
 local g_isLoaded = StreamRadioLib and StreamRadioLib.Loaded
 local g_isWiremodLoaded = g_isLoaded and LIBWire.HasWiremod()
@@ -35,6 +36,8 @@ function ENT:Initialize( )
 		return
 	end
 
+	BaseClass.Initialize( self )
+
 	self.old = {}
 	self.slavesradios = {}
 
@@ -56,8 +59,6 @@ function ENT:Initialize( )
 
 	self:SetCLMute(false)
 	self:SetCLVolume(1)
-
-	BaseClass.Initialize( self )
 
 	self:AddWireInput("Stream URL", "STRING")
 	self:AddWireInput("Play", "NORMAL")
@@ -211,7 +212,7 @@ function ENT:OnReloaded( )
 	if not g_isLoaded then return end
 
 	local ply, model, pos, ang = self:GetRealRadioOwner(), self:GetModel( ), self:GetPos( ), self:GetAngles( )
-	StreamRadioLib.Print.Msg( ply, "Reloaded " .. tostring( self ) )
+	StreamRadioLib.Print.Msg(ply, "Reloaded %s", tostring(self))
 	self:Remove( )
 
 	StreamRadioLib.Timedcall( function( ply, model, pos, ang )
@@ -317,13 +318,7 @@ function ENT:WiremodThink()
 	self:TriggerWireOutput("3D Sound", self:GetSound3D())
 	self:TriggerWireOutput("Stream Name", streamObj:GetStreamName())
 
-	local url = streamObj:GetURL()
-
-	if LIBUtil.IsBlockedURLCode(url) then
-		url = ""
-	end
-
-	self:TriggerWireOutput("Stream URL", url)
+	self:TriggerWireOutput("Stream URL", streamObj:GetURL())
 
 	self:TriggerWireOutput("Display Disabled", self:GetDisableDisplay())
 	self:TriggerWireOutput("User Input Disabled", self:GetDisableInput())
@@ -331,7 +326,7 @@ function ENT:WiremodThink()
 
 	self:TriggerWireOutput("Advanced Outputs", hasadvoutputs)
 	self:TriggerWireOutput("Playing", streamObj:IsPlaying())
-	self:TriggerWireOutput("Loading", streamObj:IsLoading() or streamObj:IsBuffering() or streamObj:IsSeeking())
+	self:TriggerWireOutput("Loading", streamObj:IsLoading() or streamObj:IsCheckingUrl() or streamObj:IsBuffering() or streamObj:IsSeeking())
 
 	self:TriggerWireOutput("Codec", self._codec)
 	self:TriggerWireOutput("Spectrum", self._spectrum)
@@ -370,11 +365,11 @@ function ENT:InternalSlowThink()
 		extraURLs.Dupe = extraURLs.Dupe or ""
 		extraURLs.Mode = extraURLs.Mode or ""
 
-		self.ActivateExtraURL = self:FilterCustomURL(extraURLs[extraURLs.Mode] or "", true)
+		self.ActivateExtraURL = LIBUrl.SanitizeUrl(extraURLs[extraURLs.Mode] or "")
 		self.ActivateExtraName = extraNames[extraURLs.Mode] or ""
 
-		self:SetWireMode(LIBUtil.IsValidURL(extraURLs.Wire))
-		self:SetToolMode(LIBUtil.IsValidURL(extraURLs.Tool))
+		self:SetWireMode(LIBUrl.IsValidURL(extraURLs.Wire))
+		self:SetToolMode(LIBUrl.IsValidURL(extraURLs.Tool))
 
 		if oldActivateURL ~= self.ActivateExtraURL or oldActivateName ~= self.ActivateExtraName then
 			self:OnExtraURLUpdate()
@@ -405,14 +400,10 @@ end
 
 function ENT:OnExtraURLUpdate()
 	local name = self.ActivateExtraName
-	local urlForDisplay = self.ActivateExtraURL
+	local url = self.ActivateExtraURL
 
-	if StreamRadioLib.Util.IsBlockedURLCode(urlForDisplay) then
-		urlForDisplay = "(Blocked URL)"
-	end
-
-	if urlForDisplay ~= "" then
-		name = name .. ": " .. urlForDisplay
+	if url ~= "" then
+		name = name .. ": " .. url
 	end
 
 	self:OnExtraURL(name, self.ActivateExtraURL)
@@ -466,7 +457,7 @@ function ENT:SetToolURL(url, setmode)
 
 	local extraURLs = self.ExtraURLs
 
-	extraURLs.Tool = LIBUtil.NormalizeURL(url)
+	extraURLs.Tool = LIBUrl.SanitizeUrl(url)
 
 	if not setmode and extraURLs.Mode == "Tool" then
 		extraURLs.Mode = ""
@@ -485,7 +476,7 @@ end
 function ENT:SetWireURL(url, setmode)
 	if not g_isLoaded then return end
 
-	self.ExtraURLs.Wire = LIBUtil.NormalizeURL(url)
+	self.ExtraURLs.Wire = LIBUrl.SanitizeUrl(url)
 
 	if setmode then
 		self.ActivateExtraName = ""
@@ -503,7 +494,7 @@ function ENT:SetDupeURL(url, name, setmode)
 		name = "Duped URL"
 	end
 
-	self.ExtraURLs.Dupe = LIBUtil.NormalizeURL(url)
+	self.ExtraURLs.Dupe = LIBUrl.SanitizeUrl(url)
 	self.ExtraNames.Dupe = name
 
 	if setmode then
@@ -533,7 +524,7 @@ function ENT:OnExtraURL(name, url)
 		return
 	end
 
-	url = LIBUtil.NormalizeURL(url)
+	url = LIBUrl.SanitizeUrl(url)
 
 	if url == "" then
 		self:StopStreamInternal()
@@ -548,7 +539,7 @@ function ENT:OnExtraURL(name, url)
 			}
 		}
 
-		self:SetPlaylist(playlist, 1, true)
+		self:SetPlaylist(playlist, 1)
 		self._dupePlaylistData = playlist
 
 		if IsValid(self.GUI_Main) then
@@ -646,8 +637,6 @@ function ENT:NWOverflowKill()
 			logForPly = user
 		end
 
-		local addonTitle = StreamRadioLib.AddonTitle
-
 		local message = string.format(
 			"Network overflow/spam detected. Stream Radio '%s' removed! Owner: %s, Last user: %s.",
 			tostring(self),
@@ -655,12 +644,10 @@ function ENT:NWOverflowKill()
 			getPlayerName(user)
 		)
 
-		local msgWithAddonTitle = addonTitle .. ": " .. message
-
-		StreamRadioLib.Print.Msg(owner, msgWithAddonTitle)
+		StreamRadioLib.Print.Msg(owner, message)
 
 		if user ~= owner then
-			StreamRadioLib.Print.Msg(user, msgWithAddonTitle)
+			StreamRadioLib.Print.Msg(user, message)
 		end
 
 		StreamRadioLib.Print.Log(logForPly, message)
@@ -682,7 +669,7 @@ function ENT:OnPreEntityCopy()
 
 	extraURLs.Dupe = ""
 
-	if not LIBUtil.IsValidURL(extraURLs.Tool) then
+	if not LIBUrl.IsValidURL(extraURLs.Tool) then
 		extraURLs.Tool = ""
 
 		if extraURLs.Mode == "Tool" then
@@ -690,7 +677,7 @@ function ENT:OnPreEntityCopy()
 		end
 	end
 
-	if not LIBUtil.IsValidURL(extraURLs.Wire) then
+	if not LIBUrl.IsValidURL(extraURLs.Wire) then
 		extraURLs.Wire = ""
 
 		if extraURLs.Mode == "Wire" then
@@ -717,7 +704,7 @@ function ENT:DupeDataApply(key, value)
 	extraURLs.Wire = wireurl
 	extraURLs.Dupe = dupeurl
 
-	if LIBUtil.IsValidURL(dupeurl) and extraURLs.Mode == "" and mode == "Dupe" then
+	if LIBUrl.IsValidURL(dupeurl) and extraURLs.Mode == "" and mode == "Dupe" then
 		extraURLs.Mode = "Dupe"
 	end
 end

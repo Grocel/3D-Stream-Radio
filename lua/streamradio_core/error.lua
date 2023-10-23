@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Error = StreamRadioLib.Error or {}
+
 local LIB = StreamRadioLib.Error
+table.Empty(LIB)
 
 local g_errorListById = {}
 local g_errorListByName = {}
@@ -634,7 +636,7 @@ LIB.AddStreamErrorCode({
 	helptext = [[
 Can not access the resource. Login credentials required, but not supported.
 
-CAUTION: Do not try to access private resources! Credentials could leak to other connected players or the server!!
+CAUTION: Do not try to access private resources! Credentials could leak to other connected players or the server!
 
 Better use public resources only.
 ]],
@@ -643,18 +645,13 @@ Better use public resources only.
 
 LIB.AddStreamErrorCode({
 	id = 1000,
-	name = "STREAM_ERROR_CUSTOM_URI_BLOCKED",
-	description = "Custom URLs are blocked on this server",
+	name = "STREAM_ERROR_URL_NOT_WHITELISTED",
+	description = "This URL is not whitelisted on this server",
 	helptext = [[
-The server does not allow playback of custom URLs to prevent abuse.
-You can ask an admin to enable it, but there is probably a reason why it is forbidden.
+The server does not allow playback of this URL to prevent abuse.
+You can ask an admin to whitelist this URL by adding it to the playlists.
 
-All online URLs from these sources are blocked:
-	- Toolgun input
-	- Wiremod input
-	- From duplications and saves
-
-The Convar is: sv_streamradio_allow_customurls 0/1
+CAUTION: Please don't ask to the whitelist disabled. It is there for your own security.
 ]],
 })
 
@@ -704,40 +701,6 @@ Hint: Use the playlist editor to make playlists.
 ]],
 	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277917951293/",
 })
-
-
-if istable(CFCHTTP) then
-	-- Handle CFC HTTP Whitelist error cases
-	-- https://github.com/CFC-Servers/cfc_cl_http_whitelist
-
-	if CFCHTTP.BASS_ERROR_BLOCKED_URI then
-		LIB.AddStreamErrorCode({
-			id = CFCHTTP.BASS_ERROR_BLOCKED_URI,
-			name = "STREAM_ERROR_CFCHTTP_BLOCKED_URI",
-			description = "URI has been blocked by CFC HTTP Whitelist",
-			helptext = [[
-The server has blocked this URL via CFC HTTP Whitelist to prevent abuse.
-You can ask an admin to whitelist the URL above in their CFC tool.
-
-Keep in mind that there is probably a reason why it is forbidden on this server.
-]],
-		})
-	end
-
-	if CFCHTTP.BASS_ERROR_BLOCKED_CONTENT then
-		LIB.AddStreamErrorCode({
-			id = CFCHTTP.BASS_ERROR_BLOCKED_CONTENT,
-			name = "STREAM_ERROR_CFCHTTP_BLOCKED_CONTENT",
-			description = "Content has been blocked by CFC HTTP Whitelist",
-			helptext = [[
-The server has blocked this content via CFC HTTP Whitelist to prevent abuse.
-You can ask an admin to whitelist the content from the URL above in their CFC tool.
-
-Keep in mind that there is probably a reason why it is forbidden on this server.
-]],
-		})
-	end
-end
 
 if CLIENT then
 	local function ShowErrorInfo( ply, cmd, args )

@@ -1,9 +1,12 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Editor = StreamRadioLib.Editor or {}
+
 local LIB = StreamRadioLib.Editor
+table.Empty(LIB)
 
 local LIBNet = StreamRadioLib.Net
+local LIBPrint = StreamRadioLib.Print
 
 local pairs = pairs
 local IsValid = IsValid
@@ -45,10 +48,9 @@ local function EditorLog(ply, msgstring, ...)
 	msgstring = tostring(msgstring or "")
 	if msgstring == "" then return end
 
-	msgstring = string.format(msgstring, ...)
-	msgstring = "PLAYLIST EDITOR - " .. msgstring
+	msgstring = LIBPrint.Format("PLAYLIST EDITOR - " .. msgstring, ...)
 
-	StreamRadioLib.Print.Log(ply, msgstring)
+	LIBPrint.Log(ply, msgstring)
 end
 
 local function EditorError( ply, path, code )
@@ -83,7 +85,7 @@ function LIB.Reset( ply )
 end
 
 function LIB.CreateDir( ply, path )
-	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+	path = StreamRadioLib.String.SanitizeFilepath(path)
 
 	if string.match( path, "^community/" ) then
 		local mode = StreamRadioLib.GetRebuildCommunityPlaylistsMode()
@@ -93,7 +95,7 @@ function LIB.CreateDir( ply, path )
 		end
 	end
 
-	if StreamRadioLib.Filesystem.IsVirtualPath(path) then
+	if StreamRadioLib.String.IsVirtualPath(path) then
 		return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED)
 	end
 
@@ -123,7 +125,7 @@ function LIB.SaveAll( )
 end
 
 function LIB.Save( ply, path, data )
-	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+	path = StreamRadioLib.String.SanitizeFilepath(path)
 
 	if path == "" then return EditorError(ply, "*nopath*", StreamRadioLib.EDITOR_ERROR_WPATH) end
 	if not data then return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_WDATA) end
@@ -140,7 +142,7 @@ function LIB.Save( ply, path, data )
 	local canwrite = StreamRadioLib.Filesystem.CanWriteFormat(format)
 
 	if not canwrite then
-		if StreamRadioLib.Filesystem.IsVirtualPath(path) then
+		if StreamRadioLib.String.IsVirtualPath(path) then
 			return EditorError(ply, path, StreamRadioLib.EDITOR_ERROR_WVIRTUAL)
 		end
 
@@ -161,7 +163,7 @@ function LIB.Save( ply, path, data )
 end
 
 function LIB.Remove(ply, path, type)
-	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+	path = StreamRadioLib.String.SanitizeFilepath(path)
 
 	StreamRadioLib.Filesystem.Delete(path, type, function(success)
 		if not success then
@@ -174,21 +176,21 @@ function LIB.Remove(ply, path, type)
 end
 
 function LIB.Copy( ply, path_old, path_new )
-	path_old = StreamRadioLib.Filesystem.SanitizeFilepath(path_old)
-	path_new = StreamRadioLib.Filesystem.SanitizeFilepath(path_new)
+	path_old = StreamRadioLib.String.SanitizeFilepath(path_old)
+	path_new = StreamRadioLib.String.SanitizeFilepath(path_new)
 
 	return EditorError( ply, path_new, StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED )
 end
 
 function LIB.Rename( ply, path_old, path_new )
-	path_old = StreamRadioLib.Filesystem.SanitizeFilepath(path_old)
-	path_new = StreamRadioLib.Filesystem.SanitizeFilepath(path_new)
+	path_old = StreamRadioLib.String.SanitizeFilepath(path_old)
+	path_new = StreamRadioLib.String.SanitizeFilepath(path_new)
 
 	return EditorError( ply, path_new, StreamRadioLib.EDITOR_ERROR_UNIMPLEMENTED )
 end
 
 function LIB.OpenFolder( ply, path )
-	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+	path = StreamRadioLib.String.SanitizeFilepath(path)
 	if not IsValid(ply) then return false end
 
 	local pairsname = "Editor_OpenFolder_" .. tostring(ply)
@@ -212,7 +214,7 @@ function LIB.OpenFolder( ply, path )
 end
 
 function LIB.OpenFile( ply, path, type )
-	path = StreamRadioLib.Filesystem.SanitizeFilepath(path)
+	path = StreamRadioLib.String.SanitizeFilepath(path)
 	if path == "" then return EditorError( ply, "*nopath*", StreamRadioLib.EDITOR_ERROR_RPATH ) end
 
 	local canread = StreamRadioLib.Filesystem.CanReadFormat(type)

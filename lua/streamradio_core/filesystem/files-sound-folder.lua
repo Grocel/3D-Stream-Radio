@@ -12,6 +12,7 @@ RADIOFS.rootfolder = "sound"
 
 RADIOFS.priority = 99999
 RADIOFS.nocreate = true
+RADIOFS.loadToWhitelist = false
 
 RADIOFS._validsoundtypes = {
 	-- natively supported by GMod Source Engine
@@ -31,7 +32,6 @@ RADIOFS._validsoundtypes = {
 	["wma"] = true,
 	["xm"] = true,
 }
-
 
 function RADIOFS:GetSoundPath(vpath)
 	if not self:IsInFolder(vpath) then

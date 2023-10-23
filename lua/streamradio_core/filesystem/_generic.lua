@@ -9,6 +9,7 @@ RADIOFS.type = ":generic"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = -1
+RADIOFS.loadToWhitelist = true
 
 function RADIOFS:Find(globalpath, vfolder)
 	return nil

@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.JSON = StreamRadioLib.JSON or {}
+
 local LIB = StreamRadioLib.JSON
+table.Empty(LIB)
 
 local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
@@ -19,13 +21,13 @@ function LIB.Encode(data, prettyPrint)
 		return nil
 	end
 
-	json = StreamRadioLib.Util.NormalizeNewlines(json, "\n")
+	json = StreamRadioLib.String.NormalizeNewlines(json, "\n")
 	return json
 end
 
 function LIB.Decode(json)
 	json = tostring(json or "")
-	json = StreamRadioLib.Util.NormalizeNewlines(json, "\n")
+	json = StreamRadioLib.String.NormalizeNewlines(json, "\n")
 
 	json = string.gsub(json, "//.-\n" , "\n")    -- singleline comment
 	json = string.gsub(json, "/%*.-%*/" , "\n")  -- multiline comment

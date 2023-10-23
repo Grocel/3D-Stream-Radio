@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Settings = StreamRadioLib.Settings or {}
+
 local LIB = StreamRadioLib.Settings
+table.Empty(LIB)
 
 LIB.g_CV =  {}
 LIB.g_CV_CMD = {}

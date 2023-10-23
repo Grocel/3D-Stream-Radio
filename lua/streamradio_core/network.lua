@@ -1,10 +1,14 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Network = StreamRadioLib.Network or {}
-StreamRadioLib.Network.Debug = StreamRadioLib.Network.Debug or {}
+StreamRadioLib.Network_Debug = StreamRadioLib.Network_Debug or {}
 
 local LIB = StreamRadioLib.Network
-local LIBDebug = StreamRadioLib.Network.Debug
+table.Empty(LIB)
+
+local LIBDebug = StreamRadioLib.Network_Debug
+table.Empty(LIBDebug)
+
 local LIBUtil = StreamRadioLib.Util
 
 local emptyTableSafe = LIBUtil.EmptyTableSafe
@@ -93,6 +97,37 @@ local g_types = {
 	},
 }
 
+function LIB.SetupEntityTable(ent)
+	if not IsValid(ent) then
+		return
+	end
+
+	if ent._entityTableSetup then
+		return
+	end
+
+	ent._entityTableSetup = true
+
+	local entTable = ent:GetTable()
+
+	for datatype, dtd in pairs(g_types) do
+		local nwGetter = dtd.nwGetter
+		local nwSetter = dtd.nwSetter
+
+		entTable[nwGetter] = ent[nwGetter]
+		entTable[nwSetter] = ent[nwSetter]
+	end
+
+	entTable.NetworkVar = ent.NetworkVar
+	entTable.NWOverflowKill = ent.NWOverflowKill
+
+	entTable.StreamRadioDT = ent.StreamRadioDT or {}
+	entTable.StreamRadioNW = ent.StreamRadioNW or {}
+
+	entTable.IsValid = ent.IsValid
+	entTable.IsMarkedForDeletion = ent.IsMarkedForDeletion
+end
+
 function LIB.TransformNWIdentifier(str)
 	str = tostring(str or "")
 	assert(str ~= "", "identifier is empty")
@@ -171,28 +206,29 @@ function LIB.NetworkIDToString(id)
 	return str
 end
 
-local function DTNetworkVarExists(ent, name)
-	local NW = ent.StreamRadioDT or {}
-
+local function DTNetworkVarExists(entTable, name)
+	local NW = entTable.StreamRadioDT
 	if not NW then return false end
-	if not NW.Names then return false end
-	if not NW.Names[name] then return false end
-	if not NW.Names[name].datatype then return false end
 
-	if not ent["Get" .. name] then return false end
-	if not ent["Set" .. name] then return false end
+	local Names = NW.Names
+	if not Names then return false end
+
+	local data = Names[name]
+	if not data then return false end
+	if not data.datatype then return false end
 
 	return true
 end
 
-local function CanAddDTNetworkVar(ent, datatype, name, ...)
+local function CanAddDTNetworkVar(entTable, datatype, name, ...)
 	name = tostring(name or "")
 	datatype = tostring(datatype or "")
 
 	if name == "" then return false end
 	if not g_types[datatype] then return false end
 
-	local NW = ent.StreamRadioDT or {}
+	local NW = entTable.StreamRadioDT
+	if not NW then return false end
 
 	local count = NW.Count or {}
 	count = count[datatype] or 0
@@ -210,15 +246,29 @@ do
 		local nwGetter = dtd.nwGetter
 		local nwSetter = dtd.nwSetter
 
-		local nwGetterFunc = function(ent, key, defaultvalue)
-			key = LIB.TransformNWIdentifier(key)
-
-			if defaultvalue ~= nil then
-				assert(checkfunc(defaultvalue), "invalid datatype of defaultvalue at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(defaultvalue) .. "'")
-				defaultvalue = convertfunc and convertfunc(defaultvalue) or defaultvalue
+		local nwGetterFunc = function(entTable, key, defaultvalue)
+			if not entTable then
+				return defaultvalue
 			end
 
-			local r = ent[nwGetter](ent, key, defaultvalue)
+			key = LIB.TransformNWIdentifier(key)
+
+			local ent = entTable.Entity
+
+			if not ent then
+				return defaultvalue
+			end
+
+			if not entTable.IsValid(ent) then
+				return defaultvalue
+			end
+
+			local getter = entTable[nwGetter]
+			if not getter then
+				return defaultvalue
+			end
+
+			local r = getter(ent, key, defaultvalue)
 			if r == nil and defaultvalue ~= nil then
 				r = defaultvalue
 			end
@@ -226,9 +276,13 @@ do
 			return r
 		end
 
-		local nwSetterFunc = function(ent, key, value)
+		local nwSetterFunc = function(entTable, key, value)
 			if CLIENT then
-				return nil
+				return
+			end
+
+			if not entTable then
+				return
 			end
 
 			key = LIB.TransformNWIdentifier(key)
@@ -236,11 +290,21 @@ do
 
 			assert(checkfunc(value), "invalid datatype of value at '" .. key .. "', '" .. datatype .. "' was expected, got '" .. type(value) .. "'")
 
-			if ent:IsMarkedForDeletion() then
+			local ent = entTable.Entity
+
+			if not ent then
 				return
 			end
 
-			local data = {ent, ent[nwSetter], key, value}
+			if not entTable.IsValid(ent) then
+				return
+			end
+
+			if entTable.IsMarkedForDeletion(ent) then
+				return
+			end
+
+			local data = {ent, entTable, entTable[nwSetter], key, value}
 			table.insert(g_networkStack, data)
 		end
 
@@ -256,7 +320,7 @@ do
 	end
 end
 
-function LIB.GetNWVar(ent, datatype, key, defaultvalue)
+function LIB.GetNWVar(entTable, datatype, key, defaultvalue)
 	key = tostring(key or "")
 	datatype = tostring(datatype or "")
 
@@ -267,11 +331,15 @@ function LIB.GetNWVar(ent, datatype, key, defaultvalue)
 	if not dtd then return defaultvalue end
 	if not dtd.nwGetterFunc then return defaultvalue end
 
-	local r = dtd.nwGetterFunc(ent, key, defaultvalue)
+	local r = dtd.nwGetterFunc(entTable, key, defaultvalue)
 	return r
 end
 
-function LIB.SetNWVar(ent, datatype, key, value)
+function LIB.SetNWVar(entTable, datatype, key, value)
+	if CLIENT then
+		return
+	end
+
 	key = tostring(key or "")
 	datatype = tostring(datatype or "")
 
@@ -282,96 +350,110 @@ function LIB.SetNWVar(ent, datatype, key, value)
 	if not dtd then return end
 	if not dtd.nwSetterFunc then return end
 
-	dtd.nwSetterFunc(ent, key, value)
+	dtd.nwSetterFunc(entTable, key, value)
 end
 
-function LIB.SetupDataTables(ent)
-	ent.StreamRadioDT = ent.StreamRadioDT or {}
-	local NW = ent.StreamRadioDT
+function LIB.SetupDataTables(entOrOntTable)
+	local ent = nil
+	local entTable = nil
+
+	if istable(entOrOntTable) then
+		ent = entOrOntTable.Entity
+		entTable = entOrOntTable
+	else
+		ent = entOrOntTable
+		entTable = entOrOntTable:GetTable()
+	end
+
+	LIB.SetupEntityTable(ent)
+
+	local NW = entTable.StreamRadioDT
+	if not NW then return end
 
 	NW.Setup = true
-	NW.Names = NW.Names or {}
-
-	local loopThis = function(name, data)
-		if not data.datatype then return end
-
-		LIB.AddDTNetworkVar(ent, data.datatype, name, unpack(data.args or {}))
-	end
-
-	for name, data in pairs(NW.Names) do
-		loopThis(name, data)
-	end
 end
 
-
-local function pollNWVarsLoopThis(NW, ent, name, data)
+local function pollNWVarsLoopThis(NW, entTable, name, data)
 	if not data.callback then return end
 	if not data.datatype then return end
 
 	local oldvalue = data.oldvalue
-	local newvalue = LIB.GetNWVar(ent, data.datatype, name)
+	local newvalue = LIB.GetNWVar(entTable, data.datatype, name)
 
 	if oldvalue == newvalue then return end
 
+	local ent = entTable.Entity
+
 	data.callback(ent, name, oldvalue, newvalue)
 
-	NW.Names[name].oldvalue = newvalue
+	data.oldvalue = newvalue
 end
 
-local function pollNWVars(ent)
-	local NW = ent.StreamRadioNW
+local function pollNWVars(entTable)
+	local NW = entTable.StreamRadioNW
 	if not NW then return end
-	if not NW.Names then return end
 
-	for name, data in pairs(NW.Names) do
-		pollNWVarsLoopThis(NW, ent, name, data)
+	local Names = NW.Names
+	if not Names then return end
+
+	for name, data in pairs(Names) do
+		pollNWVarsLoopThis(NW, entTable, name, data)
 	end
 end
 
-local function pollDTVarsLoopThis(NW, ent, name, data)
+local function pollDTVarsLoopThis(NW, entTable, name, data)
 	if not data.callback then return end
 	if not data.datatype then return end
-	if not DTNetworkVarExists(ent, name) then return end
+	if not DTNetworkVarExists(entTable, name) then return end
 
 	local oldvalue = data.oldvalue
-	local newvalue = LIB.GetDTNetworkVar(ent, name)
+	local newvalue = LIB.GetDTNetworkVar(entTable, name)
 
 	if oldvalue == newvalue then return end
 
+	local ent = entTable.Entity
+
 	data.callback(ent, name, oldvalue, newvalue)
 
-	NW.Names[name].oldvalue = newvalue
+	data.oldvalue = newvalue
 end
 
-local function pollDTVars(ent)
-	local NW = ent.StreamRadioDT
+local function pollDTVars(entTable)
+	local NW = entTable.StreamRadioDT
 	if not NW then return end
-	if not NW.Names then return end
 	if not NW.Setup then return end
 
-	for name, data in pairs(NW.Names) do
-		pollDTVarsLoopThis(NW, ent, name, data)
+	local Names = NW.Names
+	if not Names then return end
+
+	for name, data in pairs(Names) do
+		pollDTVarsLoopThis(NW, entTable, name, data)
 	end
 end
 
 local function pollNwStackKillThis(stackItem)
-	local ent = stackItem[1]
+	local entTable = stackItem[1]
+	local ent = entTable.Entity
 
-	if IsValid(ent) and not ent._NWOverflowKilled then
-		ent:NWOverflowKill()
-		ent._NWOverflowKilled = true
-	end
+	if not entTable.IsValid(ent) then return end
+	if entTable._NWOverflowKilled then return end
+
+	entTable.NWOverflowKill(ent)
+	entTable._NWOverflowKilled = true
 end
 
 local function pollNwStackLoopThis(stackItem)
 	local ent = stackItem[1]
-	local setter = stackItem[2]
-	local key = stackItem[3]
-	local value = stackItem[4]
+	local entTable = stackItem[2]
+	local setter = stackItem[3]
+	local key = stackItem[4]
+	local value = stackItem[5]
 
-	if not IsValid(ent) then return end
-	if ent:IsMarkedForDeletion() then return end
+	if not ent then return end
 	if not setter then return end
+
+	if not entTable.IsValid(ent) then return end
+	if entTable.IsMarkedForDeletion(ent) then return end
 
 	setter(ent, key, value)
 end
@@ -427,44 +509,51 @@ function LIB.PollNwStack()
 	end
 end
 
-function LIB.Poll(ent)
-	pollNWVars(ent)
-	pollDTVars(ent)
+function LIB.Poll(entTable)
+	pollNWVars(entTable)
+	pollDTVars(entTable)
 end
 
-function LIB.AddDTNetworkVar(ent, datatype, name, ...)
+function LIB.AddDTNetworkVar(entTable, datatype, name, ...)
 	name = tostring(name or "")
 	datatype = tostring(datatype or "")
 
 	assert(g_types[datatype], "argument #1 is an invalid datatype!")
 	assert(name ~= "", "argument #2 is an invalid name!")
 
-	if DTNetworkVarExists(ent, name) then return true end
-	if not CanAddDTNetworkVar(ent, datatype, name) then return false end
+	if DTNetworkVarExists(entTable, name) then return true end
+	if not CanAddDTNetworkVar(entTable, datatype, name) then return false end
 
-	ent.StreamRadioDT = ent.StreamRadioDT or {}
-	local NW = ent.StreamRadioDT
+	local NW = entTable.StreamRadioDT
+	if not NW then return false end
+
 	local Setup = NW.Setup or false
 
 	NW.Count = NW.Count or {}
-	local index = (NW.Count[datatype] or 0) + 1
+	local Count = NW.Count
+
+	local index = (Count[datatype] or 0) + 1
 
 	NW.Names = NW.Names or {}
-	NW.Names[name] = NW.Names[name] or {}
-	local data = NW.Names[name]
+	local Names = NW.Names
+
+	Names[name] = Names[name] or {}
+	local data = Names[name]
 
 	data.datatype = datatype
 	data.args = {...}
 	data.index = data.index or index
 
 	index = data.index
-	NW.Count[datatype] = index
+	Count[datatype] = index
+
+	local ent = entTable.Entity
 
 	if Setup then
-		ent:NetworkVar(datatype, index - 1, name, ...)
+		entTable.NetworkVar(ent, datatype, index - 1, name, ...)
 
 		if data.value ~= nil then
-			LIB.SetDTNetworkVar(ent, name, data.value)
+			LIB.SetDTNetworkVar(entTable, name, data.value)
 			data.value = nil
 		end
 	end
@@ -472,15 +561,17 @@ function LIB.AddDTNetworkVar(ent, datatype, name, ...)
 	return true
 end
 
-function LIB.GetDTNetworkVar(ent, name, defaultvalue)
-	if not DTNetworkVarExists(ent, name) then
+function LIB.GetDTNetworkVar(entTable, name, defaultvalue)
+	if not DTNetworkVarExists(entTable, name) then
 		return defaultvalue
 	end
 
-	local func = ent["Get" .. name]
-	if not func then return defaultvalue end
+	local ent = entTable.Entity
 
-	local value = func(ent, defaultvalue)
+	local getter = entTable["Get" .. name]
+	if not getter then return defaultvalue end
+
+	local value = getter(ent, defaultvalue)
 	if value == nil then
 		value = defaultvalue
 	end
@@ -488,47 +579,44 @@ function LIB.GetDTNetworkVar(ent, name, defaultvalue)
 	return value
 end
 
-function LIB.SetDTNetworkVar(ent, name, value)
+function LIB.SetDTNetworkVar(entTable, name, value)
 	if CLIENT then return end
 
-	if not DTNetworkVarExists(ent, name) then
-		local NW = ent.StreamRadioDT
-		ent.StreamRadioDT = ent.StreamRadioDT or {}
+	local ent = entTable.Entity
 
-		NW.Names = NW.Names or {}
-		NW.Names[name] = NW.Names[name] or {}
-		NW.Names[name].value = value
-
+	if not DTNetworkVarExists(entTable, name) then
 		return
 	end
 
-	local oldvalue = LIB.GetDTNetworkVar(ent, name)
+	local oldvalue = LIB.GetDTNetworkVar(entTable, name)
 	if oldvalue == value then return end
 
-	local func = ent["Set" .. name]
-	if not func then return end
+	local setter = entTable["Set" .. name]
+	if not setter then return end
 
-	func(ent, value)
+	setter(ent, value)
 end
 
-function LIB.SetDTVarCallback(ent, name, func)
+function LIB.SetDTVarCallback(entTable, name, func)
 	name = tostring(name or "")
 
 	assert(name ~= "", "argument #2 is an invalid name!")
 	assert(isfunction(func), "argument #3 must be a function!")
 
-	ent.StreamRadioDT = ent.StreamRadioDT or {}
-	local NW = ent.StreamRadioDT
+	local NW = entTable.StreamRadioDT
+	if not NW then return end
 
 	NW.Names = NW.Names or {}
-	NW.Names[name] = NW.Names[name] or {}
-	local data = NW.Names[name]
+	local Names = NW.Names
+
+	Names[name] = Names[name] or {}
+	local data = Names[name]
 
 	data.callback = func
 	data.oldvalue = nil
 end
 
-function LIB.SetNWVarCallback(ent, datatype, name, func)
+function LIB.SetNWVarCallback(entTable, datatype, name, func)
 	datatype = tostring(datatype or "")
 	name = tostring(name or "")
 
@@ -536,12 +624,14 @@ function LIB.SetNWVarCallback(ent, datatype, name, func)
 	assert(name ~= "", "argument #3 is an invalid name!")
 	assert(isfunction(func), "argument #4 must be a function!")
 
-	ent.StreamRadioNW = ent.StreamRadioNW or {}
-	local NW = ent.StreamRadioNW
+	local NW = entTable.StreamRadioNW
+	if not NW then return end
 
 	NW.Names = NW.Names or {}
-	NW.Names[name] = NW.Names[name] or {}
-	local data = NW.Names[name]
+	local Names = NW.Names
+
+	Names[name] = Names[name] or {}
+	local data = Names[name]
 
 	data.callback = func
 	data.datatype = datatype
@@ -575,23 +665,27 @@ StreamRadioLib.Hook.Add("Tick", "Entity_Network_Tick", function()
 	if not StreamRadioLib.Loaded then return end
 	if not StreamRadioLib.SpawnedRadios then return end
 
-	StreamRadioLib.Network.PollNwStack()
+	LIB.PollNwStack()
 
 	for index, ent in pairs(StreamRadioLib.SpawnedRadios) do
-		if not IsValid(ent) then
+		local entTable = ent:GetTable()
+
+		if not entTable.IsValid(ent) then
 			continue
 		end
 
-		StreamRadioLib.Network.Poll(ent)
+		LIB.Poll(entTable)
 	end
 end)
 
 function LIBDebug.DumpDTNetworkStats(ent)
-	local NW = ent.StreamRadioDT or {}
+	local entTable = ent:GetTable()
+
+	local NW = entTable.StreamRadioDT or {}
 	local Count = NW.Count or {}
 
-	print("DumpDTNetworkStats of: " .. tostring(ent))
-	print("======================")
+	MsgN("DumpDTNetworkStats of: " .. tostring(ent))
+	MsgN("======================")
 
 	for datatype, dtd in pairs(g_types) do
 		local c = Count[datatype] or 0
@@ -607,24 +701,26 @@ function LIBDebug.DumpDTNetworkStats(ent)
 
 		per = per * 100
 
-		print(datatype, c .. " / " .. maxc, per .. " %")
+		MsgN(datatype, c .. " / " .. maxc, per .. " %")
 	end
 
-	print("======================")
+	MsgN("======================")
 end
 
 function LIBDebug.DumpDTNetworkVars(ent)
-	local NW = ent.StreamRadioDT or {}
+	local entTable = ent:GetTable()
 
-	print("DumpDTNetworkVars of: " .. tostring(ent))
-	print("======================")
+	local NW = entTable.StreamRadioDT or {}
+
+	MsgN("DumpDTNetworkVars of: " .. tostring(ent))
+	MsgN("======================")
 
 	for name, data in pairs(NW.Names) do
-		local line = string.format("%s (%s) [%i] | %s", name, data.datatype, data.index, LIB.GetDTNetworkVar(ent, name))
-		print(line)
+		local line = string.format("%s (%s) [%i] | %s", name, data.datatype, data.index, LIB.GetDTNetworkVar(entTable, name))
+		MsgN(line)
 	end
 
-	print("======================")
+	MsgN("======================")
 end
 
 local function getAddonStringTable()
@@ -652,8 +748,8 @@ local function getAddonStringTable()
 end
 
 function LIBDebug.DumpDTNetworkStringTable()
-	print("DumpDTNetworkStringTable")
-	print("======================")
+	MsgN("DumpDTNetworkStringTable")
+	MsgN("======================")
 
 	local max = 4096
 	local stringTable = getAddonStringTable()
@@ -674,28 +770,28 @@ function LIBDebug.DumpDTNetworkStringTable()
 		local index = value.index
 		local name = value.name
 
-		print(index, name)
+		MsgN(index, "\t", name)
 	end
 
 	local fractionMax = countAddon / max
 	local fractionAssigned = countAddon / countAssigned
 
-	print("======================")
-	print(countAddon .. " of " .. max .. " slots total, " .. (math.Round(fractionMax, 3) * 100) .. '%')
-	print(countAddon .. " of " .. countAssigned .. " slots assigned, " .. (math.Round(fractionAssigned, 3) * 100) .. '%')
-	print("======================")
+	MsgN("======================")
+	MsgN(countAddon .. " of " .. max .. " slots total, " .. (math.Round(fractionMax, 3) * 100) .. '%')
+	MsgN(countAddon .. " of " .. countAssigned .. " slots assigned, " .. (math.Round(fractionAssigned, 3) * 100) .. '%')
+	MsgN("======================")
 end
 
 function LIBDebug.DumpDTNetworkStringTableCode()
-	print("DumpDTNetworkStringTableCode")
-	print("======================")
+	MsgN("DumpDTNetworkStringTableCode")
+	MsgN("======================")
 
-	print("")
-	print("local LIBNetwork = StreamRadioLib.Network")
-	print("")
-	print("do")
-	print("    -- Automaticly generated network string table map")
-	print("")
+	MsgN("")
+	MsgN("local LIBNetwork = StreamRadioLib.Network")
+	MsgN("")
+	MsgN("do")
+	MsgN("    -- Automaticly generated network string table map")
+	MsgN("")
 
 	local stringTable = getAddonStringTable()
 
@@ -703,12 +799,12 @@ function LIBDebug.DumpDTNetworkStringTableCode()
 		local name = LIB.UntransformNWIdentifier(value.name)
 
 		local code = string.format("    LIBNetwork.AddNetworkString(\"%s\")", name)
-		print(code)
+		MsgN(code)
 	end
 
-	print("end")
-	print("")
-	print("======================")
+	MsgN("end")
+	MsgN("")
+	MsgN("======================")
 end
 
 do

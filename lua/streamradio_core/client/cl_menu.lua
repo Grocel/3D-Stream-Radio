@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Menu = StreamRadioLib.Menu or {}
+
 local LIB = StreamRadioLib.Menu
+table.Empty(LIB)
 
 function LIB.GetLinkButton(text, urlStr)
 	text = tostring(text or "")
@@ -186,7 +188,10 @@ function LIB.GetLabel(text)
 	label:SetText(text)
 	label:SetTooltip(text)
 
+	label:SetWrap(true)
 	label:SetDark(true)
+
+	label:SetAutoStretchVertical(true)
 	label:SizeToContents()
 
 	return label
@@ -201,45 +206,49 @@ function LIB.GetWarnLabel(text)
 	return label
 end
 
-function LIB.GetCustomURLBlockedLabel(text)
+function LIB.GetWhitelistEnabledLabel(text)
 	local label = LIB.GetWarnLabel(text)
 
-	local function handleBlocked(this)
-		local lastIsCustomURLsAllowed = this._isCustomURLsAllowed
+	local function handleWhitelistEnabled(this)
+		local lastisUrlWhitelistEnabled = this._isUrlWhitelistEnabled
 
-		local isCustomURLsAllowed = StreamRadioLib.IsCustomURLsAllowed()
-		this._isCustomURLsAllowed = isCustomURLsAllowed
+		local isUrlWhitelistEnabled = StreamRadioLib.IsUrlWhitelistEnabled()
+		this._isUrlWhitelistEnabled = isUrlWhitelistEnabled
 
-		return lastIsCustomURLsAllowed == isCustomURLsAllowed, isCustomURLsAllowed
+		return lastisUrlWhitelistEnabled == isUrlWhitelistEnabled, isUrlWhitelistEnabled
 	end
 
-	local oldThink = label.Think
-	label.Think = function(this)
-		oldThink(this)
+	local timerName = "GetWhitelistEnabledLabelThink_" .. tostring(label)
 
-		local changeAllowed, isAllowed = handleBlocked(this)
+	StreamRadioLib.Timer.Interval(timerName, 1, 0, function()
+		-- We use this timer as think is not called on label:SetVisible(false).
 
-		if not changeAllowed then
+		if not IsValid(label) then
+			StreamRadioLib.Timer.Remove(timerName)
 			return
 		end
 
-		if isAllowed then
-			this:SetTall(0)
-		else
-			this:SizeToContents()
+		local changeisWhitelistEnabled, isUrlWhitelistEnabled = handleWhitelistEnabled(label)
+
+		if not changeisWhitelistEnabled then
+			return
 		end
 
-		local parent = this:GetParent()
+		if isUrlWhitelistEnabled then
+			label:SetVisible(true)
+		else
+			label:SetVisible(false)
+		end
+
+		local parent = label:GetParent()
 		if IsValid(parent) then
 			parent:InvalidateLayout()
 			StreamRadioLib.VR.RenderMenu(parent)
 		end
 
-		this:InvalidateLayout()
-		StreamRadioLib.VR.RenderMenu(this)
-	end
-
-	label:Think()
+		label:InvalidateLayout()
+		StreamRadioLib.VR.RenderMenu(label)
+	end)
 
 	return label
 end

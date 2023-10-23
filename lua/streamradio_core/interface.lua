@@ -1,11 +1,13 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Interface = StreamRadioLib.Interface or {}
+
 local LIB = StreamRadioLib.Interface
+table.Empty(LIB)
 
 local LuaInterfaceDirectory = "streamradio_core/interfaces"
-local Intefaces = {}
-local err_cache = {}
+local g_intefaces = {}
+local g_intefacesByName = {}
 
 local function AddCommonFunctions(interface)
 	if not interface then return end
@@ -280,21 +282,19 @@ local function AddInterface(script)
 	end
 
 	local iface = RADIOIFACE
-
-	table.insert(Intefaces, iface)
-
 	RADIOIFACE = nil
 
-	AddSubInterfaces(iface)
+	table.insert(g_intefaces, iface)
+	g_intefacesByName[name] = iface
 
-	err_cache = {}
+	AddSubInterfaces(iface)
 	return true
 end
 
 local function GetInterfaceFromURL(url)
 	if not url then return nil end
 
-	for i, v in ipairs(Intefaces) do
+	for i, v in ipairs(g_intefaces) do
 		if not v then continue end
 
 		if not v.CheckURL then continue end
@@ -308,14 +308,20 @@ end
 
 function LIB.Load()
 	local files = file.Find(LuaInterfaceDirectory .. "/*", "LUA")
-	Intefaces = {}
+	g_intefaces = {}
+	g_intefacesByName = {}
 
 	for _, f in pairs(files or {}) do
 		AddInterface(f)
 	end
 
-	table.SortByMember(Intefaces, "priority", false)
+	table.SortByMember(g_intefaces, "priority", false)
+
 	collectgarbage("collect")
+end
+
+function LIB.GetInterface(name)
+	return g_intefacesByName[name]
 end
 
 function LIB.Convert(url, callback)
@@ -351,8 +357,6 @@ function LIB.Convert(url, callback)
 
 	return R
 end
-
-LIB.Load()
 
 return true
 

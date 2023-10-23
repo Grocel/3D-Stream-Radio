@@ -30,6 +30,7 @@ function ENT:FadeoutTuneSound(time)
 	end
 
 	self.NoiseSound_vol = 0
+	self.NoiseSound_volFadeTime = 0.5
 end
 
 function ENT:StartTuneSound(delay)
@@ -38,35 +39,36 @@ function ENT:StartTuneSound(delay)
 		return
 	end
 
-	if IsValid(stream) then
-		stream:TimerRemove("tunesound")
-		stream:TimerRemove("tunesoundstart")
-	end
+	stream:TimerRemove("tunesound")
+	stream:TimerRemove("tunesoundstart")
 
 	delay = delay or 0
 
 	stream:TimerOnce("tunesoundstart", delay, function()
 		if not IsValid(self) then return end
 
-		if IsValid(stream:GetChannel()) then
-			self:StopTuneSound()
-			return
-		end
-
-		self:CreateTuneSound()
-		if not self.NoiseSound then return end
-
 		if IsValid(stream) then
 			stream:TimerRemove("tunesound")
 			stream:TimerRemove("tunesoundstart")
 		end
 
-		if self.NoiseSound:IsPlaying() then
+		if IsValid(stream:GetChannel()) then
+			self:StopTuneSound()
+			return
+		end
+
+		local noiseSound = self:CreateTuneSound()
+
+		if not noiseSound then
 			return
 		end
 
 		self.NoiseSound_vol = 1
-		self.NoiseSound:PlayEx(0, 100)
+		self.NoiseSound_volFadeTime = 2
+
+		if not noiseSound:IsPlaying() then
+			noiseSound:PlayEx(0, 100)
+		end
 	end)
 end
 
@@ -88,42 +90,45 @@ function ENT:ApplyTuneSound()
 	local stream = self.StreamObj
 	if not IsValid(stream) then return end
 
-	stream:TimerRemove("tunesoundstart")
-	stream:TimerRemove("tunesound")
-
-	local isStopMode = stream:IsStopMode()
-	if isStopMode then
-		self.streamswitchsound = true
-		self:StopTuneSound()
-		return
-	end
-
-	if IsValid(stream:GetChannel()) then
-		self:FadeoutTuneSound()
-		return
-	end
-
-	if stream:GetMuted() then
-		self.streamswitchsound = nil
-		self:StopTuneSound()
-		return
-	end
-
-	if stream:IsLoading() then
-		self:StartTuneSound(2)
-		return
-	end
-
-	if stream:HasError() then
-		self.streamswitchsound = true
-		self:StartTuneSound(0)
-		return
-	end
-
-	stream:TimerOnce("tunesound", 0.5, function()
+	local applyTuneSoundInternal = function()
 		if not IsValid(self) then return end
-		self:ApplyTuneSound()
-	end)
+		if not IsValid(stream) then return end
+
+		stream:TimerRemove("tunesoundstart")
+		stream:TimerRemove("tunesound")
+
+		local isStopMode = stream:IsStopMode()
+		if isStopMode then
+			self.streamswitchsound = true
+			self:StopTuneSound()
+			return
+		end
+
+		if stream:GetMuted() then
+			self.streamswitchsound = nil
+			self:StopTuneSound()
+			return
+		end
+
+		if IsValid(stream:GetChannel()) then
+			self:FadeoutTuneSound()
+			return
+		end
+
+		if stream:IsLoading() then
+			self:StartTuneSound(2)
+			return
+		end
+
+		if stream:HasError() then
+			self.streamswitchsound = true
+			self:StartTuneSound(0)
+			return
+		end
+	end
+
+	stream:TimerOnce("tunesound", 0.5, applyTuneSoundInternal)
+	applyTuneSoundInternal()
 end
 
 function ENT:Initialize()
@@ -395,31 +400,33 @@ function ENT:UpdateStream()
 	local muted = self:IsMuted()
 	local clVolume = self:GetCLVolume()
 
-	local wallvol = 0
+	local wallVolume = 0
 	local distVolume = 0
 	local playerDistance = nil
 
 	if not muted then
 		playerDistance = self:DistanceToEntity(ply, nil, StreamRadioLib.GetCameraViewPos(ply))
 
-		wallvol = self:GetWallVolumeFactorSmoothed()
+		wallVolume = self:GetWallVolumeFactorSmoothed()
 		distVolume = StreamRadioLib.CalcDistanceVolume(playerDistance, self.Radius)
 	end
 
 	self.PlayerDistance = playerDistance
 
-	local StreamVol = distVolume * clVolume * wallvol
+	local StreamVol = distVolume * clVolume * wallVolume
 
 	streamObj:SetMuted(muted)
 	streamObj:SetClientVolume(StreamVol)
 
 	self.Muted = muted
 
-	if self.NoiseSound and self.NoiseSound_vol then
-		local global_vol = StreamRadioLib.GetGlobalVolume()
-		global_vol = math.Clamp(global_vol, 0, 1)
+	if self.NoiseSound then
+		local noiseSoundVol = self.NoiseSound_vol or 0
 
-		self.NoiseSound:ChangeVolume(streamObj:GetVolume() * global_vol * clVolume * wallvol * self.NoiseSound_vol, 0.5)
+		local globalVolume = StreamRadioLib.GetGlobalVolume()
+		globalVolume = math.Clamp(globalVolume, 0, 1)
+
+		self.NoiseSound:ChangeVolume(streamObj:GetVolume() * globalVolume * clVolume * wallVolume * noiseSoundVol, 0.5)
 	end
 
 	self:StreamAnimModel()
@@ -453,7 +460,7 @@ function ENT:StreamAnimModel()
 		return
 	end
 
-	if stream:IsLoading() or stream:IsBuffering() then
+	if stream:IsLoading() or stream:IsCheckingUrl() or stream:IsBuffering() then
 		self:CallModelFunction("WhileLoading")
 		return
 	end

@@ -1,4 +1,4 @@
-local StreamRadioLib = StreamRadioLib or {}
+local StreamRadioLib = StreamRadioLib
 local LIBNet = StreamRadioLib.Net
 
 local string = string
@@ -121,7 +121,7 @@ local function CreateDir( self, defaultString, func, ... )
 
 	defaultString = string.Trim(defaultString or "")
 
-	if not StreamRadioLib.Filesystem.IsValidFilepath(defaultString) then
+	if not StreamRadioLib.String.IsValidFilepath(defaultString) then
 		defaultString = name
 	end
 
@@ -137,9 +137,9 @@ Create a new folder
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
-		strTextOut = StreamRadioLib.Filesystem.SanitizeFilename(strTextOut)
+		strTextOut = StreamRadioLib.String.SanitizeFilename(strTextOut)
 
-		if not StreamRadioLib.Filesystem.IsValidFilepath(strTextOut) then
+		if not StreamRadioLib.String.IsValidFilepath(strTextOut) then
 			CreateDir(self, defaultString, func, unpack(args))
 			return
 		end
@@ -147,7 +147,7 @@ Create a new folder
 		local fullpath = path .. "/" .. strTextOut
 		fullpath = string.Trim(fullpath, "/")
 
-		if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+		if StreamRadioLib.String.IsVirtualPath(fullpath) then
 			local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_VIRTUAL_PROTECTED )
 			ShowError( "Create error!", ErrorText, self, CreateFile, strTextOut, func, unpack( args ) )
 
@@ -217,7 +217,7 @@ local function CreateFile( self, defaultString, func, ... )
 	local name = "new_playlist." .. Default_Format
 	defaultString = string.Trim(defaultString or "")
 
-	if not StreamRadioLib.Filesystem.IsValidFilename(defaultString) then
+	if not StreamRadioLib.String.IsValidFilename(defaultString) then
 		defaultString = name
 	end
 
@@ -238,9 +238,9 @@ Create a new playlist
 			if not IsValid(self) then return end
 			if self:IsLoading() then return end
 
-			strTextOut = StreamRadioLib.Filesystem.SanitizeFilename(strTextOut)
+			strTextOut = StreamRadioLib.String.SanitizeFilename(strTextOut)
 
-			if not StreamRadioLib.Filesystem.IsValidFilename(strTextOut) then
+			if not StreamRadioLib.String.IsValidFilename(strTextOut) then
 				CreateFile( self, defaultString, func, unpack( args ) )
 				return
 			end
@@ -255,7 +255,7 @@ Create a new playlist
 				return
 			end
 
-			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+			if StreamRadioLib.String.IsVirtualPath(fullpath) then
 				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WVIRTUAL )
 				ShowError( "Create error!", ErrorText, self, CreateFile, strTextOut, func, unpack( args ) )
 
@@ -328,7 +328,7 @@ local function SaveTo(self, defaultString, func, ...)
 
 	defaultString = string.Trim(defaultString or "")
 
-	if not StreamRadioLib.Filesystem.IsValidFilename(defaultString) then
+	if not StreamRadioLib.String.IsValidFilename(defaultString) then
 		defaultString = name
 	end
 
@@ -345,9 +345,9 @@ Save a file
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
-		strTextOut = StreamRadioLib.Filesystem.SanitizeFilename(strTextOut)
+		strTextOut = StreamRadioLib.String.SanitizeFilename(strTextOut)
 
-		if not StreamRadioLib.Filesystem.IsValidFilename(strTextOut) then
+		if not StreamRadioLib.String.IsValidFilename(strTextOut) then
 			SaveTo(self, defaultString, func, unpack(args))
 			return
 		end
@@ -365,7 +365,7 @@ Save a file
 		local format = StreamRadioLib.Filesystem.GuessType(fullpath)
 
 		if not StreamRadioLib.Filesystem.CanWriteFormat(format) then
-			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+			if StreamRadioLib.String.IsVirtualPath(fullpath) then
 				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WVIRTUAL )
 				ShowError( "Save error!", ErrorText, self, SaveTo, strTextOut, func, unpack( args ) )
 
@@ -379,7 +379,7 @@ Save a file
 		end
 
 		if not self.FileItems[strTextOut] then
-			if StreamRadioLib.Filesystem.IsVirtualPath(fullpath) then
+			if StreamRadioLib.String.IsVirtualPath(fullpath) then
 				local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WVIRTUAL )
 				ShowError( "Create error!", ErrorText, self, SaveTo, strTextOut, func, unpack( args ) )
 
@@ -431,7 +431,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 
 	MenuItem:SetImage("icon16/arrow_refresh.png")
 
-	if not StreamRadioLib.Filesystem.IsVirtualPath(parentpath) then
+	if not StreamRadioLib.String.IsVirtualPath(parentpath) then
 		Menu:AddSpacer( )
 
 		--New
@@ -492,7 +492,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 		]]
 
 		--Delete
-		if StreamRadioLib.Filesystem.CanDeleteFormat(filetype) and not StreamRadioLib.Filesystem.IsVirtualPath(path) then
+		if StreamRadioLib.Filesystem.CanDeleteFormat(filetype) and not StreamRadioLib.String.IsVirtualPath(path) then
 			Menu:AddSpacer( )
 			MenuItem = Menu:AddOption("Delete", function()
 				if not IsValid(self) then return end
@@ -1128,7 +1128,7 @@ function PANEL:BuildPlaylistFromTextPanel()
 	end
 
 	lines = self.PlaylistText:GetText()
-	lines = StreamRadioLib.Util.NormalizeNewlines(lines, '\n')
+	lines = StreamRadioLib.String.NormalizeNewlines(lines, '\n')
 
 	lines = string.Explode("\n", lines, false) or {}
 

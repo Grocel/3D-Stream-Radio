@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Model = StreamRadioLib.Model or {}
+
 local LIB = StreamRadioLib.Model
+table.Empty(LIB)
 
 local Models = {}
 

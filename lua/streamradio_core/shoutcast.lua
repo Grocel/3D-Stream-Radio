@@ -1,10 +1,18 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Shoutcast = StreamRadioLib.Shoutcast or {}
+
 local LIB = StreamRadioLib.Shoutcast
+table.Empty(LIB)
+
+local LIBUtil = StreamRadioLib.Util
+local LIBUrl = StreamRadioLib.Url
+local LIBHttp = StreamRadioLib.Http
 
 local g_streamUrl = "https://yp.shoutcast.com/sbin/tunein-station.m3u"
 local g_browseByGenreUrl = "https://directory.shoutcast.com/Home/BrowseByGenre"
+
+local g_list_cache = LIBUtil.CreateCacheArray(2048)
 
 local g_genres = {
 	{
@@ -1034,7 +1042,7 @@ local function mapGenres(genres)
 			end
 
 			local key = string.lower(title)
-			if map.children && map.children[key] then
+			if map.children and map.children[key] then
 				continue
 			end
 
@@ -1065,7 +1073,7 @@ local function mapGenres(genres)
 end
 
 local g_genres_map = mapGenres(g_genres)
-local g_list_cache = {}
+
 
 function LIB.GetHierarchy(hierarchy)
 	hierarchy = StreamRadioLib.GetHierarchy(hierarchy)
@@ -1164,13 +1172,13 @@ function LIB.GetListOfGenre(hierarchy, callback)
 		return false
 	end
 
-	local cache = g_list_cache[hierarchyString]
+	local cache = g_list_cache:Get(hierarchyString)
 	if cache then
 		callback(true, cache)
 		return true
 	end
 
-	g_list_cache[hierarchyString] = nil
+	g_list_cache:Remove(hierarchyString)
 
 	local searchGenre = genre.title or ""
 	if searchGenre == "" then
@@ -1190,15 +1198,15 @@ function LIB.GetListOfGenre(hierarchy, callback)
 			return
 		end
 
-		local list = StreamRadioLib.JSON.Decode(body)
-		if not list then
+		local listItems = StreamRadioLib.JSON.Decode(body)
+		if not listItems then
 			callback(false)
 			return
 		end
 
 		local results = {}
 
-		for i, v in ipairs(list) do
+		for i, v in ipairs(listItems) do
 			local id = tostring(v.ID or "")
 			local name = string.Trim(v.Name or "")
 			local genre = string.Trim(v.Genre or "")
@@ -1234,11 +1242,11 @@ function LIB.GetListOfGenre(hierarchy, callback)
 
 		table.sort(results, sorter)
 
-		g_list_cache[hierarchyString] = results
+		g_list_cache:Set(hierarchyString, results)
 		callback(true, results)
 	end
 
-	local status = StreamRadioLib.Http.Request(g_browseByGenreUrl, resultCallback, {
+	local status = LIBHttp.Request(g_browseByGenreUrl, resultCallback, {
 		genrename = searchGenre
 	}, "POST")
 
@@ -1252,11 +1260,25 @@ function LIB.GetStreamUrlById(id)
 		return nil
 	end
 
-	local url = StreamRadioLib.Util.URIAddParameter(g_streamUrl, {
+	local url = LIBUrl.URIAddParameter(g_streamUrl, {
 		id = id,
 	})
 
 	return url
+end
+
+function LIB.IsShoutcastUrl(url)
+	if string.StartsWith(url, g_streamUrl) then
+		return true
+	end
+
+	local interface = StreamRadioLib.Interface.GetInterface("SHOUTcast")
+
+	if interface and interface:CheckURL(url) then
+		return true
+	end
+
+	return nil
 end
 
 return true

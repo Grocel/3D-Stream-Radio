@@ -10,6 +10,7 @@ RADIOFS.extension = "vdf"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = 1000
+RADIOFS.loadToWhitelist = true
 
 function RADIOFS:Read(globalpath, vpath, callback)
 	file.AsyncRead(globalpath, "DATA", function(fileName, gamePath, status, data)

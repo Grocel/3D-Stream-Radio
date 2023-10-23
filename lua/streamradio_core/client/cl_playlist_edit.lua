@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Editor = StreamRadioLib.Editor or {}
+
 local LIB = StreamRadioLib.Editor
+table.Empty(LIB)
 
 local LIBNet = StreamRadioLib.Net
 

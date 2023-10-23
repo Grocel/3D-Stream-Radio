@@ -12,35 +12,35 @@ local g_lastIsAdmin = false
 LIB.g_CV_List["admin"] = {}
 
 local function AddDangerMenuPanel(CPanel)
-	local dangerPanel = vgui.Create("DForm")
-	dangerPanel:SetName("Danger Zone")
+	local subpanel = vgui.Create("DForm")
+	subpanel:SetName("Playlists rebuild setting")
 
-	CPanel:AddPanel(dangerPanel)
+	CPanel:AddPanel(subpanel)
 
-	dangerPanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: Be careful what you in this section!\nUnanticipated loss of CUSTOM playlist files\ncan be caused by mistakes!"))
+	subpanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: Be careful what you in this section!\nUnanticipated loss of CUSTOM playlist files can be caused by mistakes!"))
 
-	dangerPanel:AddItem(LIBMenu.GetSpacerLine())
+	subpanel:AddItem(LIBMenu.GetSpacerLine())
 
-	dangerPanel:AddItem(LIBMenu.GetLabel("Rebuild mode for playlists in 'community'.\nEffective with server restarts."))
+	subpanel:AddItem(LIBMenu.GetLabel("Rebuild mode for playlists in 'community'.\nEffective with server restarts."))
 
-	local combobox, label = dangerPanel:ComboBox(
+	local rebuildplaylistsCombobox, rebuildplaylistsLabel = subpanel:ComboBox(
 		"Rebuild mode",
 		"sv_streamradio_rebuildplaylists_community_auto"
 	)
-	StreamRadioLib.Menu.PatchComboBox(combobox, label)
+	StreamRadioLib.Menu.PatchComboBox(rebuildplaylistsCombobox, rebuildplaylistsLabel)
 
-	combobox:SetSortItems(false)
-	combobox:AddChoice("Off", 0)
-	combobox:AddSpacer()
-	combobox:AddChoice("Auto rebuild", 1)
-	combobox:AddChoice("Auto reset & rebuild (default)", 2)
+	rebuildplaylistsCombobox:SetSortItems(false)
+	rebuildplaylistsCombobox:AddChoice("Off", 0, false, "3dstreamradio/icon16/arrow_not_refresh.png")
+	rebuildplaylistsCombobox:AddSpacer()
+	rebuildplaylistsCombobox:AddChoice("Auto rebuild", 1, false, "icon16/arrow_merge.png")
+	rebuildplaylistsCombobox:AddChoice("Auto reset & rebuild (default)", 2, false, "icon16/arrow_refresh.png")
 
-	dangerPanel:AddItem(LIBMenu.GetSpacerLine())
+	subpanel:AddItem(LIBMenu.GetSpacerLine())
 
-	dangerPanel:AddItem(LIBMenu.GetLabel("You may want to use this regularly to fix\nissues with broken playlists."))
+	subpanel:AddItem(LIBMenu.GetLabel("You may want to use this regularly to fix issues with broken playlists."))
 
-	dangerPanel:AddItem(LIBMenu.GetSpacer())
-	dangerPanel:AddItem(
+	subpanel:AddItem(LIBMenu.GetSpacer())
+	subpanel:AddItem(
 		LIBMenu.AddDangerButton(
 			"Rebuild community playlists",
 			{
@@ -49,10 +49,10 @@ local function AddDangerMenuPanel(CPanel)
 			}
 		)
 	)
-	dangerPanel:AddItem(LIBMenu.GetLabel("Reverts stock playlist files in 'community' to default.\nThis overwrites default playlists\nand their changes in 'community'!"))
+	subpanel:AddItem(LIBMenu.GetLabel("Reverts stock playlist files in 'community' to default.\nThis overwrites default playlists and their changes in 'community'!"))
 
-	dangerPanel:AddItem(LIBMenu.GetSpacer())
-	dangerPanel:AddItem(
+	subpanel:AddItem(LIBMenu.GetSpacer())
+	subpanel:AddItem(
 		LIBMenu.AddDangerButton(
 			"Factory reset community playlists",
 			{
@@ -61,15 +61,15 @@ local function AddDangerMenuPanel(CPanel)
 			}
 		)
 	)
-	dangerPanel:AddItem(LIBMenu.GetLabel("Reverts ALL playlist files in 'community' to default.\nThis removes ALL custom playlists\nand changes in 'community'!"))
+	subpanel:AddItem(LIBMenu.GetLabel("Reverts ALL playlist files in 'community' to default.\nThis removes ALL custom playlists and changes in 'community'!"))
 
-	dangerPanel:AddItem(LIBMenu.GetSpacerLine())
+	subpanel:AddItem(LIBMenu.GetSpacerLine())
 
-	dangerPanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: This section affects ALL playlists\non your server!"))
-	dangerPanel:AddItem(LIBMenu.GetLabel("Only use this if want clean up or reset\nall playlist files."))
+	subpanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: This section affects ALL playlists on your server!"))
+	subpanel:AddItem(LIBMenu.GetLabel("Only use this if want clean up or reset nall playlist files."))
 
-	dangerPanel:AddItem(LIBMenu.GetSpacer())
-	dangerPanel:AddItem(
+	subpanel:AddItem(LIBMenu.GetSpacer())
+	subpanel:AddItem(
 		LIBMenu.AddDangerButton(
 			"Rebuild ALL playlists",
 			{
@@ -79,10 +79,10 @@ local function AddDangerMenuPanel(CPanel)
 			}
 		)
 	)
-	dangerPanel:AddItem(LIBMenu.GetLabel("Reverts stock playlist files to default.\nThis overwrites the default playlists\nand their changes globally!"))
+	subpanel:AddItem(LIBMenu.GetLabel("Reverts stock playlist files to default.\nThis overwrites the default playlists and their changes globally!"))
 
-	dangerPanel:AddItem(LIBMenu.GetSpacer())
-	dangerPanel:AddItem(
+	subpanel:AddItem(LIBMenu.GetSpacer())
+	subpanel:AddItem(
 		LIBMenu.AddDangerButton(
 			"Factory reset ALL playlists",
 			{
@@ -92,41 +92,75 @@ local function AddDangerMenuPanel(CPanel)
 			}
 		)
 	)
-	dangerPanel:AddItem(LIBMenu.GetLabel("Reverts ALL playlist files to default.\nThis removes ALL custom playlists\nand changes globally!"))
+	subpanel:AddItem(LIBMenu.GetLabel("Reverts ALL playlist files to default.\nThis removes ALL custom playlists and changes globally!"))
 
-	return dangerPanel
+	return subpanel
+end
+
+local function AddSecurityMenuPanel(CPanel)
+	local subpanel = vgui.Create("DForm")
+	subpanel:SetName("Security Options")
+
+	CPanel:AddPanel(subpanel)
+
+	subpanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: This affects the server security of this addon.\nOnly disable the whitelist if you know what you are doing!\nBetter you never turn this off!"))
+
+	local urlWhitelistCombobox, urlWhitelistLabel = subpanel:ComboBox(
+		"URL Whitelist",
+		"sv_streamradio_url_whitelist_enable"
+	)
+	StreamRadioLib.Menu.PatchComboBox(urlWhitelistCombobox, urlWhitelistLabel)
+
+	urlWhitelistCombobox:SetSortItems(false)
+	urlWhitelistCombobox:AddChoice("Enable Stream URL whitelist (recommended)", 1, false, "icon16/shield.png")
+	urlWhitelistCombobox:AddChoice("Disable Stream URL whitelist (dangerous)", 0, false, "icon16/exclamation.png")
+
+	subpanel:AddItem(LIBMenu.GetLabel("The whitelist is based of the installed playlists. Edit them to change the whitelist or use the quick whitelist options on a radio entity."))
+	subpanel:AddItem(LIBMenu.GetLabel("You can safely turn this off if your server is protected by the CFC HTTP Whitelist addon. It is always disabled on single player."))
+
+	subpanel:AddItem(LIBMenu.GetSpacerLine())
+
+	subpanel:Button(
+		"Reload URL Whitelist",
+		"sv_streamradio_url_whitelist_reload"
+	)
+
+	subpanel:AddItem(LIBMenu.GetLabel("Press this button to reload the whitelist. It is rebuilt from server's playlist files."))
+	subpanel:AddItem(LIBMenu.GetLabel("You can safely use it anytime you want."))
+
+	return subpanel
 end
 
 local function AddBassMenuPanel(CPanel)
-	local bassPanel = vgui.Create("DForm")
-	bassPanel:SetName("GM_BASS3 Options")
+	local subpanel = vgui.Create("DForm")
+	subpanel:SetName("GM_BASS3 Options")
 
-	CPanel:AddPanel(bassPanel)
+	CPanel:AddPanel(subpanel)
 
 	local hasBass = StreamRadioLib.Bass.IsInstalledOnServer()
 
-	bassPanel:CheckBox(
+	subpanel:CheckBox(
 		"Use GM_BASS3 on the server if available",
 		"sv_streamradio_bass3_enable"
 	)
 
-	bassPanel:CheckBox(
+	subpanel:CheckBox(
 		"Allow clients to use GM_BASS3 if available",
 		"sv_streamradio_bass3_allow_client"
 	)
 
-	bassPanel:AddItem(LIBMenu.GetSpacerLine())
+	subpanel:AddItem(LIBMenu.GetSpacerLine())
 
 	if not hasBass then
-		bassPanel:AddItem(LIBMenu.GetWarnLabel("Install GM_BASS3 on the server to unlock the options below."))
+		subpanel:AddItem(LIBMenu.GetWarnLabel("Install GM_BASS3 on the server to unlock the options below."))
 	end
 
 	local infoLabel = LIBMenu.GetLabel("Maximum count of radios with Advanced Wire Outputs.")
 	infoLabel:SetEnabled(hasBass)
 
-	bassPanel:AddItem(infoLabel)
+	subpanel:AddItem(infoLabel)
 
-	bassPanel:NumSlider(
+	subpanel:NumSlider(
 		"Maximum count",
 		"sv_streamradio_max_spectrums",
 		0,
@@ -134,12 +168,12 @@ local function AddBassMenuPanel(CPanel)
 		0
 	):SetEnabled(hasBass)
 
-	bassPanel:Button(
+	subpanel:Button(
 		"Clear server stream cache",
 		"sv_streamradio_cacheclear"
 	):SetEnabled(hasBass)
 
-	return bassPanel
+	return subpanel
 end
 
 local function BuildMenuPanel(CPanel)
@@ -174,16 +208,15 @@ local function BuildMenuPanel(CPanel)
 			return
 		end
 
-		CPanel:CheckBox(
-			"Allow custom stream URLs",
-			"sv_streamradio_allow_customurls"
-		)
-
 		AddBassMenuPanel(CPanel)
 
 		CPanel:AddPanel(LIBMenu.GetSpacer())
 
 		AddDangerMenuPanel(CPanel)
+
+		CPanel:AddPanel(LIBMenu.GetSpacer())
+
+		AddSecurityMenuPanel(CPanel)
 
 		CPanel:AddPanel(LIBMenu.GetSpacer())
 

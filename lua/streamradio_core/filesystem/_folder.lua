@@ -9,6 +9,7 @@ RADIOFS.type = "folder"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("Folder")
 RADIOFS.nocreate = true
 
+RADIOFS.loadToWhitelist = true
 RADIOFS.priority = 999999
 
 function RADIOFS:IsType(globalpath, vpath)

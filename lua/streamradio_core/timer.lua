@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Timer = StreamRadioLib.Timer or {}
+
 local LIB = StreamRadioLib.Timer
+table.Empty(LIB)
 
 local g_nameprefix = "3DStreamRadio_Timer_"
 
@@ -15,7 +17,7 @@ function LIB.Interval(identifier, delay, repetitions, func)
 	local name = LIB.GetName(identifier)
 
 	timer.Remove(name)
-	timer.Create(name, delay, repetitions, func) 
+	timer.Create(name, delay, repetitions, func)
 end
 
 function LIB.Once(identifier, delay, func)

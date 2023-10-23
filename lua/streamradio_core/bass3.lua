@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Bass = StreamRadioLib.Bass or {}
+
 local LIB = StreamRadioLib.Bass
+table.Empty(LIB)
 
 LIB.g_IsInstalledOnServer = false
 

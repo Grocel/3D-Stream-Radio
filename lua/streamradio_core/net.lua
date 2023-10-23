@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Net = StreamRadioLib.Net or {}
+
 local LIB = StreamRadioLib.Net
+table.Empty(LIB)
 
 local LIBNetwork = StreamRadioLib.Network
 
@@ -40,6 +42,10 @@ do
 	LIBNetwork.AddNetworkString("datarequest")
 	LIBNetwork.AddNetworkString("streamreset_on_sv")
 	LIBNetwork.AddNetworkString("streamreset_on_cl")
+	LIBNetwork.AddNetworkString("whitelist_check_url")
+	LIBNetwork.AddNetworkString("whitelist_check_url_result")
+	LIBNetwork.AddNetworkString("whitelist_quick_whitelist")
+	LIBNetwork.AddNetworkString("whitelist_clear_cache")
 	LIBNetwork.AddNetworkString("g/m")
 	LIBNetwork.AddNetworkString("g/m/brw")
 	LIBNetwork.AddNetworkString("g/m/brw/lstp")
@@ -67,6 +73,7 @@ do
 	LIBNetwork.AddNetworkString("g/m/PlayerOpened")
 	LIBNetwork.AddNetworkString("g/m/ply/ctrl")
 	LIBNetwork.AddNetworkString("g/m/ply/ctrl/PlaylistEnabled")
+	LIBNetwork.AddNetworkString("properties")
 end
 
 function LIB.Receive(name, ...)

@@ -10,6 +10,7 @@ RADIOFS.extension = "pls"
 RADIOFS.icon = StreamRadioLib.GetPNGIcon("table_sound", true)
 
 RADIOFS.priority = 9000
+RADIOFS.loadToWhitelist = true
 
 local function decodePLS(RawPlaylist)
 	local RawPlaylistTab = string.Split( RawPlaylist, "\n" )

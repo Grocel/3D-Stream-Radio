@@ -154,12 +154,15 @@ function CLASS:PerformLayout(...)
 end
 
 function CLASS:SetStream(stream)
+	if self.StreamOBJ == stream then
+		return
+	end
+
 	self.StreamOBJ = stream
 
-	if not IsValid(self.Player) then return end
-	if not IsValid(self.Browser) then return end
-
-	self.Player:SetStream(stream)
+	if IsValid(self.Player) then
+		self.Player:SetStream(stream)
+	end
 end
 
 function CLASS:GetStream()

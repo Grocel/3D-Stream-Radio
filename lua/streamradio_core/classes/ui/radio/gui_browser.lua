@@ -111,6 +111,11 @@ function CLASS:Create()
 		self.Errorbox.RetryButton = nil
 	end
 
+	if self.Errorbox.AdminWhitelistButton then
+		self.Errorbox.AdminWhitelistButton:Remove()
+		self.Errorbox.AdminWhitelistButton = nil
+	end
+
 	if IsValid(self.Errorbox.CloseButton) and CLIENT then
 		-- The error box is handled on the server, so the client shouldn't touch it.
 		self.Errorbox.CloseButton.DoClick = nil

@@ -1,7 +1,10 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Wire = StreamRadioLib.Wire or {}
+
 local LIB = StreamRadioLib.Wire
+table.Empty(LIB)
+
 local LIBUtil = StreamRadioLib.Util
 
 local emptyTableSafe = LIBUtil.EmptyTableSafe

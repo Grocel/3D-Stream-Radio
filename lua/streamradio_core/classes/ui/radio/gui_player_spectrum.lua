@@ -170,30 +170,38 @@ end
 
 function CLASS:Render()
 	BASE.Render(self)
-	if not IsValid(self.StreamOBJ) then return end
+
+	local stream = self.StreamOBJ
+
+	if not IsValid(stream) then return end
 	if not self:IsVisible() then return end
 
-	if self.StreamOBJ:GetMuted() then
+	if stream:GetMuted() then
 		self:RenderIcon(g_mat_mute)
 		return
 	end
 
-	if self.StreamOBJ:IsLoading() then
+	if stream:IsLoading() then
 		self:RenderLoader()
 		return
 	end
 
-	if self.StreamOBJ:IsBuffering() then
+	if stream:IsCheckingUrl() then
 		self:RenderLoader()
 		return
 	end
 
-	if self.StreamOBJ:IsSeeking() then
+	if stream:IsBuffering() then
 		self:RenderLoader()
 		return
 	end
 
-	if self.StreamOBJ:IsStopMode() then
+	if stream:IsSeeking() then
+		self:RenderLoader()
+		return
+	end
+
+	if stream:IsStopMode() then
 		self:RenderIcon(g_mat_stop)
 		return
 	end
@@ -209,7 +217,7 @@ function CLASS:Render()
 		return
 	end
 
-	if not self.StreamOBJ:IsPlayMode() then
+	if not stream:IsPlayMode() then
 		self:RenderIcon(g_mat_pause)
 		return
 	end
@@ -220,23 +228,29 @@ end
 function CLASS:ShouldPerformRerender()
 	if SERVER then return false end
 
-	if self.StreamOBJ:GetMuted() then
+	local stream = self.StreamOBJ
+
+	if stream:GetMuted() then
 		return false
 	end
 
-	if self.StreamOBJ:HasError() then
+	if stream:HasError() then
 		return false
 	end
 
-	if self.StreamOBJ:IsLoading() then
+	if stream:IsLoading() then
 		return true
 	end
 
-	if self.StreamOBJ:IsBuffering() then
+	if stream:IsCheckingUrl() then
 		return true
 	end
 
-	if self.StreamOBJ:IsSeeking() then
+	if stream:IsBuffering() then
+		return true
+	end
+
+	if stream:IsSeeking() then
 		return true
 	end
 
@@ -249,7 +263,7 @@ function CLASS:ShouldPerformRerender()
 		return false
 	end
 
-	if not self.StreamOBJ:IsPlaying() then
+	if not stream:IsPlaying() then
 		return false
 	end
 
@@ -275,12 +289,11 @@ if CLIENT then
 end
 
 function CLASS:SetStream(stream)
-	local oldStreamOBJ = self.StreamOBJ
-	self.StreamOBJ = stream
-
-	if oldStreamOBJ == stream then
+	if self.StreamOBJ == stream then
 		return
 	end
+
+	self.StreamOBJ = stream
 
 	self:SetFastThinkRate(0)
 end

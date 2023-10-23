@@ -1,7 +1,9 @@
 local StreamRadioLib = StreamRadioLib
 
 StreamRadioLib.Cache = StreamRadioLib.Cache or {}
+
 local LIB = StreamRadioLib.Cache
+table.Empty(LIB)
 
 local g_forbidden = StreamRadioLib.Util.CreateCacheArray(256)
 local g_lastloaded = StreamRadioLib.Util.CreateCacheArray(16)
@@ -95,7 +97,7 @@ end
 
 local function GetFilenameFromURL( url )
 	url = tostring( url or "" )
-	url = StreamRadioLib.Util.NormalizeURL(url)
+	url = StreamRadioLib.Url.SanitizeUrl(url)
 
 	local filename = Hash( url ) or ""
 	if ( filename == "" ) then return end

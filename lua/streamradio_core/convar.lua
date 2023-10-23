@@ -1,9 +1,7 @@
 local StreamRadioLib = StreamRadioLib
 
-local LIBUtil = StreamRadioLib.Util
-
 local g_allowSpectrum = false
-local g_allowCustomURLs = false
+local g_enableUrlWhitelist = true
 
 local g_lastThink = 0
 
@@ -14,11 +12,11 @@ local g_cvMaxServerSpectrum = CreateConVar(
 	"Sets the maximum count of radios that can have advanced wire outputs such as FFT spectrum or song tags. 0 = Off, Default: 5"
 )
 
-local g_cvAllowCustomURLs = CreateConVar(
-	"sv_streamradio_allow_customurls",
+local g_cvUrlWhitelistEnable = CreateConVar(
+	"sv_streamradio_url_whitelist_enable",
 	"1",
 	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
-	"Allow or disallow custom URLs to be played. 1 = Allow, 0 = Disallow, Default: 1"
+	"Disables or enables the Stream URL whitelist. When enabled only URLs listed in playlists can be played. DATA SECURITY: Keep it enabled for better server security. 1 = Enable, 0 = Disable, Default: 0"
 )
 
 local g_cvRebuildCommunityPlaylists = CreateConVar(
@@ -50,13 +48,9 @@ function StreamRadioLib.AllowSpectrum()
 	return g_allowSpectrum
 end
 
-function StreamRadioLib.IsCustomURLsAllowed(ply)
-	if g_allowCustomURLs then return true end
-
-	-- Admins can always use custom stream URLs
-	if LIBUtil.IsAdmin(ply) then return true end
-
-	return false
+function StreamRadioLib.IsUrlWhitelistEnabled()
+	if not g_enableUrlWhitelist then return false end
+	return true
 end
 
 function StreamRadioLib.GetRebuildCommunityPlaylistsMode()
@@ -77,18 +71,17 @@ local function calcAllowSpectrum()
 	return StreamRadioLib.GetStreamingRadioCount() < max
 end
 
-local function calcAllowCustomURLs()
-	if game.SinglePlayer() then return true end
+local function calcUrlWhitelistEnabled()
+	if game.SinglePlayer() then return false end
+	if not g_cvUrlWhitelistEnable:GetBool() then return false end
 
-	local blockedURLCode = StreamRadioLib.BlockedURLCode or ""
-	local blockedURLCodeSequence = StreamRadioLib.BlockedURLCodeSequence or ""
+	return true
+end
 
-	if blockedURLCode == "" then return true end
-	if blockedURLCodeSequence == "" then return true end
+local function updateUrlWhitelistEnabled()
+	if CLIENT then return end
 
-	if g_cvAllowCustomURLs:GetBool() then return true end
-
-	return false
+	StreamRadioLib.Whitelist.InvalidateCache()
 end
 
 StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
@@ -96,7 +89,13 @@ StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
 
 	if g_lastThink < now then
 		g_allowSpectrum = calcAllowSpectrum()
-		g_allowCustomURLs = calcAllowCustomURLs()
+
+		local old_enableUrlWhitelist = g_enableUrlWhitelist
+		g_enableUrlWhitelist = calcUrlWhitelistEnabled()
+
+		if old_enableUrlWhitelist ~= g_enableUrlWhitelist then
+			updateUrlWhitelistEnabled()
+		end
 
 		g_lastThink = now + 1 + math.random()
 	end

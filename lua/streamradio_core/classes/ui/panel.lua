@@ -1296,13 +1296,40 @@ function CLASS:GetEntity()
 	return superparent.Entity
 end
 
+function CLASS:GetEntityTable()
+	local superparent = self:GetSuperParent()
+
+	if not superparent._entityTableGetter then
+		return nil
+	end
+
+	return superparent._entityTableGetter()
+end
+
 function CLASS:SetEntity(ent)
 	self:ApplyHierarchy()
 
 	local superparent = self:GetSuperParent()
 
+	if not IsValid(ent) then
+		superparent.Entity = nil
+		superparent._entityTableGetter = nil
+
+		superparent:RemoveFromNwRegister(superparent.entityClassobjsNwRegister)
+
+		self:ApplyNetworkedMode()
+		return
+	end
+
 	superparent.Entity = ent
-	superparent:SetReferenceClassobjsNWRegister(ent._3dstraemradio_classobjs_nw_register)
+	local entTable = ent:GetTable()
+
+	superparent._entityTableGetter = function()
+		-- avoid storing the entity table directly, so we dont leak memory
+		return entTable
+	end
+
+	superparent:SetReferenceClassobjsNWRegister(entTable._3dstraemradio_classobjs_nw_register)
 
 	self:ApplyNetworkedMode()
 end
