@@ -110,6 +110,12 @@ function ENT:ApplyTuneSound()
 			return
 		end
 
+		if stream:IsKilled() then
+			self.streamswitchsound = true
+			self:StopTuneSound()
+			return
+		end
+
 		if IsValid(stream:GetChannel()) then
 			self:FadeoutTuneSound()
 			return
@@ -159,8 +165,9 @@ function ENT:Initialize()
 			self:ApplyTuneSound()
 		end)
 
-		stream:SetEvent("OnError", self, function()
+		stream:SetEvent("OnError", self, function(this, errorCode)
 			if not IsValid(self) then return end
+
 			self:ApplyTuneSound()
 		end)
 
@@ -581,7 +588,7 @@ function ENT:OnMasterradioChange(masterradio, oldmasterradio)
 			end
 
 			this_st:TimerRemove(timername)
-			this_st:Retry()
+			this_st:Reconnect()
 		end)
 
 		this_st:SetEvent("OnError", eventname, function()
@@ -622,7 +629,7 @@ function ENT:OnMasterradioChange(masterradio, oldmasterradio)
 					return
 				end
 
-				this_st:Retry()
+				this_st:Reconnect()
 			end)
 		end)
 	end

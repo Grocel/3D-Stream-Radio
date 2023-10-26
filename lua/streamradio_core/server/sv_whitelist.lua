@@ -114,7 +114,7 @@ function LIB.AddCheckFunction(name, func)
 	g_whitelistFunction[name] = func
 end
 
-function LIB.IsAllowedSync(url)
+function LIB.IsAllowedSync(url, logFailure)
 	url = tostring(url or "")
 
 	if url == "" then

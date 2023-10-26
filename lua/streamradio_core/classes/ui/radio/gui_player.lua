@@ -10,6 +10,8 @@ local LIBError = StreamRadioLib.Error
 local LIBUtil = StreamRadioLib.Util
 local LIBError = StreamRadioLib.Error
 
+local emptyTableSafe = LIBUtil.EmptyTableSafe
+
 local BASE = CLASS:GetBaseClass()
 
 local g_mat_closebutton = StreamRadioLib.GetPNGIcon("door_in")
@@ -150,6 +152,8 @@ function CLASS:Create()
 	end
 
 	if CLIENT then
+		self._textlistBuffer = {}
+
 		self.State = self:CreateListener({
 			Error = 0,
 		}, function(this, k, v)
@@ -208,7 +212,7 @@ function CLASS:ResetStream(nosend)
 	end
 
 	if not IsValid(self.StreamOBJ) then return end
-	self.StreamOBJ:Retry()
+	self.StreamOBJ:Reconnect()
 end
 
 function CLASS:SetStream(stream)
@@ -301,6 +305,22 @@ if CLIENT then
 	end
 end
 
+local function formatInterfaceName(interfaceName, text)
+	interfaceName = interfaceName or ""
+	text = text or ""
+
+	if text == "" then
+		return ""
+	end
+
+	if interfaceName == "" then
+		return text
+	end
+
+	text = string.format("[%s] %s", interfaceName, text)
+	return text
+end
+
 function CLASS:UpdateHeaderTextFromStream()
 	if SERVER then return end
 
@@ -310,63 +330,53 @@ function CLASS:UpdateHeaderTextFromStream()
 	local headerText = self.HeaderText
 	if not IsValid(headerText) then return end
 
-	local textlist = {}
+	local textlist = self._textlistBuffer
+	if not textlist then return end
 
+	emptyTableSafe(textlist)
+
+	local interfaceName = stream:GetActiveInterfaceName()
 	local name = stream:GetStreamName()
-	local isOnlineUrl = stream:IsOnlineUrl()
-	local isCached = stream:IsCached()
 	local url = stream:GetURL()
+
+	name = string.Trim(name)
+	url = string.Trim(url)
 
 	if url == "" then
 		url = "(Unknown URL)"
 	end
 
-	local urlprefix = "URL: "
-	local urlpostfix = ""
-
-	if not isOnlineUrl then
-		urlprefix = "File: "
-	end
-
-	if isCached then
-		urlpostfix = " (Cached)"
+	if name == url then
+		-- Avoid showing the name if it is the URL
+		name = ""
 	end
 
 	if name ~= "" then
 		table.insert(textlist, name)
 	end
 
-	table.insert(textlist, urlprefix .. url .. urlpostfix)
+	if name == "" or not string.find(name, url, 1, true) then
+		-- Avoid showing the URL twice
 
-	local metaname = ""
-	local meta = stream:GetMetadata()
-
-	local prefix = meta.converter_name or ""
-	if prefix ~= "" then
-		prefix = "[" .. prefix .. "] "
+		local urlText = formatInterfaceName(interfaceName, url)
+		table.insert(textlist, urlText)
 	end
 
-	local title = meta.title or ""
+	local metatags = stream:GetMetaTags() or {}
 
-	if title ~= "" then
-		metaname = prefix .. title
-	end
+	local remotename = metatags["streamtitle"] or ""
+	remotename = string.Trim(remotename)
 
-	local remotename = stream:GetMetaTags() or {}
-	remotename = remotename["streamtitle"] or ""
+	remotename = formatInterfaceName(interfaceName, remotename)
 
 	if remotename ~= "" then
-		metaname = prefix .. remotename
-	end
-
-	if metaname ~= "" then
-		table.insert(textlist, metaname)
+		table.insert(textlist, remotename)
 	end
 
 	headerText:SetList(textlist)
 end
 
-function CLASS:WhitelistButtonFromStream()
+function CLASS:UpdateWhitelistButtonFromStream()
 	if SERVER then return end
 
 	local stream = self.StreamOBJ
@@ -387,7 +397,7 @@ function CLASS:UpdateFromStream()
 	if SERVER then return end
 	if not IsValid(self.StreamOBJ) then return end
 
-	self:WhitelistButtonFromStream()
+	self:UpdateWhitelistButtonFromStream()
 	self:UpdateHeaderTextFromStream()
 end
 

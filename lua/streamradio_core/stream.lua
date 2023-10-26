@@ -9,13 +9,13 @@ local LIBError = StreamRadioLib.Error
 
 local catchAndErrorNoHaltWithStack = LIBUtil.CatchAndErrorNoHaltWithStack
 
-local function buildMode(bass3Mode, play3D, noBlock)
+local function buildMode(bass3Mode, worldSound, noBlock)
 	local mode = nil
 
 	if bass3Mode then
 		mode = BASS3.ENUM.MODE_NOPLAY
 
-		if play3D then
+		if worldSound then
 			mode = bit.bor(mode, BASS3.ENUM.MODE_3D)
 		end
 
@@ -28,7 +28,7 @@ local function buildMode(bass3Mode, play3D, noBlock)
 
 	mode = "noplay "
 
-	if play3D then
+	if worldSound then
 		mode = mode .. "3d "
 	end
 
@@ -41,7 +41,7 @@ local function buildMode(bass3Mode, play3D, noBlock)
 	return mode
 end
 
-function LIB.PlayOffline(url, bass3Mode, play3D, noBlock, callback)
+function LIB.PlayOffline(url, bass3Mode, worldSound, noBlock, callback)
 	local safeCallback = function(...)
 		catchAndErrorNoHaltWithStack(callback, ...)
 	end
@@ -49,36 +49,46 @@ function LIB.PlayOffline(url, bass3Mode, play3D, noBlock, callback)
 	-- Avoid playing non existing files to avoid crashing
 	if not file.Exists(url, "GAME") then
 		safeCallback(nil, LIBError.STREAM_ERROR_FILEOPEN)
-		return true
+		return
 	end
 
-	local mode = buildMode(bass3Mode, play3D, noBlock)
+	local mode = buildMode(bass3Mode, worldSound, noBlock)
 
 	url = LIBUrl.SanitizeOfflineUrl(url)
 
 	if bass3Mode then
-		return BASS3.PlayFile(url, mode, safeCallback)
+		local status = BASS3.PlayFile(url, mode, safeCallback)
+
+		if not status then
+			safeCallback(nil, LIBError.STREAM_ERROR_UNKNOWN)
+		end
+
+		return
 	end
 
 	sound.PlayFile(url, mode, safeCallback)
-	return true
 end
 
-function LIB.PlayOnline(url, bass3Mode, play3D, noBlock, callback)
+function LIB.PlayOnline(url, bass3Mode, worldSound, noBlock, callback)
 	local safeCallback = function(...)
 		catchAndErrorNoHaltWithStack(callback, ...)
 	end
 
 	url = LIBUrl.SanitizeOnlineUrl(url)
 
-	local mode = buildMode(bass3Mode, play3D, noBlock)
+	local mode = buildMode(bass3Mode, worldSound, noBlock)
 
 	if bass3Mode then
-		return BASS3.PlayURL(url, mode, safeCallback)
+		local status = BASS3.PlayURL(url, mode, safeCallback)
+
+		if not status then
+			safeCallback(nil, LIBError.STREAM_ERROR_UNKNOWN)
+		end
+
+		return
 	end
 
 	sound.PlayURL(url, mode, safeCallback)
-	return true
 end
 
 return true

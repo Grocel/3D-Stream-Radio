@@ -595,6 +595,11 @@ LIB.AddSubOption("error_info", {
 	Action = function( self, ent )
 		local stream = ent:GetStreamObject()
 
+		if stream:IsKilled() then
+			stream:ReviveStream()
+			return
+		end
+
 		local err = stream:GetError()
 		local url = stream:GetURL()
 
@@ -604,15 +609,32 @@ LIB.AddSubOption("error_info", {
 	Think = function( self, optionPanel, ent )
 		local stream = ent:GetStreamObject()
 
+		if stream:IsKilled() then
+			local label = string.format("%s: %s", self.MenuLabel, "Sound stopped!")
+			local tooltip = "The sound has been stopped. Click here to restart."
+
+			optionPanel:SetText(label)
+			optionPanel:SetTooltip(tooltip)
+			return
+		end
+
 		local err = stream:GetError()
 		local url = stream:GetURL()
 
 		local errorInfo = LIBError.GetStreamErrorInfo(err)
 		local errorName = errorInfo.name
 		local errorDescription = errorInfo.description
+		local hasHelpmenu = errorInfo.helpmenu
 
 		local label = string.format("%s: %i (%s)", self.MenuLabel, err, errorName)
-		local tooltip = string.format("Error %i (%s): %s\n\nCan not play this URL:\n%s\n\nClick for more details.", err, errorName, errorDescription, url)
+
+		local tooltip = ""
+
+		if hasHelpmenu then
+			tooltip = string.format("Error %i (%s): %s\n\nCan not play this URL:\n%s\n\nClick for more details.", err, errorName, errorDescription, url)
+		else
+			tooltip = string.format("Error %i (%s): %s\n\nCan not play this URL:\n%s", err, errorName, errorDescription, url)
+		end
 
 		optionPanel:SetText(label)
 		optionPanel:SetTooltip(tooltip)
@@ -740,8 +762,8 @@ LIB.AddSubOption("playlist_controls", {
 		if not LIB.CanBeTargeted( ent, ply ) then return false end
 		if not LIB.CanProperty("playlist_controls", ent, ply ) then return false end
 
-		local streamObj = ent:GetStreamObject()
-		if not IsValid(streamObj) then
+		local stream = ent:GetStreamObject()
+		if not IsValid(stream) then
 			return false
 		end
 
@@ -766,6 +788,12 @@ LIB.AddSubOption("playlist_controls", {
 	end,
 
 	Play = function( self, ent )
+		local stream = ent:GetStreamObject()
+
+		if stream:IsKilled() then
+			stream:ReviveStream()
+		end
+
 		self:DoControl(ent, g_mode_play)
 	end,
 
@@ -794,12 +822,18 @@ LIB.AddSubOption("playlist_controls", {
 	end,
 
 	Think = function( self, optionPanel, ent )
-		local streamObj = ent:GetStreamObject()
-		if not IsValid(streamObj) then return end
+		local stream = ent:GetStreamObject()
+		if not IsValid(stream) then return end
 
-		local isPlayMode = streamObj:IsPlayMode()
-		local isStopMode = streamObj:IsStopMode()
-		local isEndless = streamObj:IsEndless()
+		local isPlayMode = stream:IsPlayMode()
+		local isStopMode = stream:IsStopMode()
+
+		if stream:IsKilled() then
+			isPlayMode = false
+			isStopMode = true
+		end
+
+		local isEndless = stream:IsEndless()
 
 		local hasPlaylist = ent:GetHasPlaylist()
 
@@ -848,42 +882,42 @@ LIB.AddSubOption("playlist_controls", {
 
 		if not self:Filter( ent, ply ) then return end
 
-		local streamObj = ent:GetStreamObject()
+		local stream = ent:GetStreamObject()
 
 		if mode == g_mode_play then
-			local hasEnded = streamObj:HasEnded()
-			local isPauseMode = streamObj:IsPauseMode()
+			local hasEnded = stream:HasEnded()
+			local isPauseMode = stream:IsPauseMode()
 
 			if isPauseMode and not hasEnded then
-				streamObj:Play(hasEnded)
+				stream:Play(hasEnded)
 			else
 				ent:PlayFromCurrentPlaylistItem()
 			end
 		elseif mode == g_mode_pause then
-			streamObj:Pause()
+			stream:Pause()
 		elseif mode == g_mode_stop then
-			streamObj:Stop()
+			stream:Stop()
 		elseif mode == g_mode_previous_track then
 			ent:PlayPreviousPlaylistItem()
 		elseif mode == g_mode_next_track then
 			ent:PlayNextPlaylistItem()
 		elseif mode == g_mode_rewind then
-			local length = streamObj:GetMasterLength()
+			local length = stream:GetMasterLength()
 
 			if length > 0 then
-				local time = streamObj:GetMasterTime()
+				local time = stream:GetMasterTime()
 				local newtime = math.Clamp(time - 10, 0, length - 0.1)
 
-				streamObj:SetTime(newtime, true)
+				stream:SetTime(newtime, true)
 			end
 		elseif mode == g_mode_fastforward then
-			local length = streamObj:GetMasterLength()
+			local length = stream:GetMasterLength()
 
 			if length > 0 then
-				local time = streamObj:GetMasterTime()
+				local time = stream:GetMasterTime()
 				local newtime = math.Clamp(time + 10, 0, length - 0.1)
 
-				streamObj:SetTime(newtime, true)
+				stream:SetTime(newtime, true)
 			end
 		end
 	end

@@ -7,10 +7,125 @@ table.Empty(LIB)
 
 local LIBUtil = StreamRadioLib.Util
 local LIBNetURL = StreamRadioLib.NetURL
+local LIBString = StreamRadioLib.String
 
-local g_urlSanitizeOnlineUrlCache = LIBUtil.CreateCacheArray(16384)
-local g_urlSanitizeOfflineUrlCache = LIBUtil.CreateCacheArray(16384)
-local g_urlIsOfflineURLCache = LIBUtil.CreateCacheArray(16384)
+local g_sanitizeOnlineUrlCache = LIBUtil.CreateCacheArray(2048)
+local g_sanitizeOfflineUrlCache = LIBUtil.CreateCacheArray(2048)
+local g_isOfflineURLCache = LIBUtil.CreateCacheArray(2048)
+local g_isCustomProtocolURLCache = LIBUtil.CreateCacheArray(2048)
+
+local g_customProtocols = {}
+
+local function GetProtocol(url)
+	url = tostring(url or "")
+
+	local protocol = string.match(url, "^([%w_][%w_]+):[//\\][//\\]") or ""
+	protocol = string.Trim(protocol)
+	protocol = string.lower(protocol)
+
+	return protocol
+end
+
+local function SplittProtocolAndPath(url)
+	local protocol = GetProtocol(url)
+
+	if protocol == "" then
+		return "", url
+	end
+
+	local path = string.match(url, ":[//\\][//\\]([ -~]+)$")
+	return protocol, path
+end
+
+local function SplittDriveLetterAndPath(url)
+	url = tostring(url or "")
+
+	local letter, path = string.match(url, "^(%a):[//\\]+([ -~]+)$")
+
+	letter = letter or ""
+	path = path or ""
+
+	if letter == "" then
+		return "", url
+	end
+
+	if path == "" then
+		return "", url
+	end
+
+	letter = string.Trim(letter)
+	letter = string.lower(letter)
+
+	return letter, path
+end
+
+local function ConcatProtocolAndPath(protocol, path)
+	protocol = tostring(protocol or "")
+	path = tostring(path or "")
+
+	if protocol == "" then
+		return path
+	end
+
+	local url = string.format("%s://%s", protocol, path)
+	return url
+end
+
+local function ConcatDriveLetterAndPath(letter, path)
+	letter = tostring(letter or "")
+	path = tostring(path or "")
+
+	if letter == "" then
+		return path
+	end
+
+	local url = string.format("%s:/%s", letter, path)
+	return url
+end
+
+
+function LIB.SplittProtocolAndPath(url)
+	return SplittProtocolAndPath(url)
+end
+
+function LIB.AddCustomProtocol(protocol)
+	protocol = tostring(protocol or "")
+	protocol = string.Trim(protocol)
+
+	if protocol == "" then
+		return
+	end
+
+	protocol = string.lower(protocol)
+
+	g_customProtocols[protocol] = protocol
+end
+
+function LIB.IsCustomProtocolURL(url)
+	url = tostring(url or "")
+
+	if url == "" then
+		return false
+	end
+
+	if g_isCustomProtocolURLCache:Has(url) then
+		return g_isCustomProtocolURLCache:Get(url)
+	end
+
+	local protocol = GetProtocol(url)
+	g_isCustomProtocolURLCache:Set(url, false)
+
+	if protocol == "" then
+		return false
+	end
+
+	if not g_customProtocols[protocol] then
+		return false
+	end
+
+	g_isCustomProtocolURLCache:Set(url, true)
+	return true
+end
 
 function LIB.IsOfflineURL(url)
 	url = tostring(url or "")
@@ -19,15 +134,20 @@ function LIB.IsOfflineURL(url)
 		return false
 	end
 
-	if g_urlIsOfflineURLCache:Has(url) then
-		return g_urlIsOfflineURLCache:Get(url)
+	if g_isOfflineURLCache:Has(url) then
+		return g_isOfflineURLCache:Get(url)
 	end
 
-	url = string.Trim(url)
+	g_isOfflineURLCache:Set(url, true)
 
-	local protocol = string.Trim(string.match(url, "^([ -~]+):[//\\][//\\]") or "")
+	local letter = SplittDriveLetterAndPath(url)
 
-	g_urlIsOfflineURLCache:Set(url, true)
+	if letter ~= "" then
+		-- drive letter paths (C:/, C://) are offline too, even though we explicitly ban them later
+		return true
+	end
+
+	local protocol = GetProtocol(url)
 
 	if protocol == "" then
 		return true
@@ -37,7 +157,7 @@ function LIB.IsOfflineURL(url)
 		return true
 	end
 
-	g_urlIsOfflineURLCache:Set(url, false)
+	g_isOfflineURLCache:Set(url, false)
 	return false
 end
 
@@ -104,36 +224,6 @@ local function SanitizeUrlInternal(url)
 	return url
 end
 
-local function NormalizePath(path)
-	path = tostring(path or "")
-
-	local oldpath = path
-
-	while true do
-		-- normalize slashes
-		path = string.Replace(path, "\\", "/")
-
-		-- we dont climb up
-		path = string.Replace(path, "../", "")
-
-		-- normalize dot-slashes
-		path = string.Replace(path, "./", "/")
-
-		-- remove double slashes
-		path = string.Replace(path, "//", "/")
-
-		if path == oldpath then
-			break
-		end
-
-		oldpath = path
-	end
-
-	path = string.Trim(path)
-
-	return path
-end
-
 function LIB.SanitizeUrl(url)
 	url = tostring(url or "")
 
@@ -142,12 +232,10 @@ function LIB.SanitizeUrl(url)
 	end
 
 	if LIB.IsOfflineURL(url) then
-		url = LIB.SanitizeOfflineUrl(url)
-	else
-		url = LIB.SanitizeOnlineUrl(url)
+		return LIB.SanitizeOfflineUrl(url)
 	end
 
-	return url
+	return LIB.SanitizeOnlineUrl(url)
 end
 
 function LIB.SanitizeOnlineUrl(url)
@@ -159,8 +247,8 @@ function LIB.SanitizeOnlineUrl(url)
 
 	local cacheId = url
 
-	if g_urlSanitizeOnlineUrlCache:Has(cacheId) then
-		return g_urlSanitizeOnlineUrlCache:Get(cacheId)
+	if g_sanitizeOnlineUrlCache:Has(cacheId) then
+		return g_sanitizeOnlineUrlCache:Get(cacheId)
 	end
 
 	url = SanitizeUrlInternal(url)
@@ -171,8 +259,8 @@ function LIB.SanitizeOnlineUrl(url)
 	url = string.sub(url, 0, StreamRadioLib.STREAM_URL_MAX_LEN_ONLINE)
 	url = string.Trim(url)
 
-	g_urlSanitizeOnlineUrlCache:Set(cacheId, url)
-	g_urlSanitizeOnlineUrlCache:Set(url, url)
+	g_sanitizeOnlineUrlCache:Set(cacheId, url)
+	g_sanitizeOnlineUrlCache:Set(url, url)
 
 	return url
 end
@@ -186,19 +274,36 @@ function LIB.SanitizeOfflineUrl(url)
 
 	local cacheId = url
 
-	if g_urlSanitizeOfflineUrlCache:Has(cacheId) then
-		return g_urlSanitizeOfflineUrlCache:Get(cacheId)
+	if g_sanitizeOfflineUrlCache:Has(cacheId) then
+		return g_sanitizeOfflineUrlCache:Get(cacheId)
+	end
+
+	if not LIB.IsValidURL(url) then
+		return ""
 	end
 
 	url = SanitizeUrlInternal(url)
 
-	url = NormalizePath(url)
+	local letter, letterPath = SplittDriveLetterAndPath(thisPath)
+	if letter ~= "" then
+		letterPath = LIBString.NormalizeSlashes(letterPath)
+		letterPath = string.TrimLeft(letterPath, "/")
+
+		url = ConcatDriveLetterAndPath(letter, letterPath)
+	else
+		local protocol, protocolPath = SplittProtocolAndPath(url)
+
+		protocolPath = LIBString.NormalizeSlashes(protocolPath)
+		protocolPath = string.TrimLeft(protocolPath, "/")
+
+		url = ConcatProtocolAndPath(protocol, protocolPath)
+	end
 
 	url = string.sub(url, 0, StreamRadioLib.STREAM_URL_MAX_LEN_OFFLINE)
 	url = string.Trim(url)
 
-	g_urlSanitizeOfflineUrlCache:Set(cacheId, url)
-	g_urlSanitizeOfflineUrlCache:Set(url, url)
+	g_sanitizeOfflineUrlCache:Set(cacheId, url)
+	g_sanitizeOfflineUrlCache:Set(url, url)
 
 	return url
 end
@@ -226,49 +331,22 @@ function LIB.IsDriveLetterOfflineURL(url)
 
 	url = string.Trim(url or "")
 
-	local driveLetter = string.Trim(string.match(url, "([a-zA-Z]+):[//\\]") or "")
-	if driveLetter == "" then
+	local _, path = SplittProtocolAndPath(url)
+	local letter = SplittDriveLetterAndPath(path)
+
+	if letter == "" then
 		return false
 	end
 
 	return true
 end
 
-function LIB.PrepairURL(url)
-	url = LIB.SanitizeUrl(url)
-
-	if LIB.IsOfflineURL(url) then
-		local fileurl = LIB.SanitizeOfflineUrl(string.match(url, ":[//\\][//\\]([ -~]+)$") or "")
-
-		if fileurl ~= "" then
-			url = fileurl
-		end
-
-		url = "sound/" .. url
-		url = NormalizePath(url)
-
-		return url, StreamRadioLib.STREAM_URLTYPE_FILE
-	end
-
-	local Cachefile = StreamRadioLib.Cache.GetFile(url)
-
-	if Cachefile then
-		url = "data/" .. Cachefile
-		url = NormalizePath(url)
-
-		return url, StreamRadioLib.STREAM_URLTYPE_CACHE
-	end
-
-	local URLType = StreamRadioLib.STREAM_URLTYPE_ONLINE
-
-	return url, URLType
-end
-
 function LIB.Load()
 	StreamRadioLib.Hook.Add("PostCleanupMap", "reset_cache_url", function()
-		g_urlSanitizeOnlineUrlCache:Empty()
-		g_urlSanitizeOfflineUrlCache:Empty()
-		g_urlIsOfflineURLCache:Empty()
+		g_sanitizeOnlineUrlCache:Empty()
+		g_sanitizeOfflineUrlCache:Empty()
+		g_isOfflineURLCache:Empty()
+		g_isCustomProtocolURLCache:Empty()
 	end)
 end
 

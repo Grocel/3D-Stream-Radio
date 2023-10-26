@@ -93,7 +93,7 @@ function LIB.AdvWeld( ent, traceEntity, tracePhysicsBone, DOR, collision, AllowW
 	if AllowWorldWeld or IsEnt then
 		local const = constraint.Weld(ent, traceEntity, 0, tracePhysicsBone, 0, not collision, DOR)
 
-		-- Don't disable collision if it's not attached to anything
+		-- Don't disable collision if it is not attached to anything
 		if (not collision and IsValid(const)) then
 			if IsValid( phys ) then
 				phys:EnableCollisions(collision)

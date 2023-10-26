@@ -57,7 +57,7 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "play.desc", "If set, the radio will try to play a given URL on spawn or apply.\nThe URL can be set by this Tools or via Wiremod.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "nodisplay", "Disable display")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noadvwire", "Disable advanced wire outputs")
-	StreamRadioLib.Tool.AddLocale(TOOL, "noadvwire.desc", "Disables the advanced wire outputs.\nIt's always disabled if Wiremod or GM_BASS3 is not installed on the Server.")
+	StreamRadioLib.Tool.AddLocale(TOOL, "noadvwire.desc", "Disables the advanced wire outputs.\nIt is always disabled if Wiremod or GM_BASS3 is not installed on the Server.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noinput", "Disable control")
 	StreamRadioLib.Tool.AddLocale(TOOL, "noinput.desc", "Disable the control of the display.\nWiremod controlling will still work.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "nospectrum", "Disable spectrum visualization")

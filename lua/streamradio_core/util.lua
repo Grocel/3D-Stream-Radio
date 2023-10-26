@@ -5,7 +5,19 @@ StreamRadioLib.Util = StreamRadioLib.Util or {}
 local LIB = StreamRadioLib.Util
 table.Empty(LIB)
 
+local g_debug = false
+local g_debug_nextcheck = 0
+
 function LIB.IsDebug()
+	local now = RealTime()
+
+	if g_debug_nextcheck > now then
+		return g_debug
+	end
+
+	g_debug_nextcheck = now + 1
+	g_debug = false
+
 	local devconvar = GetConVar("developer")
 	if not devconvar then
 		return false
@@ -15,6 +27,7 @@ function LIB.IsDebug()
 		return false
 	end
 
+	g_debug = true
 	return true
 end
 
@@ -160,30 +173,30 @@ function LIB.EmptyTableSafe(tab)
 end
 
 function LIB.DeleteFolder(path)
-	if not StreamRadioLib.DataDirectory then
+	local baseDirectory = StreamRadioLib.DataDirectory or ""
+
+	if baseDirectory == "" then
 		return false
 	end
 
-	if StreamRadioLib.DataDirectory == "" then
-		return false
-	end
+	path = tostring(path or "")
 
 	if path == "" then
 		return false
 	end
 
-	if not string.StartWith(path, StreamRadioLib.DataDirectory) then
+	if not string.StartsWith(path, baseDirectory) then
 		return false
 	end
 
 	local files, folders = file.Find(path .. "/*", "DATA")
 
-	for k, v in pairs(folders or {}) do
-		LIB.DeleteFolder(path .. "/" .. v)
-	end
-
 	for k, v in pairs(files or {}) do
 		file.Delete(path .. "/" .. v)
+	end
+
+	for k, v in pairs(folders or {}) do
+		LIB.DeleteFolder(path .. "/" .. v)
 	end
 
 	file.Delete(path)

@@ -207,12 +207,12 @@ local function AsForDelete( self, func, ... )
 	return true
 end
 
-local Default_Format = StreamRadioLib.Filesystem.GetTypeExt(StreamRadioLib.TYPE_DEFAULT)
-
 local function CreateFile( self, defaultString, func, ... )
 	if not IsValid(self) then return false end
 	if not self:IsVisible() then return false end
 	if not func then return false end
+
+	local Default_Format = StreamRadioLib.Filesystem.GetTypeExt(StreamRadioLib.TYPE_DEFAULT)
 
 	local name = "new_playlist." .. Default_Format
 	defaultString = string.Trim(defaultString or "")
@@ -315,6 +315,8 @@ local function SaveTo(self, defaultString, func, ...)
 	if not self:IsVisible() then return false end
 	if not IsValid(self.Files) then return false end
 	if not func then return false end
+
+	local Default_Format = StreamRadioLib.Filesystem.GetTypeExt(StreamRadioLib.TYPE_DEFAULT)
 
 	local args = {...}
 	local path = self.m_strFolderPath or ""

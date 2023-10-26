@@ -202,6 +202,14 @@ function CLASS:GetAlign()
 	return self.ImageData.AlignX or TEXT_ALIGN_CENTER, self.ImageData.AlignY or TEXT_ALIGN_CENTER
 end
 
+function CLASS:IsVisibleSimple()
+	if CLIENT and not self.ImageData.Material then
+		return false
+	end
+
+	return BASE.IsVisibleSimple(self)
+end
+
 function CLASS:IsVisible()
 	if CLIENT and not self.ImageData.Material then
 		return false

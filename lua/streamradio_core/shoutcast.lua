@@ -1169,13 +1169,13 @@ function LIB.GetListOfGenre(hierarchy, callback)
 
 	if not genre then
 		callback(false)
-		return false
+		return
 	end
 
 	local cache = g_list_cache:Get(hierarchyString)
 	if cache then
 		callback(true, cache)
-		return true
+		return
 	end
 
 	g_list_cache:Remove(hierarchyString)
@@ -1183,7 +1183,7 @@ function LIB.GetListOfGenre(hierarchy, callback)
 	local searchGenre = genre.title or ""
 	if searchGenre == "" then
 		callback(false)
-		return false
+		return
 	end
 
 	local resultCallback = function(success, data)
@@ -1246,11 +1246,9 @@ function LIB.GetListOfGenre(hierarchy, callback)
 		callback(true, results)
 	end
 
-	local status = LIBHttp.Request(g_browseByGenreUrl, resultCallback, {
+	LIBHttp.Request(g_browseByGenreUrl, resultCallback, {
 		genrename = searchGenre
 	}, "POST")
-
-	return status
 end
 
 function LIB.GetStreamUrlById(id)

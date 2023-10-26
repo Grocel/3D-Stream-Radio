@@ -198,7 +198,7 @@ end
 function CLASS:UpdateTooltip(text)
 	if SERVER then return end
 	if not IsValid(self.Tooltip) then return end
-	if not self.Tooltip:IsVisible() then return end
+	if not self.Tooltip:IsVisibleSimple() then return end
 
 	text = tostring(text or "")
 	self.Tooltip:SetText(text)
@@ -237,7 +237,7 @@ end
 function CLASS:PosTooltipToCursor(force)
 	if SERVER then return end
 	if not IsValid(self.Tooltip) then return end
-	if not force and not self.Tooltip:IsVisible() then return end
+	if not force and not self.Tooltip:IsVisibleSimple() then return end
 
 	local x, y = self:GetPos()
 

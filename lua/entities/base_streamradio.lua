@@ -3,6 +3,7 @@ AddCSLuaFile()
 DEFINE_BASECLASS("base_anim")
 
 local StreamRadioLib = StreamRadioLib
+
 local LIBNetwork = StreamRadioLib.Network
 local LIBWire = StreamRadioLib.Wire
 local LIBUtil = StreamRadioLib.Util
@@ -571,7 +572,6 @@ function ENT:InternalSlowThink()
 
 	StreamRadioLib.RegisterRadio(self)
 
-	self._isDebugCache = nil
 	self._beingLookedAtCache = nil
 	self._showDebugCache = nil
 
@@ -654,18 +654,6 @@ if SERVER then
 	end
 end
 
-
-function ENT:IsDebug()
-	if self._isDebugCache ~= nil then
-		return self._isDebugCache
-	end
-
-	local isDebug = LIBUtil.IsDebug()
-	self._isDebugCache = isDebug
-
-	return isDebug
-end
-
 function ENT:ShowDebug()
 	if self._showDebugCache ~= nil then
 		return self._showDebugCache
@@ -673,7 +661,7 @@ function ENT:ShowDebug()
 
 	self._showDebugCache = false
 
-	if not self:IsDebug() then
+	if not LIBUtil.IsDebug() then
 		return false
 	end
 

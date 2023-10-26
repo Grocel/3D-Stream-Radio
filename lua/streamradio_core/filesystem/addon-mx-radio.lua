@@ -191,7 +191,7 @@ function RADIOFS:Write(globalpath, vpath, data, callback)
 	f:Write(DataString)
 	f:Close()
 
-	-- Telling the MX-Radio addon to update it's playlist.
+	-- Telling the MX-Radio addon to update its playlist.
 	self:SavePCall(SetUpStationTable)
 
 	callback(true)

@@ -2,10 +2,11 @@ AddCSLuaFile()
 DEFINE_BASECLASS("base_streamradio")
 
 local StreamRadioLib = StreamRadioLib
-local LIBNetwork = StreamRadioLib.Network
+
 local LIBModel = StreamRadioLib.Model
 local LIBSkin = StreamRadioLib.Skin
 local LIBWire = StreamRadioLib.Wire
+local LIBUtil = StreamRadioLib.Util
 
 ENT.RenderGroup = RENDERGROUP_BOTH
 ENT.Spawnable = false
@@ -322,7 +323,7 @@ function ENT:SetupGui(callback)
 	GUI:SetEntity(self)
 	GUI:ActivateNetworkedMode()
 
-	if SERVER and self:IsDebug() then
+	if SERVER and LIBUtil.IsDebug() then
 		self:SetEnableDebug(true)
 	end
 

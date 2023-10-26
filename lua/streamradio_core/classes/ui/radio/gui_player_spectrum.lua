@@ -174,9 +174,13 @@ function CLASS:Render()
 	local stream = self.StreamOBJ
 
 	if not IsValid(stream) then return end
-	if not self:IsVisible() then return end
 
 	if stream:GetMuted() then
+		self:RenderIcon(g_mat_mute)
+		return
+	end
+
+	if stream:IsKilled() then
 		self:RenderIcon(g_mat_mute)
 		return
 	end
@@ -231,6 +235,10 @@ function CLASS:ShouldPerformRerender()
 	local stream = self.StreamOBJ
 
 	if stream:GetMuted() then
+		return false
+	end
+
+	if stream:IsKilled() then
 		return false
 	end
 

@@ -67,6 +67,7 @@ function CLASS:Create()
 		Margin = 5,
 		ZIndex = 0,
 		Visible = true,
+		PaintBackground = true,
 		Tooltip = "",
 	}, function(this, k, v)
 		self:InvalidateLayout()
@@ -243,7 +244,7 @@ function CLASS:_RenderInternal()
 	if SERVER then return end
 	if not self.Valid then return end
 
-	if not self:IsVisible() then
+	if not self:IsVisibleSimple() then
 		self._rendered = true
 		return
 	end
@@ -257,7 +258,10 @@ function CLASS:_RenderInternal()
 		surface.SetAlphaMultiplier(alpha)
 	end
 
-	self:Render()
+	if self:GetPaintBackground() then
+		self:Render()
+	end
+
 	self:ForEachChild(RenderInternalPanel, true)
 
 	if isTransparent then
@@ -868,8 +872,10 @@ function CLASS:SetSize(w, h)
 		h = 0
 	end
 
-	self.Size.w = w
-	self.Size.h = h
+	local size = self.Size
+
+	size.w = w
+	size.h = h
 end
 
 function CLASS:SetWidth(w)
@@ -893,7 +899,9 @@ function CLASS:SetHeight(h)
 end
 
 function CLASS:GetSize()
-	return self.Size.w or 0, self.Size.h or 0
+	local size = self.Size
+
+	return size.w or 0, size.h or 0
 end
 
 function CLASS:GetWidth()
@@ -1187,16 +1195,7 @@ function CLASS:IsVisible()
 		return isvisible
 	end
 
-	local w, h = self:GetSize()
-	if w <= 0 then
-		return self:SetCacheValue("IsVisible", false)
-	end
-
-	if h <= 0 then
-		return self:SetCacheValue("IsVisible", false)
-	end
-
-	if not self.Layout.Visible then
+	if not self:IsVisibleSimple() then
 		return self:SetCacheValue("IsVisible", false)
 	end
 
@@ -1208,8 +1207,44 @@ function CLASS:IsVisible()
 	return self:SetCacheValue("IsVisible", true)
 end
 
+function CLASS:IsVisibleSimple()
+	local w, h = self:GetSize()
+
+	if w <= 0 then
+		return false
+	end
+
+	if h <= 0 then
+		return false
+	end
+
+	return self.Layout.Visible
+end
+
 function CLASS:SetVisible(bool)
 	self.Layout.Visible = bool or false
+end
+
+function CLASS:IsVisibleSimple()
+	local w, h = self:GetSize()
+
+	if w <= 0 then
+		return false
+	end
+
+	if h <= 0 then
+		return false
+	end
+
+	return self.Layout.Visible
+end
+
+function CLASS:SetPaintBackground(bool)
+	self.Layout.PaintBackground = bool or false
+end
+
+function CLASS:GetPaintBackground()
+	return self.Layout.PaintBackground
 end
 
 function CLASS:GetZPos()

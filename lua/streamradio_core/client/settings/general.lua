@@ -150,15 +150,6 @@ LIB.AddConVar("general", "bass3_enable", "cl_streamradio_bass3_enable", "1", {
 	type = "bool",
 })
 
-LIB.AddConVar("general", "youtubesupport", "cl_streamradio_youtubesupport", "0", {
-	label = "Enable YouTube support (slow and unreliable!)",
-	help = "Enable YouTube support when set to 1. (slow and unreliable!) Default: 0",
-	type = "bool",
-	userdata = true,
-	hidden = true,
-	disabled = true,
-})
-
 local function BuildMenuPanel(CPanel)
 	if not IsValid(CPanel) then return end
 

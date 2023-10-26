@@ -5,8 +5,13 @@ if not istable( RADIOIFACE ) then
 end
 
 RADIOIFACE.name = "Dropbox"
-RADIOIFACE.download = true
-RADIOIFACE.download_timeout = 5
+RADIOIFACE.priority = 200
+RADIOIFACE.online = true
+RADIOIFACE.cache = false
+
+RADIOIFACE.downloadTimeout = 5
+RADIOIFACE.downloadFirst = true
+RADIOIFACE.allowCaching = true
 
 local ERROR_NO_PATH = 130000
 
@@ -31,6 +36,8 @@ local DropboxURLs = {
 	"//www.dl.dropboxusercontent.com/",
 	"//dl.dropboxusercontent.com/",
 }
+
+StreamRadioLib.Url.AddCustomProtocol("dropbox")
 
 function RADIOIFACE:CheckURL(url)
 	for i, v in ipairs(DropboxURLs) do
@@ -67,14 +74,14 @@ function RADIOIFACE:ParseURL(url)
 	return nil
 end
 
-local g_dropbox_content_url = "https://www.dl.dropboxusercontent.com/";
+local g_dropbox_content_url = "https://dl.dropboxusercontent.com/";
 
 function RADIOIFACE:Convert(url, callback)
 	local path = self:ParseURL(url)
 
 	if not path then
 		callback(self, false, nil, ERROR_NO_PATH)
-		return true
+		return
 	end
 
 	local streamUrl = g_dropbox_content_url .. path
@@ -83,6 +90,5 @@ function RADIOIFACE:Convert(url, callback)
 		dl = 1,
 	})
 
-	callback(self, true, streamUrl, nil, nil)
-	return true
+	callback(self, true, streamUrl)
 end

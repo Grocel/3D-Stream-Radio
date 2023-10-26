@@ -111,7 +111,21 @@ function CLASS:SetAdminWhitelistButtonVisible(visible)
 	self:InvalidateLayout(true, false)
 end
 
+function CLASS:ResetLayout()
+	if IsValid(self.BodyPanelText) then
+		self.BodyPanelText:SetVisible(true)
+	end
+
+	if IsValid(self.HelpButton) then
+		self.HelpButton:SetVisible(true)
+	end
+
+	self:SetPaintBackground(true)
+end
+
 function CLASS:SetPlaylistError(url)
+	self:ResetLayout()
+
 	url = tostring(url or "")
 
 	self.Error = LIBError.PLAYLIST_ERROR_INVALID_FILE
@@ -121,6 +135,7 @@ function CLASS:SetPlaylistError(url)
 
 	local code = errorInfo.id
 	local name = errorInfo.name
+	local hasHelpmenu = errorInfo.helpmenu
 
 	local text
 
@@ -134,12 +149,48 @@ function CLASS:SetPlaylistError(url)
 		self.BodyPanelText:SetText(text)
 	end
 
+	if IsValid(self.HelpButton) then
+		self.HelpButton:SetVisible(hasHelpmenu)
+	end
+
+	self:Open()
+end
+
+function CLASS:SetSoundKilledError()
+	self:ResetLayout()
+
+	self.Error = LIBError.STREAM_SOUND_STOPPED
+	self.URL = ""
+
+	if IsValid(self.BodyPanelText) then
+		self.BodyPanelText:SetVisible(false)
+	end
+
+	if IsValid(self.HelpButton) then
+		self.HelpButton:SetVisible(false)
+	end
+
+	self.BodyPanelText:SetPaintBackground(false)
+	self:SetPaintBackground(false)
+
 	self:Open()
 end
 
 function CLASS:SetErrorCode(err, url)
 	err = tonumber(err or 0) or 0
 	url = tostring(url or "")
+
+	if err == LIBError.STREAM_SOUND_STOPPED then
+		self:SetSoundKilledError()
+		return
+	end
+
+	if err == LIBError.PLAYLIST_ERROR_INVALID_FILE then
+		self:SetSoundKilledError()
+		return
+	end
+
+	self:ResetLayout()
 
 	self.Error = err
 	self.URL = url
@@ -149,6 +200,7 @@ function CLASS:SetErrorCode(err, url)
 	local code = errorInfo.id
 	local name = errorInfo.name
 	local description = errorInfo.description or ""
+	local hasHelpmenu = errorInfo.helpmenu
 
 	local text
 
@@ -162,7 +214,11 @@ function CLASS:SetErrorCode(err, url)
 		self.BodyPanelText:SetText(text)
 	end
 
-	if err ~= 0 then
+	if IsValid(self.HelpButton) then
+		self.HelpButton:SetVisible(hasHelpmenu)
+	end
+
+	if err ~= LIBError.STREAM_OK then
 		self:Open()
 	else
 		self:Close()

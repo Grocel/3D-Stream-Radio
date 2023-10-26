@@ -75,6 +75,8 @@ local function ChannelStop( channel )
 	return
 end
 
+local retry_timeout_max = 3
+
 local retry_errors_non3d = {
 	[41] = true,
 	[21] = true,
@@ -91,13 +93,32 @@ local retry_errors_block = {
 	[-1] = true
 }
 
+local retry_errors_urlblocked = {
+	[LIBError.STREAM_ERROR_URL_NOT_WHITELISTED] = true,
+}
+
+local function loadLibs()
+	if LIBError.STREAM_ERROR_CFCHTTP_BLOCKED_URI then
+		retry_errors_urlblocked[LIBError.STREAM_ERROR_CFCHTTP_BLOCKED_URI] = true
+	end
+end
+
 function CLASS:Create()
 	BASE.Create(self)
 
+	if loadLibs then
+		loadLibs()
+		loadLibs = nil
+	end
+
 	self.Channel = nil
-	self.Metadata = {}
 	self.TimeOffset = 0
 	self.ChannelChanged = false
+	self.nextUrlBackgroundCheck = 0
+	self.urlBackgroundCheckRuns = nil
+
+	self._converter_downloads = {}
+	self._cache_downloads = {}
 
 	if CLIENT then
 		self.ConVarGlobalVolume = StreamRadioLib.Settings.GetConVar("volume")
@@ -109,36 +130,41 @@ function CLASS:Create()
 	end
 
 	self.URL = self:CreateListener({
-		extern = "",
+		external = "",
+		internal = "",
 	}, function(this, k, v)
-		local rawv = v
+		if k == "external" then
+			self.URL.internal = ""
 
-		v = string.Trim(tostring(v or ""))
-		v = LIBUrl.SanitizeUrl(v)
+			local rawv = v
 
-		if rawv ~= v then
-			// avoid calling it twice on unclean input
-			self.URL.extern = v
-			return
+			v = string.Trim(tostring(v or ""))
+			v = LIBUrl.SanitizeUrl(v)
+
+			if rawv ~= v then
+				// avoid calling it twice on unclean input
+				self.URL.external = v
+				return
+			end
+
+			self:SetNWString("URL", v)
+
+			self.TimeOffset = 0
+			self._wouldpredownload = nil
+			self._LastMasterState = nil
+			self._server_override_timedata = nil
+			self.Old_ClientStateListBuffer = nil
+			self:SetClientStateOnServer("Time", 0)
+
+			self._isCached = nil
+			self._isOnline = nil
+			self._interfaceName = nil
+			self._isOnlineUrl = LIBUrl.IsOnlineURL(v)
+			self._isCheckingUrl = nil
+
+			self.ChannelChanged = true
+			self:Update()
 		end
-
-		self:SetNWString("URL", v)
-
-		self.TimeOffset = 0
-		self._wouldpredownload = nil
-		self._LastMasterState = nil
-		self._server_override_timedata = nil
-		self.Old_ClientStateListBuffer = nil
-		self:SetClientStateOnServer("Time", 0)
-
-		self._isCached = nil
-		self._isOnline = nil
-		self._isOnlineUrl = LIBUrl.IsOnlineURL(v)
-		self._isCheckingUrl = nil
-		self._converter_meta = nil
-
-		self.ChannelChanged = true
-		self:Update()
 	end)
 
 	if CLIENT then
@@ -157,7 +183,7 @@ function CLASS:Create()
 			OutVolume = 1,
 		}, function(this, k, v)
 			if k == "WorldSound" then
-				self:QueueCall("Retry")
+				self:QueueCall("Reconnect")
 			end
 
 			self:UpdateChannelWS()
@@ -246,7 +272,7 @@ function CLASS:Create()
 
 		if k == "Name" then
 			self:RemoveChannel(true)
-			self:Retry()
+			self:Reconnect()
 			self:SetNWString("Name", v)
 		end
 
@@ -256,7 +282,7 @@ function CLASS:Create()
 		end
 
 		if k == "HasBass" then
-			self:Retry()
+			self:Reconnect()
 		end
 
 		if k == "Seeking" then
@@ -355,7 +381,7 @@ function CLASS:ActivateNetworkedMode()
 
 	if SERVER then
 		self:SetNWFloat("Volume", self.Volume.SVMul)
-		self:SetNWString("URL", self.URL.extern)
+		self:SetNWString("URL", self.URL.external)
 		self:SetNWInt("PlayMode", self.State.PlayMode)
 		self:SetNWBool("Loop", self.State.Loop)
 		self:SetNWString("Name", self.State.Name)
@@ -367,7 +393,7 @@ function CLASS:ActivateNetworkedMode()
 	end)
 
 	self:SetNWVarCallback("URL", "String", function(this, nwkey, oldvar, newvar)
-		self.URL.extern = newvar
+		self.URL.external = newvar
 	end)
 
 	self:SetNWVarCallback("PlayMode", "Int", function(this, nwkey, oldvar, newvar)
@@ -383,7 +409,7 @@ function CLASS:ActivateNetworkedMode()
 	end)
 
 	self.Volume.SVMul = self:GetNWFloat("Volume", 1)
-	self.URL.extern = self:GetNWString("URL", "")
+	self.URL.external = self:GetNWString("URL", "")
 	self.State.PlayMode = self:GetNWInt("PlayMode", StreamRadioLib.STREAM_PLAYMODE_STOP)
 	self.State.Loop = self:GetNWBool("Loop", false)
 	self.State.Name = self:GetNWString("Name", "")
@@ -677,59 +703,147 @@ function CLASS:FastThink()
 
 	self:SyncTime()
 	self:DoUrlBackgroundCheck()
+
+	if CLIENT then
+		self:DoUnexpectedStopCheck()
+	end
+end
+
+function CLASS:DoUnexpectedStopCheck()
+	if not self:IsActive() then
+		return
+	end
+
+	if not self:IsStopped() then
+		return
+	end
+
+	if not self:IsPlayMode() then
+		return
+	end
+
+	self:KillStream()
+end
+
+function CLASS:IsAllowedUrlPair(externalUrl, internalUrl, callback, logFailure)
+	self:IsAllowedInternalUrl(internalUrl, function(this, allowed, err)
+		-- Ask CFC first (internal URL), so we can show errors right away.
+		-- It should appear in a higher priority to the user then the in-addon whitelisting.
+
+		if not allowed then
+			callback(this, false, err)
+			return
+		end
+
+		self:IsAllowedExternalUrl(externalUrl, callback)
+	end, logFailure)
+end
+
+function CLASS:IsAllowedInternalUrl(url, callback, logFailure)
+	StreamRadioLib.Cfchttp.IsAllowedAsync(url, function(allowed)
+		if not IsValid(self) then return end
+
+		if not allowed then
+			callback(self, allowed, LIBError.STREAM_ERROR_CFCHTTP_BLOCKED_URI)
+			return
+		end
+
+		callback(self, true, nil)
+	end, logFailure)
+end
+
+function CLASS:IsAllowedExternalUrl(url, callback)
+	StreamRadioLib.Whitelist.IsAllowedAsync(url, function(allowed)
+		if not IsValid(self) then return end
+
+		if not allowed then
+			callback(self, allowed, LIBError.STREAM_ERROR_URL_NOT_WHITELISTED)
+			return
+		end
+
+		callback(self, true, nil)
+	end)
 end
 
 function CLASS:DoUrlBackgroundCheck()
+	-- This will automatically stop the running stream if its URL is not allowed.
+	-- And it also will automatically reconnect the stream if it was blocked/stopped by the whitelist protection.
+
 	if self.urlBackgroundCheckRuns then
 		return
 	end
 
 	local now = RealTime()
 
-	if self.nextUrlBackgroundCheck and self.nextUrlBackgroundCheck > now then
+	if self.nextUrlBackgroundCheck > now then
 		return
 	end
 
 	self.nextUrlBackgroundCheck = now + 1 + math.random() * 2
 
+	if self:GetMuted() then
+		return
+	end
+
+	if self:IsKilled() then
+		return
+	end
+
 	if not self:IsActive() then
 		return
 	end
 
-	if not self:IsOnlineUrl() then
+	if not self:IsOnline() then
+		return
+	end
+
+	local externalUrl = self.URL.external
+	local internalUrl = self.URL.internal
+
+	if externalUrl == "" then
+		return
+	end
+
+	if internalUrl == "" then
 		return
 	end
 
 	self.urlBackgroundCheckRuns = true
 
-	local URLExtern = self.URL.extern
-
-	StreamRadioLib.Whitelist.IsAllowedAsync(URLExtern, function(isAllowed)
-		if not IsValid(self) then return end
-
+	self:IsAllowedUrlPair(externalUrl, internalUrl, function(this, isAllowed)
 		self.nextUrlBackgroundCheck = RealTime() + 1 + math.random() * 2
 		self.urlBackgroundCheckRuns = nil
+
+		if self:GetMuted() then
+			return
+		end
+
+		if self:IsKilled() then
+			return
+		end
 
 		if not self:IsActive() then
 			return
 		end
 
-		if not self:IsOnlineUrl() then
+		if not self:IsOnline() then
 			return
 		end
 
-		local isWhitelistError = self:GetError() == LIBError.STREAM_ERROR_URL_NOT_WHITELISTED
+		local isWhitelistError = retry_errors_urlblocked[self:GetError()]
 
 		if not isAllowed then
 			if not isWhitelistError then
-				self:Retry()
+				-- Attempt to reconnect respecting the changed rules. It will likely fail and run its relatively complex error handling.
+				self:Reconnect()
 			end
 		else
 			if isWhitelistError then
-				self:Retry()
+				-- We are allowed to play again, so let's go.
+				self:Reconnect()
 			end
 		end
-	end)
+	end, false)
 end
 
 function CLASS:CallEx(func, callnow, ...)
@@ -759,7 +873,7 @@ function CLASS:UpdateInternal()
 		return
 	end
 
-	if not self:IsActive() then
+	if not self:IsActiveOrLoading() then
 		self:Connect()
 		self.ChannelChanged = false
 		return
@@ -775,17 +889,18 @@ function CLASS:UpdateChannelMuted()
 		return
 	end
 
-	self:Retry()
+	self:Reconnect()
 end
 
 function CLASS:UpdateChannelWS()
 	if not self:Is3DChannel() then return end
 
 	local WSData = self.WSData
+	local Channel = self.Channel
 
-	self.Channel:SetPos( WSData.Position, WSData.Forward, WSData.Velocity )
-	self.Channel:Set3DFadeDistance( WSData.DistanceStart, WSData.DistanceEnd )
-	self.Channel:Set3DCone( WSData.InnerAngle, WSData.OuterAngle, WSData.OutVolume )
+	Channel:SetPos( WSData.Position, WSData.Forward, WSData.Velocity )
+	Channel:Set3DFadeDistance( WSData.DistanceStart, WSData.DistanceEnd )
+	Channel:Set3DCone( WSData.InnerAngle, WSData.OuterAngle, WSData.OutVolume )
 end
 
 function CLASS:UpdateChannelVolume()
@@ -794,7 +909,7 @@ function CLASS:UpdateChannelVolume()
 	if not IsValid( self.ConVarGlobalVolume ) then return end
 	if not IsValid( self.Channel ) then return end
 
-	local boost3d = self:Is3DChannel() and 2.00 or 1
+	local boost3d = self:Is3DChannel() and 2.00 or 1.00
 
 	local SVvol = self.Volume.SVMul
 	local CLvol = self.Volume.CLMul
@@ -826,7 +941,7 @@ function CLASS:UpdateChannelPlayMode()
 	if not self.Valid then return end
 	local playmode = self.State.PlayMode
 
-	if self.URL.extern == "" then
+	if self.URL.external == "" then
 		self:RemoveChannel(true)
 		self.State.Stopped = true
 		return
@@ -873,18 +988,19 @@ end
 function CLASS:RemoveChannel(clearlast)
 	ChannelStop(self.Channel)
 
-	self._playUid = nil
-	self.nextUrlBackgroundCheck = nil
+	self._streamTaskUid = nil
 	self.urlBackgroundCheckRuns = nil
 
 	self.Channel = nil
-	self.State.Error = 0
-	self.Metadata = {}
+	self.State.Error = LIBError.STREAM_OK
 	self._tags = nil
 	self._isCached = nil
 	self._isOnline = nil
+	self._interfaceName = nil
 	self._isCheckingUrl = nil
-	self._converter_meta = nil
+
+	LIBUtil.EmptyTableSafe(self._converter_downloads)
+	LIBUtil.EmptyTableSafe(self._cache_downloads)
 
 	if clearlast then
 		self.TimeOffset = 0
@@ -938,15 +1054,6 @@ function CLASS:__eq( other )
 	return false
 end
 
-function CLASS:IsLoading()
-	if not self.Valid then return false end
-	if not self._playUid then return false end
-	if IsValid(self.Channel) then return false end
-	if self:HasError() then return false end
-
-	return true
-end
-
 function CLASS:IsDownloading()
 	if not self.Valid then return false end
 	if not self._converter_downloads then return false end
@@ -976,17 +1083,17 @@ function CLASS:IsBASSEngineEnabled()
 	return self.State.HasBass or false
 end
 
-function CLASS:_IsActivePlayUid(playUid)
+function CLASS:_IsActiveStreamTaskUid(streamTaskUid)
 	if not self.Valid then return false end
 
-	if not playUid then
-		ErrorNoHaltWithStack("Bad playUid!")
+	if not streamTaskUid then
+		ErrorNoHaltWithStack("Bad streamTaskUid!")
 		return false
 	end
 
-	if self.URL.extern == "" then return false end
-	if not self._playUid then return false end
-	if self._playUid ~= playUid then return false end
+	if self.URL.external == "" then return false end
+	if not self._streamTaskUid then return false end
+	if self._streamTaskUid ~= streamTaskUid then return false end
 
 	if self:GetMuted() then return false end
 	if self.State.Stopped then return false end
@@ -997,45 +1104,21 @@ function CLASS:_IsActivePlayUid(playUid)
 	return true
 end
 
-function CLASS:Retry()
-	self:RemoveChannel()
-	return self:Connect()
+function CLASS:AcceptError(err)
+	self:AcceptStream(nil, err)
 end
 
-function CLASS:Connect()
-	self._playUid = LIBUtil.Uid()
+function CLASS:AcceptStream(channel, err)
+	local errOk = LIBError.STREAM_OK
 
-	local URL = self.URL.extern
+	err = tonumber(err or errOk) or errOk
 
-	if self.State.PlayMode == StreamRadioLib.STREAM_PLAYMODE_STOP or URL == "" then
-		self:UpdateChannelPlayMode()
-		return
-	end
-
-	if not self:CallHook("OnSearch", URL) then
-		self:AcceptStream( nil, LIBError.STREAM_ERROR_FILEOPEN )
-		return false
-	end
-
-	local loading = self:PlayStreamInternal(self._playUid, false)
-
-	if not loading then
-		self:AcceptStream( nil, LIBError.STREAM_ERROR_UNKNOWN )
-		return false
-	end
-
-	return true
-end
-
-function CLASS:AcceptStream( channel, err )
-	err = err or 0
-
-	if not IsValid(channel) or err ~= 0 then
+	if not IsValid(channel) or err ~= errOk then
 		ChannelStop(channel)
 		channel = nil
 
-		if err == 0 then
-			err = -1
+		if err == errOk then
+			err = LIBError.STREAM_ERROR_UNKNOWN
 		end
 	end
 
@@ -1043,13 +1126,13 @@ function CLASS:AcceptStream( channel, err )
 
 	self:CleanUpClientStateList()
 
-	self._playUid = nil
+	self._streamTaskUid = nil
 	self._isCheckingUrl = nil
 
-	if err == 0 then
+	if err == errOk then
 		self.Channel = channel
 		self._tags = nil
-		self.State.Error = 0
+		self.State.Error = errOk
 
 		self:UpdateChannel()
 		self:CallHook("OnConnect", self.Channel)
@@ -1060,312 +1143,416 @@ function CLASS:AcceptStream( channel, err )
 
 		self:SetClientStateOnServer("Time", 0)
 		self:CallHook("OnError", self.State.Error)
-	end
 
-	return true
+		-- make sure we also trigger mute on "stopsound" concommand
+		if err == LIBError.STREAM_SOUND_STOPPED then
+			self:CallHook("OnMute", true)
+		end
+	end
 end
 
-function CLASS:PlayStreamInternal(playUid, nodownload)
-	if not self.State.HasBass and SERVER then
-		return false
-	end
+function CLASS:Reconnect()
+	self:RemoveChannel()
+	self:Connect()
+end
 
-	if not self:_IsActivePlayUid(playUid) then
-		return true
-	end
+function CLASS:Connect()
+	self._streamTaskUid = LIBUtil.Uid()
+	local streamTaskUid = self._streamTaskUid
 
-	local URLExtern = self.URL.extern
-
-	local URL, URLtype = LIBUrl.PrepairURL(URLExtern)
-	local URLonline = (URLtype ~= StreamRadioLib.STREAM_URLTYPE_FILE) and (URLtype ~= StreamRadioLib.STREAM_URLTYPE_CACHE)
-
-	self._isCached = URLtype == StreamRadioLib.STREAM_URLTYPE_CACHE
-	self._isOnline = URLonline
-	self._isCheckingUrl = true
-
-	self.Metadata = {}
-
-	StreamRadioLib.Whitelist.IsAllowedAsync(URLExtern, function(isAllowed)
-		if not IsValid(self) then return end
-		if not self:_IsActivePlayUid(playUid) then return end
-
-		self._isCheckingUrl = nil
-
-		if not isAllowed then
-			self:AcceptStream(nil, LIBError.STREAM_ERROR_URL_NOT_WHITELISTED)
+	self:TimerOnce("stream", 0.01, function()
+		if not self:_IsActiveStreamTaskUid(streamTaskUid) then
 			return
 		end
 
-		if not URLonline then
-			self:PlayStreamInternalOffline(playUid, URL, URLtype)
+		local externalUrl = self.URL.external
+
+		if self.State.PlayMode == StreamRadioLib.STREAM_PLAYMODE_STOP or externalUrl == "" then
+			self:UpdateChannelPlayMode()
 			return
 		end
 
-		-- Avoid many connection requests starting at once by adding a random delay
-		local loadBalanceTimeout = 0.25 + math.random() * 0.75
+		if not self:CallHook("OnSearch", externalUrl) then
+			self:AcceptError(LIBError.STREAM_ERROR_FILEOPEN)
+			return
+		end
 
-		self:TimerOnce("stream", loadBalanceTimeout, function()
-			self:PlayStreamInternalOnline(playUid, URL, URLtype, nodownload)
-		end)
+		self:StartConnectingProcess(streamTaskUid, false)
 	end)
-
-	return true
 end
 
-function CLASS:PlayStreamInternalOffline(playUid, URL, URLtype)
-	if not self:_IsActivePlayUid(playUid) then
+function CLASS:StartConnectingProcess(streamTaskUid, nodownload)
+	if not self:_IsActiveStreamTaskUid(streamTaskUid) then
 		return
 	end
 
-	if LIBUrl.IsDriveLetterOfflineURL(URL) then
-		self:AcceptStream(nil, LIBError.STREAM_ERROR_BAD_DRIVE_LETTER_PATH)
+	if not self.State.HasBass and SERVER then
+		self:AcceptError(LIBError.STREAM_ERROR_MISSING_GM_BASS3)
 		return
 	end
 
-	self:_PlayStreamInternal(playUid, URL, URLtype)
-end
+	local externalUrl = self.URL.external
 
-function CLASS:PlayStreamInternalOnline(playUid, URL, URLtype, nodownload)
-	if not self:_IsActivePlayUid(playUid) then
-		return
-	end
+	StreamRadioLib.Interface.Convert(externalUrl, function(interface, success, internalUrl, errorcode)
+		if not self:_IsActiveStreamTaskUid(streamTaskUid) then
+			return
+		end
 
-	local function afterdl()
-		if not IsValid(self) then return end
+		if not interface then
+			self:AcceptError(LIBError.STREAM_ERROR_UNKNOWN)
+			return
+		end
 
-		self:TimerRemove("download_delay")
-		self:TimerRemove("download_timeout")
+		self.URL.internal = internalUrl
 
-		if not self._converter_downloads then return end
-		if not self._converter_downloads[URL] then return end
+		local isOnline = interface.online
+		local isCached = interface.cache
+		local interfaceName = interface.name
 
-		self._converter_downloads[URL] = nil
-
-		if not self:_IsActivePlayUid(playUid) then return end
-
-		self:SetTime(0)
-		self:PlayStreamInternal(playUid, true)
-	end
-
-	local tryconverting = StreamRadioLib.Interface.Convert(URL, function(interface, success, convered_url, errorcode, data)
-		if not IsValid(self) then return end
-		if not self:_IsActivePlayUid(playUid) then return end
+		self._isCached = isCached
+		self._isOnline = isOnline
+		self._interfaceName = interfaceName
 
 		if not success then
-			if not errorcode then return end
-
-			self:AcceptStream(nil, errorcode)
+			self:AcceptError(errorcode)
 			return
 		end
 
-		local converter_meta = data.custom_data.meta or {}
-		local converter_name = nil
-
-		if converter_meta.interface then
-			converter_name = converter_meta.interface and converter_meta.interface.name
-
-			if converter_meta.subinterface then
-				converter_name = converter_name .. "/" .. converter_meta.subinterface.name
-			end
-		end
-
-		self.Metadata = {
-			title = converter_meta.title,
-			filesize = converter_meta.filesize,
-			converter_name = converter_name,
-		}
-
-		if not nodownload and interface.download then
-			local dltimeout = interface.download_timeout or 0
-			local filesize = -1
-			local allowdl = true
-
-			if data.custom_data.meta then
-				filesize = data.custom_data.meta.filesize or -1
-				allowdl = data.custom_data.meta.download or false
+		self:IsAllowedUrlPair(externalUrl, internalUrl, function(this, allowed, blockErrorCode)
+			if not self:_IsActiveStreamTaskUid(streamTaskUid) then
+				return
 			end
 
-			local CanDownload = allowdl and StreamRadioLib.Cache.CanDownload(filesize) and self:CallHook("OnDownload", URL, interface)
+			if not allowed then
+				self:AcceptError(blockErrorCode)
+				return
+			end
 
-			if CanDownload then
-				self._converter_downloads = self._converter_downloads or {}
-				self._converter_downloads[URL] = true
-				self._wouldpredownload = true
+			if not isOnline then
+				self:RunConnectingProcessWithoutDownload(streamTaskUid, interface, internalUrl)
+				return
+			end
 
-				self:TimerRemove("download_delay")
-				self:TimerRemove("download_timeout")
+			local downloadFirst = interface.downloadFirst
 
-				if dltimeout > 0 then
-					self:TimerOnce("download_timeout", dltimeout, afterdl)
-				end
+			if isCached then
+				downloadFirst = false
+			end
 
-				local dlstarted = StreamRadioLib.Cache.Download(convered_url, function(len, headers, code, saved)
-					self:TimerOnce("download_delay", 0.5, afterdl)
-				end, URL)
+			if nodownload then
+				downloadFirst = false
+			end
 
-				if dlstarted then
+			-- Avoid many connection requests starting at once by adding a random delay
+			local loadBalanceTimeout = 0.25 + math.random() * 0.75
+
+			self:TimerOnce("stream", loadBalanceTimeout, function()
+				if not downloadFirst then
+					self:RunConnectingProcessWithoutDownload(streamTaskUid, interface, internalUrl)
 					return
 				end
 
-				self._converter_downloads[URL] = nil
-				self:TimerRemove("download_delay")
-				self:TimerRemove("download_timeout")
-			end
-		end
-
-		local loading = self:_PlayStreamInternal(playUid, convered_url, StreamRadioLib.STREAM_URLTYPE_ONLINE_NOCACHE)
-
-		if not loading then
-			self:AcceptStream( nil, LIBError.STREAM_ERROR_UNKNOWN )
-		end
+				self:RunConnectingProcessWithDownload(streamTaskUid, interface, internalUrl)
+			end)
+		end, true)
 	end)
-
-	if not tryconverting then
-		local loading = self:_PlayStreamInternal(playUid, URL, URLtype)
-
-		if not loading then
-			self:AcceptStream( nil, LIBError.STREAM_ERROR_UNKNOWN )
-		end
-	end
 end
 
-function CLASS:_PlayStreamInternal(playUid, URL, URLtype, no3d, noBlock, retrycount)
-	if not self:_IsActivePlayUid(playUid) then
-		return true
+function CLASS:RunConnectingProcessWithDownload(streamTaskUid, interface, internalUrl)
+	if not self:_IsActiveStreamTaskUid(streamTaskUid) then
+		return
+	end
+
+	local canDownload = self:CallHook("OnDownload", internalUrl, interface)
+
+	if not canDownload then
+		self:RunConnectingProcessWithoutDownload(streamTaskUid, interface, internalUrl)
+		return
+	end
+
+	local downloadTimeout = interface.downloadTimeout or 0
+	local externalUrl = self.URL.external
+
+	local function afterConvertedDownload()
+		if not IsValid(self) then return end
+
+		self:TimerRemove("download_timeout")
+
+		if not self._converter_downloads[streamTaskUid] then return end
+		self._converter_downloads[streamTaskUid] = nil
+
+		if not self:_IsActiveStreamTaskUid(streamTaskUid) then return end
+
+		-- restart the process, so we can switch to a newly created cache
+
+		self:SetTime(0)
+		self:StartConnectingProcess(streamTaskUid, true)
+	end
+
+	self._converter_downloads[streamTaskUid] = true
+	self._wouldpredownload = true
+
+	self:TimerRemove("download_timeout")
+
+	if downloadTimeout > 0 then
+		self:TimerOnce("download_timeout", downloadTimeout, afterConvertedDownload)
+	end
+
+	StreamRadioLib.Cache.Download(internalUrl, afterConvertedDownload, externalUrl)
+end
+
+function CLASS:RunConnectingProcessWithoutDownload(streamTaskUid, interface, internalUrl)
+	if not self:_IsActiveStreamTaskUid(streamTaskUid) then
+		return
+	end
+
+	self:_RunConnectingProcessInternal(streamTaskUid, interface, internalUrl)
+end
+
+function CLASS:_RunConnectingProcessInternal(streamTaskUid, interface, internalUrl, state)
+	if not self:_IsActiveStreamTaskUid(streamTaskUid) then
+		return
 	end
 
 	local WSData = self.WSData
 
-	local URLonline = (URLtype ~= StreamRadioLib.STREAM_URLTYPE_FILE) and (URLtype ~= StreamRadioLib.STREAM_URLTYPE_CACHE)
-	local Play3D = CLIENT and WSData and WSData.WorldSound and not no3d
-	retrycount = retrycount or 0
+	local isOnline = interface.online
 
-	if noBlock == nil then
-		noBlock = true
+	state = state or {}
+	state = table.Copy(state)
+
+	state.no3d = state.no3d or false
+	state.retrycount = state.retrycount or 0
+
+	if state.noBlock == nil then
+		state.noBlock = true
 	end
 
-	local StreamCallback = function( channel, err )
-		if not IsValid( self ) then
-			ChannelStop( channel )
-			return
-		end
-
-		self:AcceptStream( channel, err )
+	if SERVER then
+		state.no3d = true
 	end
 
-	local callback = function( channel, err )
-		err = tonumber(err) or 0
+	if not WSData or not WSData.WorldSound then
+		state.no3d = true
+	end
 
-		if not IsValid( self ) then
-			ChannelStop( channel )
+	local worldSound = not state.no3d
+	local noBlock = state.noBlock
+
+	local errOk = LIBError.STREAM_OK
+
+	local callback = function(channel, err)
+		err = tonumber(err or errOk) or errOk
+
+		if not IsValid(self) then
+			ChannelStop(channel)
 			return
 		end
 
-		if not self:_IsActivePlayUid(playUid) then
-			ChannelStop( channel )
+		if not self:_IsActiveStreamTaskUid(streamTaskUid) then
+			ChannelStop(channel)
 			return
 		end
 
-		if not IsValid( channel ) or ( err ~= 0 ) then
-			ChannelStop( channel )
+		if not IsValid(channel) or err ~= errOk then
+			ChannelStop(channel)
 			channel = nil
 
-			if err == 0 then
-				err = -1
+			if err == errOk then
+				err = LIBError.STREAM_ERROR_UNKNOWN
 			end
 		end
 
-		if err == 40 then
-			if self:CallHook("OnRetry", err, URL, URLtype) then
-				self:TimerOnce("stream", URLonline and 2 or 0, function()
-					if not IsValid( self ) then return end
-					if not self:_IsActivePlayUid(playUid) then return end
-
-					if retrycount >= 3 then
-						self:AcceptStream( nil, err )
-						return
-					end
-
-					local loading = self:_PlayStreamInternal(playUid, URL, URLtype, no3d, noBlock, retrycount + 1)
-					if not loading then
-						self:AcceptStream( nil, LIBError.STREAM_ERROR_UNKNOWN )
-					end
-				end)
-
-				return
-			end
-		end
-
-		-- retry in Non-3D if 3D is not working
-		if Play3D and retry_errors_non3d[err] then
-			if self:CallHook("OnRetry", err, URL, URLtype) then
-				self:TimerOnce("stream", URLonline and 2 or 0, function()
-					if not IsValid( self ) then return end
-					if not self:_IsActivePlayUid(playUid) then return end
-
-					local loading = self:_PlayStreamInternal(playUid, URL, URLtype, true, noBlock)
-					if not loading then
-						self:AcceptStream( nil, LIBError.STREAM_ERROR_UNKNOWN )
-					end
-				end)
-
-				return
-			end
-		else
-			-- retry in block mode if no-block mode is not working
-			if noBlock and retry_errors_block[err] then
-				if self:CallHook("OnRetry", err, URL, URLtype) then
-					self:TimerOnce("stream", URLonline and 2 or 0, function()
-						if not IsValid( self ) then return end
-						if not self:_IsActivePlayUid(playUid) then return end
-
-						local loading = self:_PlayStreamInternal(playUid, URL, URLtype, true, false)
-						if not loading then
-							self:AcceptStream( nil, LIBError.STREAM_ERROR_UNKNOWN )
-						end
-					end)
-
-					return
-				end
-			end
-		end
-
-		if not ChannelIsCacheAble(channel) then
-			-- remove broken cache file
-			if URLtype == StreamRadioLib.STREAM_URLTYPE_CACHE then
-				StreamRadioLib.Cache.DeleteFileRaw( URL )
-			else
-				StreamRadioLib.Cache.DeleteFile( URL )
-			end
-		else
-			if URLtype == StreamRadioLib.STREAM_URLTYPE_ONLINE then
-				local CanDownload = self:CallHook("OnDownload", URL, nil)
-
-				if CanDownload then
-					self._cache_downloads = self._cache_downloads or {}
-					self._cache_downloads[URL] = true
-
-					local dlstarted = StreamRadioLib.Cache.Download(URL, function(len, headers, code, saved)
-						self._cache_downloads[URL] = nil
-					end)
-
-					if not dlstarted then
-						self._cache_downloads[URL] = nil
-					end
-				end
-			end
-		end
-
-		StreamCallback( channel, err )
+		self:_ConnectChannelCallback(streamTaskUid, channel, err, interface, internalUrl, state)
 	end
 
 	local hasBass = self.State.HasBass
 
-	if URLonline then
-		return LIBStream.PlayOnline(URL, hasBass, Play3D, noBlock, callback)
+	if isOnline then
+		LIBStream.PlayOnline(internalUrl, hasBass, worldSound, noBlock, callback)
+		return
 	end
 
-	return LIBStream.PlayOffline(URL, hasBass, Play3D, noBlock, callback)
+	LIBStream.PlayOffline(internalUrl, hasBass, worldSound, noBlock, callback)
+end
+
+local function debugRetry(format, err, externalUrl, internalUrl, ...)
+	if not LIBUtil.IsDebug() then return end
+
+	local text = string.format(format, ...)
+
+	local errorInfo = LIBError.GetStreamErrorInfo(err)
+
+	local errorCode = errorInfo.id
+	local errorName = errorInfo.name
+
+	StreamRadioLib.Print.Debug(
+		"%s\n- Error: %d, %s\n- External URL: %s\n- Internal URL: %s",
+		text,
+		errorCode,
+		errorName,
+		externalUrl,
+		internalUrl
+	)
+end
+
+function CLASS:_ConnectChannelCallback(streamTaskUid, channel, err, interface, internalUrl, state)
+	local externalUrl = self.URL.external
+
+	state = state or {}
+
+	local no3d = state.no3d
+	local noBlock = state.noBlock
+	local isOnline = interface.online
+
+	local retryDelay = isOnline and 2 or 0
+
+	-- retry max 3 times on timeout
+	if err == LIBError.STREAM_ERROR_TIMEOUT then
+		local retrycount = state.retrycount
+
+		if retrycount >= retry_timeout_max then
+			debugRetry(
+				"[Timeout] Timeout after %d attempts.",
+				err,
+				externalUrl,
+				internalUrl,
+				retrycount
+			)
+
+			self:AcceptError(err)
+			return
+		end
+
+		if not self:CallHook("OnRetry", err, internalUrl, state, interface) then
+			self:AcceptError(err)
+			return
+		end
+
+		self:TimerOnce("stream", retryDelay, function()
+			if not self:_IsActiveStreamTaskUid(streamTaskUid) then return end
+
+			retrycount = retrycount + 1
+			state.retrycount = retrycount
+
+			debugRetry(
+				"[Timeout] Retrying stream after timeout, attempt #%d / %d.",
+				err,
+				externalUrl,
+				internalUrl,
+				retrycount,
+				retry_timeout_max
+			)
+
+			self:_RunConnectingProcessInternal(streamTaskUid, interface, internalUrl, state)
+		end)
+
+		return
+	end
+
+	state.retrycount = 0
+
+	-- retry in Non-3D if 3D is not working
+	if not no3d and retry_errors_non3d[err] then
+		if not self:CallHook("OnRetry", err, internalUrl, state, interface) then
+			self:AcceptError(err)
+			return
+		end
+
+		self:TimerOnce("stream", retryDelay, function()
+			if not self:_IsActiveStreamTaskUid(streamTaskUid) then return end
+
+			state.no3d = true
+
+			debugRetry(
+				"[3D sound] Retrying stream without 3D sound after error.",
+				err,
+				externalUrl,
+				internalUrl
+			)
+
+			self:_RunConnectingProcessInternal(streamTaskUid, interface, internalUrl, state)
+		end)
+
+		return
+	end
+
+	-- retry in block mode if no-block mode is not working
+	if noBlock and retry_errors_block[err] then
+		if not self:CallHook("OnRetry", err, internalUrl, state, interface) then
+			self:AcceptError(err)
+			return
+		end
+
+		self:TimerOnce("stream", retryDelay, function()
+			if not self:_IsActiveStreamTaskUid(streamTaskUid) then return end
+
+			state.noBlock = false
+
+			debugRetry(
+				"[Block mode] Retrying stream in block mode after error.",
+				err,
+				externalUrl,
+				internalUrl
+			)
+
+			self:_RunConnectingProcessInternal(streamTaskUid, interface, internalUrl, state)
+		end)
+
+		return
+	end
+
+	self:_SaveChannelToCache(streamTaskUid, channel, interface, internalUrl)
+
+	self:AcceptStream(channel, err)
+end
+
+function CLASS:_SaveChannelToCache(streamTaskUid, channel, interface, internalUrl)
+	local externalUrl = self.URL.external
+
+	local isOnline = interface.online
+	local isCache = interface.cache
+	local allowCaching = interface.allowCaching
+
+	if not ChannelIsCacheAble(channel) then
+		-- remove broken cache file
+
+		if isOnline then
+			StreamRadioLib.Cache.DeleteFileForUrl(externalUrl)
+		end
+
+		if isCache then
+			StreamRadioLib.Cache.DeleteFileRaw(internalUrl)
+		end
+
+		return
+	end
+
+	if not isOnline then
+		return
+	end
+
+	if not allowCaching then
+		StreamRadioLib.Cache.DeleteFileForUrl(externalUrl)
+		return
+	end
+
+	local canDownload = self:CallHook("OnDownload", internalUrl, interface)
+	if not canDownload then
+		return
+	end
+
+	local afterCacheDownload = function()
+		if not IsValid( self ) then
+			return
+		end
+
+		self._cache_downloads[streamTaskUid] = nil
+	end
+
+	self._cache_downloads[streamTaskUid] = true
+
+	StreamRadioLib.Cache.Download(internalUrl, afterCacheDownload, externalUrl)
 end
 
 function CLASS:GetStreamName( )
@@ -1486,32 +1673,24 @@ function CLASS:HasChannel()
 	return self:GetChannel() ~= nil
 end
 
-function CLASS:IsActive()
-	if not self.Valid then return false end
-
-	if self:HasChannel() then return true end
-	if self:HasError() then return true end
-	if self._playUid then return true end
-
-	return false
-end
-
-function CLASS:GetMetadata()
-	if not self.Valid then return {} end
-	return self.Metadata or {}
-end
-
 function CLASS:SetURL(url)
 	if not self.Valid then return end
 	if CLIENT and self.Network.Active then return end
 
-	self.URL.extern = LIBUrl.SanitizeUrl(url)
+	self.URL.external = LIBUrl.SanitizeUrl(url)
 end
 
 function CLASS:GetURL()
 	if not self.Valid then return "" end
 
-	local url = LIBUrl.SanitizeUrl(self.URL.extern)
+	local url = LIBUrl.SanitizeUrl(self.URL.external)
+	return url
+end
+
+function CLASS:GetInternalURL()
+	if not self.Valid then return "" end
+
+	local url = self.URL.internal
 	return url
 end
 
@@ -1879,6 +2058,10 @@ function CLASS:HasEnded()
 		return false
 	end
 
+	if self:IsKilled() then
+		return false
+	end
+
 	if not IsValid( self.Channel ) then
 		if SERVER then
 			local state = self:GetTimeMasterClientState()
@@ -1945,6 +2128,30 @@ end
 function CLASS:GetMuted()
 	if not self.Valid then return false end
 	return self.State.Muted or false
+end
+
+function CLASS:IsKilled()
+	if SERVER then return false end
+	if not self.Valid then return false end
+
+	return self:GetError() == LIBError.STREAM_SOUND_STOPPED
+end
+
+function CLASS:KillStream()
+	if SERVER then return end
+	if not self.Valid then return end
+	if self:IsKilled() then return end
+
+	self:RemoveChannel()
+	self:AcceptError(LIBError.STREAM_SOUND_STOPPED)
+end
+
+function CLASS:ReviveStream()
+	if SERVER then return end
+	if not self.Valid then return end
+	if not self:IsKilled() then return end
+
+	self:Reconnect()
 end
 
 local function getTagsMetaAsTable(channel)
@@ -2165,6 +2372,15 @@ function CLASS:IsOnlineUrl()
 	return self._isOnlineUrl or false
 end
 
+function CLASS:GetActiveInterfaceName()
+	if not self.Valid then return nil end
+
+	local interfaceName = self._interfaceName
+	if not interfaceName then return nil end
+
+	return interfaceName
+end
+
 function CLASS:IsCached()
 	if not self.Valid then return false end
 	return self._isCached or false
@@ -2173,6 +2389,17 @@ end
 function CLASS:IsCheckingUrl()
 	if not self.Valid then return false end
 	return self._isCheckingUrl or false
+end
+
+function CLASS:IsStopped()
+	if not self.Valid then return false end
+	if not IsValid( self.Channel ) then return true end
+
+	if self.State.HasBass then
+		return self.Channel:GetState( ) == BASS3.ENUM.CHANNEL_STOPPED
+	else
+		return self.Channel:GetState( ) == GMOD_CHANNEL_STOPPED
+	end
 end
 
 function CLASS:IsPlaying()
@@ -2195,6 +2422,36 @@ function CLASS:IsBuffering()
 	else
 		return self.Channel:GetState( ) == GMOD_CHANNEL_STALLED
 	end
+end
+
+function CLASS:IsLoading()
+	if not self.Valid then return false end
+
+	if self:HasChannel() then return false end
+	if self:HasError() then return false end
+	if self._streamTaskUid then return true end
+
+	return false
+end
+
+function CLASS:IsActive()
+	if not self.Valid then return false end
+
+	if self._streamTaskUid then return false end
+	if self:HasChannel() then return true end
+	if self:HasError() then return true end
+
+	return false
+end
+
+function CLASS:IsActiveOrLoading()
+	if not self.Valid then return false end
+
+	if self._streamTaskUid then return true end
+	if self:HasChannel() then return true end
+	if self:HasError() then return true end
+
+	return false
 end
 
 function CLASS:IsRunning()
@@ -2241,6 +2498,7 @@ function CLASS:CanSeek()
 
 	if self:IsEndless() then return false end
 	if self:IsBlockStreamed() then return false end
+	if self:IsStopped() then return false end
 
 	local minLen = engine.TickInterval() * 4
 	if self:GetMasterLength() <= minLen then return false end
@@ -2587,7 +2845,7 @@ function CLASS:PostDupe(data)
 	self.State.PlayMode = data.playstate
 end
 
-function CLASS:OnSearch( url, urltype )
+function CLASS:OnSearch(url)
 	-- override
 	return true -- Allow url to be played
 end
@@ -2596,24 +2854,24 @@ function CLASS:OnClose()
 	-- override
 end
 
-function CLASS:OnDownload( url, interface )
+function CLASS:OnDownload(internalUrl, interface)
 	-- override
 	return true -- Allow download to cache
 end
 
-function CLASS:OnConnect( channel )
+function CLASS:OnConnect(channel)
 	-- override
 end
 
-function CLASS:OnRetry( err, url, urltype )
+function CLASS:OnRetry(err, internalUrl, state, interface)
 	-- override
 	return true -- retry again?
 end
 
-function CLASS:OnError( err )
+function CLASS:OnError(err)
 	-- override
 end
 
-function CLASS:OnMute( muted )
+function CLASS:OnMute(muted)
 	-- override
 end

@@ -129,6 +129,7 @@ if SERVER then
 end
 
 StreamRadioLib.Cfchttp.Load()
+StreamRadioLib.Cache.Load()
 
 if not g_ok then
     return

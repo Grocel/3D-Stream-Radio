@@ -5,6 +5,7 @@ StreamRadioLib.Http = StreamRadioLib.Http or {}
 local LIB = StreamRadioLib.Http
 table.Empty(LIB)
 
+local g_emptyFunction = function() end
 local g_request_quene = {}
 
 local function callcallbacks(rq, ...)
@@ -42,7 +43,7 @@ local function request(url, callback, parameters, method, headers, body, type)
 	url = url or ""
 	url = StreamRadioLib.Url.SanitizeUrl(url)
 
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 	parameters = parameters or {}
 	method = method or ""
 
@@ -68,7 +69,9 @@ local function request(url, callback, parameters, method, headers, body, type)
 	rq.quene = rq.quene or {}
 	table.insert(rq.quene, callback)
 
-	if rq.started then return true end
+	if rq.started then
+		return
+	end
 
 	requestdata.failed = function(err)
 		callcallbacks(rq, false, {
@@ -124,11 +127,9 @@ local function request(url, callback, parameters, method, headers, body, type)
 		cleanDoneQuene()
 	end
 
+	HTTP(requestdata)
 
-	local status = HTTP(requestdata)
-	rq.started = status
-
-	return status
+	rq.started = true
 end
 
 function LIB.RequestRaw(url, callback, body, method, headers, type)
@@ -138,33 +139,29 @@ function LIB.RequestRaw(url, callback, body, method, headers, type)
 		type = "text/plain; charset=utf-8"
 	end
 
-	return request(url, callback, nil, method, headers, body, type)
+	request(url, callback, nil, method, headers, body, type)
 end
 
 function LIB.Request(url, callback, parameters, method, headers)
-	return request(url, callback, parameters, method, headers)
+	request(url, callback, parameters, method, headers)
 end
 
 function LIB.RequestRawHeader(url, callback, body, headers, type)
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 
-	local req = LIB.RequestRaw(url, function(success, data)
+	LIB.RequestRaw(url, function(success, data)
 		data.body = nil
 		callback(success, data)
 	end, "HEAD", body, headers, type)
-
-	return req
 end
 
 function LIB.RequestHeader(url, callback, parameters, headers)
-	callback = callback or (function() end)
+	callback = callback or g_emptyFunction
 
-	local req = LIB.Request(url, function(success, data)
+	LIB.Request(url, function(success, data)
 		data.body = nil
 		callback(success, data)
 	end, "HEAD", parameters, headers)
-
-	return req
 end
 
 return true

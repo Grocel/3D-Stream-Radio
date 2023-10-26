@@ -5,6 +5,13 @@ if not istable( RADIOIFACE ) then
 end
 
 RADIOIFACE.name = "SHOUTcast"
+RADIOIFACE.priority = 100
+RADIOIFACE.online = true
+RADIOIFACE.cache = false
+
+RADIOIFACE.downloadTimeout = 0
+RADIOIFACE.downloadFirst = false
+RADIOIFACE.allowCaching = false
 
 local ERROR_NO_ID = 120000
 
@@ -29,6 +36,8 @@ local ShoutcastPatterns = {
 local ShoutcastURLs = {
 	"shoutcast://",
 }
+
+StreamRadioLib.Url.AddCustomProtocol("shoutcast")
 
 function RADIOIFACE:CheckURL(url)
 	for i, v in ipairs(ShoutcastURLs) do
@@ -63,11 +72,11 @@ function RADIOIFACE:Convert(url, callback)
 
 	if not id then
 		callback(self, false, nil, ERROR_NO_ID)
-		return true
+		return
 	end
 
 	local streamUrl = StreamRadioLib.Shoutcast.GetStreamUrlById(id)
-	callback(self, true, streamUrl, nil, nil)
+	callback(self, true, streamUrl)
 
-	return true
+	return
 end

@@ -158,7 +158,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 		return false
 	end
 
-	local status = LIBShoutcast.GetListOfGenre(hierarchy, function(success, items)
+	LIBShoutcast.GetListOfGenre(hierarchy, function(success, items)
 		if not success then
 			callback(false, nil)
 			return
@@ -179,7 +179,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 		return
 	end)
 
-	return status
+	return true
 end
 
 LIBWhitelist.AddCheckFunction("shoutcast", function(url)

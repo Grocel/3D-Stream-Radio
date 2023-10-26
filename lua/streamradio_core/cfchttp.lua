@@ -5,6 +5,8 @@ StreamRadioLib.Cfchttp = StreamRadioLib.Cfchttp or {}
 local LIB = StreamRadioLib.Cfchttp
 table.Empty(LIB)
 
+local g_emptyFunction = function() end
+
 -- API Wrapper for CFC HTTP Whitelist
 -- https://github.com/CFC-Servers/cfc_cl_http_whitelist
 
@@ -24,8 +26,67 @@ function LIB.CanCheckWhitelist()
 	return true
 end
 
-function LIB.IsAllowed(url)
+function LIB.CanLog()
+	if not LIB.IsInstalled() then
+		return false
+	end
+
+	if not isfunction(CFCHTTP.GetOptionsForURL) then
+		return false
+	end
+
+	if not isfunction(CFCHTTP.LogRequest) then
+		return false
+	end
+
+	return true
+end
+
+local function logUrl(url, options)
+	if not LIB.CanLog() then
+		return
+	end
+
+	-- Reimplemented as in:
+	-- https://github.com/CFC-Servers/cfc_cl_http_whitelist/blob/265ce54eea0f386c6eb0390fe31f329f905b9d1f/lua/cfc_http_restrictions/wraps/playURL.lua#L15C1-L19C48
+
+	local stack = string.Split( debug.traceback(), "\n" )
+
+	local isAllowed = options and options.allowed
+	local noisy = options and options.noisy
+
+	local logData = {
+		noisy = noisy,
+		method = "GET",
+		fileLocation = stack[4],
+		urls = {
+			{
+				url = url,
+				status = isAllowed and "allowed" or "blocked"
+			}
+		},
+	}
+
+	CFCHTTP.LogRequest(logData)
+end
+
+function LIB.LogRequestForURL(url)
+	if not LIB.CanLog() then
+		return
+	end
+
+	local options = CFCHTTP.GetOptionsForURL(url)
+
+	logUrl(url, options)
+end
+
+function LIB.IsAllowedSync(url, logFailure)
 	if not LIB.CanCheckWhitelist() then
+		return true
+	end
+
+	if StreamRadioLib.Url.IsOfflineURL(url) then
+		-- Offline file paths are always safe to use
 		return true
 	end
 
@@ -36,7 +97,19 @@ function LIB.IsAllowed(url)
 		return true
 	end
 
+	if logFailure then
+		logUrl(url, options)
+	end
+
 	return false
+end
+
+function LIB.IsAllowedAsync(url, callback, logFailure)
+	url = tostring(url or "")
+	callback = callback or g_emptyFunction
+
+	local result = LIB.IsAllowedSync(url, logFailure)
+	callback(result)
 end
 
 local function addCfcErrorCodes()
@@ -46,12 +119,18 @@ local function addCfcErrorCodes()
 		StreamRadioLib.Error.AddStreamErrorCode({
 			id = CFCHTTP.BASS_ERROR_BLOCKED_URI,
 			name = "STREAM_ERROR_CFCHTTP_BLOCKED_URI",
-			description = "URI has been blocked by CFC HTTP Whitelist",
+			description = "[CFC HTTP Whitelist] URI has been blocked",
+			helpurl = "https://github.com/CFC-Servers/cfc_cl_http_whitelist",
 			helptext = [[
-The server has blocked this URL via CFC HTTP Whitelist to prevent abuse.
-You can ask an admin to whitelist the URL above in their CFC tool.
+On this server you are protected by CFC HTTP Whitelist.
 
-Keep in mind that there is probably a reason why it is forbidden on this server.
+This URL has been blocked by CFC HTTP Whitelist to prevent abuse.
+
+You can whitelist the URL (or its domain) for your client in the CFC HTTP Whitelist settings.
+BE CAREFUL WITH WHAT YOU WHITELIST! Only whitelist URLs you trust! See your console for details.
+
+You can also ask an admin to whitelist the URL in general in their CFC HTTP Whitelist config.
+Keep in mind that there probably is a reason why it has not been whitelisted on this server yet.
 ]],
 		})
 	end
@@ -60,12 +139,19 @@ Keep in mind that there is probably a reason why it is forbidden on this server.
 		StreamRadioLib.Error.AddStreamErrorCode({
 			id = CFCHTTP.BASS_ERROR_BLOCKED_CONTENT,
 			name = "STREAM_ERROR_CFCHTTP_BLOCKED_CONTENT",
-			description = "Content has been blocked by CFC HTTP Whitelist",
+			description = "[CFC HTTP Whitelist] Content has been blocked",
+			helpurl = "https://github.com/CFC-Servers/cfc_cl_http_whitelist",
 			helptext = [[
-The server has blocked this content via CFC HTTP Whitelist to prevent abuse.
-You can ask an admin to whitelist the content from the URL above in their CFC tool.
+On this server you are protected by CFC HTTP Whitelist.
 
-Keep in mind that there is probably a reason why it is forbidden on this server.
+This content has been blocked by CFC HTTP Whitelist to prevent abuse.
+The content you are trying to play from contains one or more URLs that have not been whitelisted yet.
+
+You can whitelist the URLs (or their domains) for your client in the CFC HTTP Whitelist settings.
+BE CAREFUL WITH WHAT YOU WHITELIST! Only whitelist URLs you trust! See your console for details.
+
+You can also ask an admin to whitelist the content in general in their CFC HTTP Whitelist config.
+Keep in mind that there probably is a reason why it has not been whitelisted on this server yet.
 ]],
 		})
 	end
@@ -77,7 +163,13 @@ local function addCfcHttpWhitelist()
 			return nil
 		end
 
-		if not LIB.IsAllowed(url) then
+		if StreamRadioLib.Url.IsCustomProtocolURL(url) then
+			-- This addon has custom protocols such as "dropbox://" or "shoutcast://"
+			-- Those will be converted to normal URLs and checked by CFC later, so we can safely skip them here.
+			return nil
+		end
+
+		if not LIB.IsAllowedSync(url, false) then
 			return nil
 		end
 

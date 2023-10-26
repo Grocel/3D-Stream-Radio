@@ -7,6 +7,8 @@ end
 
 local BASE = CLASS:GetBaseClass()
 
+local LIBUtil = StreamRadioLib.Util
+
 function CLASS:Create()
 	BASE.Create(self)
 
@@ -20,7 +22,10 @@ function CLASS:Create()
 		self.Colors.Border2 = Color(255, 255, 255, 200)
 	end
 
-	self:HighlightClear()
+	if CLIENT then
+		self.Highlighted = {}
+	end
+
 	self:SetSkinAble(false)
 end
 
@@ -72,33 +77,40 @@ function CLASS:GetBorderColor2()
 end
 
 function CLASS:HighlightClear()
-	self.Highlighted = {}
+	if SERVER then return end
+
+	LIBUtil.EmptyTableSafe(self.Highlighted)
 	self:QueueCall("PerformRerender")
 end
 
 function CLASS:HighlightPanel(panel)
+	if SERVER then return end
 	if not IsValid(panel) then return end
-	if not CLIENT then return end
 
-	self.Highlighted[panel] = true
+	self.Highlighted[panel:GetID()] = panel
 	self:QueueCall("PerformRerender")
 end
 
 function CLASS:HighlightPanels(panels)
+	if SERVER then return end
+
 	for _, panel in pairs(panels or {}) do
 		self:HighlightPanel(panel)
 	end
 end
 
 function CLASS:GetHighlightedPanels()
-	return table.GetKeys(self.Highlighted or {})
+	if SERVER then return end
+
+	return self.Highlighted
 end
 
 function CLASS:RenderHighlight(panel)
-	if not CLIENT then return end
+	if SERVER then return end
+
 	if not IsValid(panel) then return end
-	if not self:IsVisible() then return end
-	if not panel:IsVisible() then return end
+	if not self:IsVisibleSimple() then return end
+	if not panel:IsVisibleSimple() then return end
 
 	local sp = self:GetSuperParent()
 	local spx, spy = sp:GetRenderPos()
@@ -139,12 +151,7 @@ function CLASS:RenderHighlight(panel)
 end
 
 function CLASS:Render()
-	if not CLIENT then return end
-	if not self:IsVisible() then return end
-
-	for panel, bool in pairs(self.Highlighted or {}) do
-		if not bool then continue end
-
+	for _, panel in pairs(self.Highlighted) do
 		self:RenderHighlight(panel)
 	end
 end

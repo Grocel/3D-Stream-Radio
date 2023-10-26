@@ -407,11 +407,17 @@ function PANEL:UpdateURLState(state)
 
 			local errorName = errorInfo.name
 			local errorDescription = errorInfo.description
+			local errorHasHelpmenu = errorInfo.helpmenu
 
 			local errorString = string.format("Error %i (%s): %s", err, errorName, errorDescription)
 
-			tooltip = tooltipbase .. "\n" .. errorString .. "\n\nRight click for more details."
-			tooltipurl = tooltipbase .. "\n" .. errorString .. "\n\nRight click on the red cross button for more details."
+			tooltip = tooltipbase .. "\n" .. errorString
+			tooltipurl = tooltipbase .. "\n" .. errorString
+
+			if errorHasHelpmenu then
+				tooltip = tooltip .. "\n\nRight click for more details."
+				tooltipurl = tooltip .. "\n\nRight click on the red cross button for more details."
+			end
 		else
 			self.URLIcon:SetImage("icon16/information.png")
 			tooltip = "The URL is empty!"

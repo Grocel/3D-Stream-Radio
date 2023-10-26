@@ -135,6 +135,7 @@ local function createUnknownErrorInfo(idOrName)
 
 	info.description = g_emptyDescription
 	info.helptext = g_emptyHelpText
+	info.helpmenu = true
 
 	processErrorInfo(info)
 	return info
@@ -147,6 +148,7 @@ function LIB.AddStreamErrorCode(data)
 	local description = data.description
 	local helptext = data.helptext
 	local helpurl = data.helpurl
+	local helpmenu = data.helpmenu
 	local userdata = data.userdata
 
 	if not id then
@@ -157,6 +159,10 @@ function LIB.AddStreamErrorCode(data)
 		error("name is missing or empty")
 	end
 
+	if helpmenu == nil then
+		helpmenu = true
+	end
+
 	id = tonumber(id) or -1
 	name = tostring(name)
 	name = string.upper(name)
@@ -164,6 +170,7 @@ function LIB.AddStreamErrorCode(data)
 	local info = {
 		id = id,
 		name = name,
+		helpmenu = helpmenu,
 	}
 
 	if userdata then
@@ -293,6 +300,7 @@ LIB.AddStreamErrorCode({
 	id = 0,
 	name = "STREAM_OK",
 	description = "OK",
+	helpmenu = false,
 	helptext = [[
 Everything should be fine. You should not see this.
 ]],
@@ -663,6 +671,13 @@ LIB.AddStreamErrorCode({
 })
 
 LIB.AddStreamErrorCode({
+	id = 1002,
+	name = "STREAM_ERROR_MISSING_GM_BASS3",
+	description = "GM_BASS3 is missing",
+	helptext = "",
+})
+
+LIB.AddStreamErrorCode({
 	id = 1100,
 	name = "STREAM_ERROR_BAD_DRIVE_LETTER_PATH",
 	description = "Drive letter paths are not supported, use relative paths",
@@ -680,7 +695,7 @@ This is NOT a relative path:
 })
 
 LIB.AddStreamErrorCode({
-	id = 2000,
+	id = 1200,
 	name = "PLAYLIST_ERROR_INVALID_FILE",
 	description = "Invalid Playlist",
 	helptext = [[
@@ -701,6 +716,15 @@ Hint: Use the playlist editor to make playlists.
 ]],
 	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/523897277917951293/",
 })
+
+LIB.AddStreamErrorCode({
+	id = 1300,
+	name = "STREAM_SOUND_STOPPED", -- triggered by "stopsound" concommand
+	description = "The sound has been stopped",
+	helpmenu = false,
+	helptext = "",
+})
+
 
 if CLIENT then
 	local function ShowErrorInfo( ply, cmd, args )

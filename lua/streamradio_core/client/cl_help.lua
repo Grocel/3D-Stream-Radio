@@ -172,10 +172,12 @@ local function OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
 end
 
 function StreamRadioLib.ShowErrorHelp( errorcode, url )
-	errorcode = tonumber(errorcode or -1) or -1
-	if errorcode == 0 then return end
-
 	local errorInfo = LIBError.GetStreamErrorInfo(errorcode)
+
+	local hasHelpmenu = errorInfo.helpmenu
+	if not hasHelpmenu then
+		return
+	end
 
 	local code = errorInfo.id
 	local name = errorInfo.name

@@ -169,9 +169,10 @@ function LIB.NormalizeSlashes(filepath)
 		return ""
 	end
 
-	filepath = string.gsub(filepath, "[%/%\\]", '/')
-	filepath = string.gsub(filepath, "%.%./", '/')
-	filepath = string.gsub(filepath, "%./", '/')
+	filepath = string.gsub(filepath, "[%/%\\]+", '/')
+	filepath = string.gsub(filepath, "%.%.%/", '/')
+	filepath = string.gsub(filepath, "%.%/", '/')
+	filepath = string.gsub(filepath, "%/+", '/')
 
 	return filepath
 end

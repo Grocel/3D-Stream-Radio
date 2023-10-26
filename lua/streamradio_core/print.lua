@@ -33,10 +33,15 @@ function LIB.Debug(format, ...)
 
 	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
 
-	if StreamRadioLib.VR.IsActive() then
-		StreamRadioLib.VR.Debug(msgstring)
-	else
-		MsgN(msgstring)
+	local hasVr = StreamRadioLib.VR.IsActive()
+
+	local lines = string.Explode("\n", msgstring, false)
+	for i, line in ipairs(lines) do
+		if hasVr then
+			StreamRadioLib.VR.Debug(line)
+		else
+			MsgN(line)
+		end
 	end
 end
 
@@ -51,9 +56,11 @@ function LIB.Msg(ply, format, ...)
 
 	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
 
+	local hasPly = IsValid(ply)
+
 	local lines = string.Explode("\n", msgstring, false)
 	for i, line in ipairs(lines) do
-		if IsValid(ply) then
+		if hasPly then
 			ply:PrintMessage(HUD_PRINTTALK, line)
 		else
 			MsgN(line)

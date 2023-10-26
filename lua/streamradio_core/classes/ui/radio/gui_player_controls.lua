@@ -106,12 +106,18 @@ function CLASS:Create()
 	self.PlayPauseButton:SetNWName("pl")
 	self.PlayPauseButton:SetSkinIdentifyer("button")
 	self.PlayPauseButton.DoClick = function()
-		if not IsValid(self.StreamOBJ) then return end
-		local isPlayMode = self.StreamOBJ:IsPlayMode()
+		local stream = self.StreamOBJ
+		if not IsValid(stream) then return end
 
+		if stream:IsKilled() then
+			stream:ReviveStream()
+		end
+
+		local isPlayMode = stream:IsPlayMode()
+	
 		if isPlayMode then
 			self:CallHook("OnPause")
-			self.StreamOBJ:Pause()
+			stream:Pause()
 			return
 		end
 
@@ -250,20 +256,12 @@ function CLASS:Create()
 			return "Muted"
 		end
 
+		if stream:IsKilled() then
+			return "Sound stopped!"
+		end
+
 		if stream:IsCheckingUrl() then
 			return "Checking URL..."
-		end
-
-		if stream:IsBuffering() then
-			return "Buffering..."
-		end
-
-		if stream:IsStopMode() then
-			return "Stopped"
-		end
-
-		if stream:HasError() then
-			return "Error!"
 		end
 
 		if stream:IsDownloading() then
@@ -272,6 +270,18 @@ function CLASS:Create()
 
 		if stream:IsLoading() then
 			return "Loading..."
+		end
+
+		if stream:IsBuffering() then
+			return "Buffering..."
+		end
+
+		if stream:HasError() then
+			return "Error!"
+		end
+
+		if stream:IsStopMode() then
+			return "Stopped"
 		end
 
 		local len = stream:GetLength()
@@ -422,11 +432,12 @@ function CLASS:Remove()
 end
 
 function CLASS:UpdateButtons()
-	local StreamOBJ = self.StreamOBJ
-	if not IsValid(StreamOBJ) then return end
+	local stream = self.StreamOBJ
+	if not IsValid(stream) then return end
 
-	local isPlayMode = StreamOBJ:IsPlayMode()
-	local isStopMode = StreamOBJ:IsStopMode()
+	local isPlayMode = stream:IsPlayMode()
+	local isStopMode = stream:IsStopMode()
+
 	local syncMode = self:GetSyncMode()
 
 	if IsValid(self.PlayPauseButton) then
@@ -447,7 +458,7 @@ function CLASS:UpdatePlayBar()
 		return
 	end
 
-	if not self.PlayBar:IsVisible() then
+	if not self.PlayBar:IsVisibleSimple() then
 		return
 	end
 
@@ -518,6 +529,9 @@ function CLASS:SetStream(stream)
 				return false
 			end
 
+			-- Force the think hook to call once when the stream state changes.
+			self:SetFastThinkRate(0)
+
 			self:QueueCall("UpdateButtons")
 			self:QueueCall("UpdatePlayBar")
 
@@ -551,13 +565,13 @@ function CLASS:UpdateFromStream()
 	local len = StreamOBJ:GetLength()
 	local time = StreamOBJ:GetTime()
 
-	local isEndlessOrNoStream = StreamOBJ:IsEndless() or StreamOBJ:IsLoading() or StreamOBJ:HasError() or StreamOBJ:GetMuted()
+	local isEndlessOrNoStream = StreamOBJ:IsEndless() or StreamOBJ:IsLoading() or StreamOBJ:HasError() or StreamOBJ:GetMuted() or StreamOBJ:IsKilled()
 
 	-- @TODO: Fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT.
 	--        That's because self.PlayBar is disabled on the server as BASS streams don't exist on servers.
 	--        Thus these checks below are buggy and will be fixed some day. It is difficult to fix right now.
 
-	if IsValid(self.PlayBar) and self.PlayBar:IsVisible() then
+	if IsValid(self.PlayBar) and self.PlayBar:IsVisibleSimple() then
 		if isEndlessOrNoStream then
 			self.PlayBar:SetFraction(0)
 			self.PlayBar:SetAllowFractionEdit(false)
@@ -572,25 +586,31 @@ end
 
 function CLASS:ShouldPerformRerender()
 	if SERVER then return false end
-	if not IsValid(self.StreamOBJ) then return false end
+
+	local stream = self.StreamOBJ
+	if not IsValid(stream) then return false end
 
 	if not IsValid(self.PlayBar) then
 		return false
 	end
 
-	if not self.PlayBar:IsVisible() then
+	if not self.PlayBar:IsVisibleSimple() then
 		return false
 	end
 
-	if self.StreamOBJ:GetMuted() then
+	if stream:GetMuted() then
 		return false
 	end
 
-	if self.StreamOBJ:HasError() then
+	if stream:IsKilled() then
 		return false
 	end
 
-	if not self.StreamOBJ:IsPlaying() then
+	if stream:HasError() then
+		return false
+	end
+
+	if not stream:IsPlaying() then
 		return false
 	end
 
@@ -609,7 +629,7 @@ if CLIENT then
 		if not self:IsSeen() then return end
 		if not self:IsVisible() then return end
 
-		if stream:IsPlayMode() then
+		if stream:IsPlayMode() and not stream:IsKilled() then
 			local len = stream:GetLength()
 
 			if len < g_slowDisplayLength or stream:IsSeeking() then
@@ -638,6 +658,11 @@ function CLASS:TriggerPlay()
 	local stream = self.StreamOBJ
 
 	if not IsValid(stream) then return end
+
+	if stream:IsKilled() then
+		stream:ReviveStream()
+	end
+
 	local isPlayMode = stream:IsPlayMode()
 
 	if isPlayMode then
