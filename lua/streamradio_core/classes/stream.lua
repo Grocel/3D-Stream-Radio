@@ -710,7 +710,11 @@ function CLASS:FastThink()
 end
 
 function CLASS:DoUnexpectedStopCheck()
-	if not self:IsActive() then
+	if not self:HasChannel() then
+		return
+	end
+
+	if self:HasError() then
 		return
 	end
 

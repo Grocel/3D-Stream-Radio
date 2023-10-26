@@ -692,6 +692,10 @@ if CLIENT then
 		end
 
 		local tr = StreamRadioLib.Trace(ply)
+		if not tr then
+			return false
+		end
+
 		return tr.Entity == self
 	end
 

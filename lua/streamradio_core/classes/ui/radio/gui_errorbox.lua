@@ -170,9 +170,7 @@ function CLASS:SetSoundKilledError()
 		self.HelpButton:SetVisible(false)
 	end
 
-	self.BodyPanelText:SetPaintBackground(false)
 	self:SetPaintBackground(false)
-
 	self:Open()
 end
 
