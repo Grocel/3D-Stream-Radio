@@ -97,7 +97,7 @@ function LIB.GetLinkButton(text, urlStr)
 	return button
 end
 
-function LIB.GetAdminButton(label)
+function LIB.GetAdminButton(label, ignoreVR)
 	local button = vgui.Create("DButton")
 
 	local function handleAdmin(this)
@@ -110,6 +110,10 @@ function LIB.GetAdminButton(label)
 	end
 
 	local function handleVR(this)
+		if not ignoreVR then
+			return false, false
+		end
+
 		local lastIsVR = this._isVR
 
 		local isVR = StreamRadioLib.VR.IsActive()
@@ -212,7 +216,7 @@ function LIB.GetWhitelistEnabledLabel(text)
 	local function handleWhitelistEnabled(this)
 		local lastisUrlWhitelistEnabled = this._isUrlWhitelistEnabled
 
-		local isUrlWhitelistEnabled = StreamRadioLib.IsUrlWhitelistEnabled()
+		local isUrlWhitelistEnabled = StreamRadioLib.IsUrlWhitelistEnabled() or StreamRadioLib.Cfchttp.CanCheckWhitelist()
 		this._isUrlWhitelistEnabled = isUrlWhitelistEnabled
 
 		return lastisUrlWhitelistEnabled == isUrlWhitelistEnabled, isUrlWhitelistEnabled
@@ -310,6 +314,16 @@ function LIB.GetFAQButton()
 	return button
 end
 
+function LIB.GetWhitelistFAQButton()
+	local button = LIB.GetLinkButton("Show Whitelist Info (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668761564/")
+	return button
+end
+
+function LIB.GetCFCWhitelistFAQButton()
+	local button = LIB.GetLinkButton("Show CFC HTTP Whitelist Info (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668766829/")
+	return button
+end
+
 function LIB.GetVRFAQButton()
 	local button = LIB.GetLinkButton("Show VR FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/2247805152838837222/")
 	return button
@@ -352,6 +366,12 @@ function LIB.GetOpenToolButton()
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("streamradio", false)
+
+		local parent = this:GetParent()
+		if IsValid(parent) then
+			parent:InvalidateLayout()
+			StreamRadioLib.VR.RenderMenu(parent)
+		end
 	end
 
 	button:SetTooltip(maintext)
@@ -367,6 +387,12 @@ function LIB.GetOpenSettingsButton()
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("StreamRadioSettingsPanel_general", true)
+
+		local parent = this:GetParent()
+		if IsValid(parent) then
+			parent:InvalidateLayout()
+			StreamRadioLib.VR.RenderMenu(parent)
+		end
 	end
 
 	button:SetTooltip(maintext)
@@ -376,10 +402,16 @@ function LIB.GetOpenSettingsButton()
 end
 
 function LIB.GetOpenAdminSettingsButton()
-	local button = LIB.GetAdminButton("Admin Settings")
+	local button = LIB.GetAdminButton("Admin Settings", true)
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("StreamRadioSettingsPanel_admin", true)
+
+		local parent = this:GetParent()
+		if IsValid(parent) then
+			parent:InvalidateLayout()
+			StreamRadioLib.VR.RenderMenu(parent)
+		end
 	end
 
 	return button

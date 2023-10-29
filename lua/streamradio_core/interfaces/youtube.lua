@@ -41,9 +41,6 @@ local YoutubeURLs = {
 	"://youtu.be",
 }
 
-StreamRadioLib.Url.AddCustomProtocol("youtube")
-StreamRadioLib.Url.AddCustomProtocol("yt")
-
 function RADIOIFACE:CheckURL(url)
 	for i, v in ipairs(YoutubeURLs) do
 		local result = string.find(string.lower(url), v, 1, true)

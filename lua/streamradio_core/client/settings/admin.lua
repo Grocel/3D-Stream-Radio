@@ -105,6 +105,8 @@ local function AddSecurityMenuPanel(CPanel)
 
 	subpanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: This affects the server security of this addon.\nOnly disable the whitelist if you know what you are doing!\nBetter you never turn this off!"))
 
+	subpanel:AddItem(LIBMenu.GetSpacerLine())
+
 	local urlWhitelistCombobox, urlWhitelistLabel = subpanel:ComboBox(
 		"URL Whitelist",
 		"sv_streamradio_url_whitelist_enable"
@@ -116,7 +118,25 @@ local function AddSecurityMenuPanel(CPanel)
 	urlWhitelistCombobox:AddChoice("Disable Stream URL whitelist (dangerous)", 0, false, "icon16/exclamation.png")
 
 	subpanel:AddItem(LIBMenu.GetLabel("The whitelist is based of the installed playlists. Edit them to change the whitelist or use the quick whitelist options on a radio entity."))
-	subpanel:AddItem(LIBMenu.GetLabel("You can safely turn this off if your server is protected by the CFC HTTP Whitelist addon. It is always disabled on single player."))
+	subpanel:AddItem(LIBMenu.GetLabel("It is always disabled on single player."))
+
+	subpanel:AddItem(LIBMenu.GetSpacer())
+
+	subpanel:AddItem(LIBMenu.GetWhitelistFAQButton())
+
+	subpanel:AddItem(LIBMenu.GetSpacerLine())
+
+	subpanel:AddItem(LIBMenu.GetLabel("If the server has the addon 'CFC Client HTTP Whitelist' installed, the built-in whitelist is disabled automatically for better useability."))
+	subpanel:AddItem(LIBMenu.GetLabel("If the box is checked, the built-in whitelist will be always active. Both options are safe to use."))
+
+	subpanel:CheckBox(
+		"Enable the build-in whitelist even if CFC Whitelist is installed",
+		"sv_streamradio_url_whitelist_enable_on_cfcwhitelist"
+	)
+
+	subpanel:AddItem(LIBMenu.GetSpacer())
+
+	subpanel:AddItem(LIBMenu.GetCFCWhitelistFAQButton())
 
 	subpanel:AddItem(LIBMenu.GetSpacerLine())
 

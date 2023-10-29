@@ -37,8 +37,6 @@ local DropboxURLs = {
 	"//dl.dropboxusercontent.com/",
 }
 
-StreamRadioLib.Url.AddCustomProtocol("dropbox")
-
 function RADIOIFACE:CheckURL(url)
 	for i, v in ipairs(DropboxURLs) do
 		local result = string.find(string.lower(url), v, 1, true)

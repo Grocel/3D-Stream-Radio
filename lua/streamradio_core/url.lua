@@ -12,7 +12,6 @@ local LIBString = StreamRadioLib.String
 local g_sanitizeOnlineUrlCache = LIBUtil.CreateCacheArray(2048)
 local g_sanitizeOfflineUrlCache = LIBUtil.CreateCacheArray(2048)
 local g_isOfflineURLCache = LIBUtil.CreateCacheArray(2048)
-local g_isCustomProtocolURLCache = LIBUtil.CreateCacheArray(2048)
 
 local g_customProtocols = {}
 
@@ -86,45 +85,6 @@ end
 
 function LIB.SplittProtocolAndPath(url)
 	return SplittProtocolAndPath(url)
-end
-
-function LIB.AddCustomProtocol(protocol)
-	protocol = tostring(protocol or "")
-	protocol = string.Trim(protocol)
-
-	if protocol == "" then
-		return
-	end
-
-	protocol = string.lower(protocol)
-
-	g_customProtocols[protocol] = protocol
-end
-
-function LIB.IsCustomProtocolURL(url)
-	url = tostring(url or "")
-
-	if url == "" then
-		return false
-	end
-
-	if g_isCustomProtocolURLCache:Has(url) then
-		return g_isCustomProtocolURLCache:Get(url)
-	end
-
-	local protocol = GetProtocol(url)
-	g_isCustomProtocolURLCache:Set(url, false)
-
-	if protocol == "" then
-		return false
-	end
-
-	if not g_customProtocols[protocol] then
-		return false
-	end
-
-	g_isCustomProtocolURLCache:Set(url, true)
-	return true
 end
 
 function LIB.IsOfflineURL(url)
@@ -346,7 +306,6 @@ function LIB.Load()
 		g_sanitizeOnlineUrlCache:Empty()
 		g_sanitizeOfflineUrlCache:Empty()
 		g_isOfflineURLCache:Empty()
-		g_isCustomProtocolURLCache:Empty()
 	end)
 end
 

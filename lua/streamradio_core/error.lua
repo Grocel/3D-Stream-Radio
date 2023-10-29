@@ -655,11 +655,12 @@ LIB.AddStreamErrorCode({
 	id = 1000,
 	name = "STREAM_ERROR_URL_NOT_WHITELISTED",
 	description = "This URL is not whitelisted on this server",
+	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668761564/",
 	helptext = [[
 The server does not allow playback of this URL to prevent abuse.
 You can ask an admin to whitelist this URL by adding it to the playlists.
 
-CAUTION: Please don't ask to the whitelist disabled. It is there for your own security.
+CAUTION: Please don't ask to have the whitelist disabled or removed. It is there for your own security.
 ]],
 })
 
@@ -678,7 +679,7 @@ LIB.AddStreamErrorCode({
 })
 
 LIB.AddStreamErrorCode({
-	id = 1100,
+	id = 1003,
 	name = "STREAM_ERROR_BAD_DRIVE_LETTER_PATH",
 	description = "Drive letter paths are not supported, use relative paths",
 	helptext = [[
@@ -695,7 +696,7 @@ This is NOT a relative path:
 })
 
 LIB.AddStreamErrorCode({
-	id = 1200,
+	id = 1100,
 	name = "PLAYLIST_ERROR_INVALID_FILE",
 	description = "Invalid Playlist",
 	helptext = [[
@@ -718,7 +719,7 @@ Hint: Use the playlist editor to make playlists.
 })
 
 LIB.AddStreamErrorCode({
-	id = 1300,
+	id = 1200,
 	name = "STREAM_SOUND_STOPPED", -- triggered by "stopsound" concommand
 	description = "The sound has been stopped",
 	helpmenu = false,

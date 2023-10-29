@@ -18,8 +18,6 @@ local LIBUrl = StreamRadioLib.Url
 local LIBString = StreamRadioLib.String
 local LIBError = StreamRadioLib.Error
 
-LIBUrl.AddCustomProtocol("file")
-
 function RADIOIFACE:CheckURL(url)
 	if not LIBUrl.IsOfflineURL(url) then
 		return false

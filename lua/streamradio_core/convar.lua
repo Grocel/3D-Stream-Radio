@@ -2,6 +2,7 @@ local StreamRadioLib = StreamRadioLib
 
 local g_allowSpectrum = false
 local g_enableUrlWhitelist = true
+local g_enableUrlWhitelistOnCFCWhitelist = true
 
 local g_lastThink = 0
 
@@ -16,7 +17,14 @@ local g_cvUrlWhitelistEnable = CreateConVar(
 	"sv_streamradio_url_whitelist_enable",
 	"1",
 	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
-	"Disables or enables the Stream URL whitelist. When enabled only URLs listed in playlists can be played. DATA SECURITY: Keep it enabled for better server security. 1 = Enable, 0 = Disable, Default: 0"
+	"Enables the Stream URL whitelist. When enabled only URLs listed in playlists can be played. DATA SECURITY: Keep it enabled for better server security. Only turn it off if you know what you are doing! 0 = Disable, 1 = Enable, Default: 1"
+)
+
+local g_cvUrlWhitelistEnableOnCFCWhitelist = CreateConVar(
+	"sv_streamradio_url_whitelist_enable_on_cfcwhitelist",
+	"0",
+	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
+	"Enables built-in Stream URL whitelist even if 'CFC Client HTTP Whitelist' is installed and 'sv_streamradio_url_whitelist_enable' is on. Otherwise built-in whitelist stays inactive as long CFC's one is active. 0 = Disable, 1 = Enable, Default: 0"
 )
 
 local g_cvRebuildCommunityPlaylists = CreateConVar(
@@ -39,7 +47,7 @@ CreateConVar(
 	"sv_streamradio_bass3_enable",
 	"1",
 	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL ),
-	"When set to 1, it uses GM_BASS3 on the server if installed. Default: 1",
+	"Use GM_BASS3 on the server if installed and when the ConVar is set to 1. Default: 1",
 	0,
 	1
 )
@@ -50,6 +58,11 @@ end
 
 function StreamRadioLib.IsUrlWhitelistEnabled()
 	if not g_enableUrlWhitelist then return false end
+	return true
+end
+
+function StreamRadioLib.IsUrlWhitelistEnabledOnCFCWhitelist()
+	if not g_enableUrlWhitelistOnCFCWhitelist then return false end
 	return true
 end
 
@@ -75,6 +88,23 @@ local function calcUrlWhitelistEnabled()
 	if game.SinglePlayer() then return false end
 	if not g_cvUrlWhitelistEnable:GetBool() then return false end
 
+	if g_enableUrlWhitelistOnCFCWhitelist then
+		-- We always enable the built-in whitelist then
+		return true
+	end
+
+	if StreamRadioLib.Cfchttp.CanCheckWhitelist() then
+		-- CFC Client HTTP whitelist is available, disable our's then.
+		return false
+	end
+
+	return true
+end
+
+local function calcUrlWhitelistEnabledOnCFCWhitelist()
+	if game.SinglePlayer() then return false end
+	if not g_cvUrlWhitelistEnableOnCFCWhitelist:GetBool() then return false end
+
 	return true
 end
 
@@ -91,9 +121,12 @@ StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
 		g_allowSpectrum = calcAllowSpectrum()
 
 		local old_enableUrlWhitelist = g_enableUrlWhitelist
+		local old_enableUrlWhitelistOnCFCWhitelist = g_enableUrlWhitelistOnCFCWhitelist
+
+		g_enableUrlWhitelistOnCFCWhitelist = calcUrlWhitelistEnabledOnCFCWhitelist()
 		g_enableUrlWhitelist = calcUrlWhitelistEnabled()
 
-		if old_enableUrlWhitelist ~= g_enableUrlWhitelist then
+		if old_enableUrlWhitelist ~= g_enableUrlWhitelist or old_enableUrlWhitelistOnCFCWhitelist ~= g_enableUrlWhitelistOnCFCWhitelist then
 			updateUrlWhitelistEnabled()
 		end
 

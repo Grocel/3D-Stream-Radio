@@ -720,7 +720,7 @@ local function createpresets( ply, cmd, args )
 	file.Write( "presets_test/streamradio_gui_color_global.txt", Data )
 end
 
-concommand.Add( "streamradio_convertpresets", createpresets ) -- ]]
+concommand.Add( "debug_streamradio_convertpresets", createpresets ) -- ]]
 
 return true
 

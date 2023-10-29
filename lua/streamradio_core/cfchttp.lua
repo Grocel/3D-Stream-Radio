@@ -120,7 +120,7 @@ local function addCfcErrorCodes()
 			id = CFCHTTP.BASS_ERROR_BLOCKED_URI,
 			name = "STREAM_ERROR_CFCHTTP_BLOCKED_URI",
 			description = "[CFC HTTP Whitelist] URI has been blocked",
-			helpurl = "https://github.com/CFC-Servers/cfc_cl_http_whitelist",
+			helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668766829/",
 			helptext = [[
 On this server you are protected by CFC HTTP Whitelist.
 
@@ -140,7 +140,7 @@ Keep in mind that there probably is a reason why it has not been whitelisted on 
 			id = CFCHTTP.BASS_ERROR_BLOCKED_CONTENT,
 			name = "STREAM_ERROR_CFCHTTP_BLOCKED_CONTENT",
 			description = "[CFC HTTP Whitelist] Content has been blocked",
-			helpurl = "https://github.com/CFC-Servers/cfc_cl_http_whitelist",
+			helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668766829/",
 			helptext = [[
 On this server you are protected by CFC HTTP Whitelist.
 
@@ -157,45 +157,12 @@ Keep in mind that there probably is a reason why it has not been whitelisted on 
 	end
 end
 
-local function addCfcHttpWhitelist()
-	StreamRadioLib.Whitelist.AddCheckFunction("cfcHttpWhitelist", function(url)
-		if not LIB.CanCheckWhitelist() then
-			return nil
-		end
-
-		if StreamRadioLib.Url.IsCustomProtocolURL(url) then
-			-- This addon has custom protocols such as "dropbox://" or "shoutcast://"
-			-- Those will be converted to normal URLs and checked by CFC later, so we can safely skip them here.
-			return nil
-		end
-
-		if not LIB.IsAllowedSync(url, false) then
-			return nil
-		end
-
-		--[[
-			If the URL is allowed by the CFC HTTP Whitelist, we also give it a pass.
-			Effectively we extend our playlist based whitelist by the CFC one.
-			Hopefully this makes radios a little bit more user friendly on protected servers.
-
-			Note: This addon does not affect the CFC HTTP protection. CFC HTTP still checks all requests of this and other addons!
-			So if an URL passes THIS test, it doesn't mean it will be passed by CFC HTTP altogether.
-		]]
-
-		return true
-	end)
-end
-
 function LIB.Load()
 	if not LIB.IsInstalled() then
 		return
 	end
 
 	addCfcErrorCodes()
-
-	if CLIENT then
-		addCfcHttpWhitelist()
-	end
 end
 
 return true

@@ -38,7 +38,10 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 - Duplicator support
 - Supports local files (inside the ".../garrysmod/sound/" folder)
 - Clientside performance settings
-- An API for developers.
+- Server settings for admins
+- [Serverside URL Whitelist][]
+- [CFC Client HTTP Whitelist][] support
+- An API for developers
 
 # Credits
 - Code: Grocel
@@ -49,7 +52,7 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 
 [Garry's Mod]: <http://garrysmod.com/>
 [Wiremod]: <https://github.com/wiremod/wire>
-[GM_BASS3]: <https://gmod.facepunch.com/f/gmodaddon/jina/gm-bass3-A-cross-plattform-shared-Lua-API-to-BASS/1/>
+[GM_BASS3]: <https://github.com/Grocel/GMod_Modules/tree/master/gm_bass3>
 [workshop]: <https://steamcommunity.com/sharedfiles/filedetails/?id=246756300>
 
 [Web Radio]: <https://steamcommunity.com/sharedfiles/filedetails/?id=314470705>
@@ -61,3 +64,5 @@ The 3D Stream Radio is available on the Steam Workshop! Go to [its Workshop page
 [ZENITH Trans-Oceanic H500]: <https://steamcommunity.com/sharedfiles/filedetails/?id=1652510511>
 
 [CPPI]: <http://ulyssesmod.net/archive/CPPI_v1-3.pdf>
+[Serverside URL Whitelist]: <https://github.com/Grocel/3D-Stream-Radio/wiki/Whitelisting-of-online-content>
+[CFC Client HTTP Whitelist]: <https://github.com/Grocel/3D-Stream-Radio/wiki/CFC-Client-HTTP-Whitelist-integration>

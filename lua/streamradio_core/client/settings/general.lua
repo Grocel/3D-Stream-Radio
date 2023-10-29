@@ -13,7 +13,7 @@ local g_rendertarget = true
 local g_rendertarget_fps = 10
 local g_3dsound = true
 local g_key = 0
-local g_vehiclekey = 0
+local g_key_vehicle = 0
 local g_volume = 1
 local g_coveredvolume = 0
 
@@ -109,7 +109,7 @@ LIB.AddConVar("general", "key", "cl_streamradio_key", KEY_E, {
 	type = "numpad",
 })
 
-LIB.AddConVar("general", "vehiclekey", "cl_streamradio_vehiclekey", MOUSE_LEFT, {
+LIB.AddConVar("general", "key_vehicle", "cl_streamradio_key_vehicle", MOUSE_LEFT, {
 	label = "Radio control/use key while in vehicles",
 	help = "",
 	type = "numpad",
@@ -146,7 +146,7 @@ LIB.AddConVar("general", "no3dsound", "cl_streamradio_no3dsound", "0", {
 
 LIB.AddConVar("general", "bass3_enable", "cl_streamradio_bass3_enable", "1", {
 	label = "Use GM_BASS3 if installed",
-	help = "When set to 1, it uses GM_BASS3 if installed and allowed on the server. Default: 1",
+	help = "When set to 1, it uses GM_BASS3 if installed on client and allowed on the server. Default: 1",
 	type = "bool",
 })
 
@@ -234,7 +234,7 @@ function StreamRadioLib.GetControlKey()
 end
 
 function StreamRadioLib.GetControlKeyVehicle()
-	return g_vehiclekey
+	return g_key_vehicle
 end
 
 function StreamRadioLib.GetGlobalVolume()
@@ -286,7 +286,7 @@ StreamRadioLib.Hook.Add("Think", "SettingsUpdate", function()
 	end
 
 	g_key = LIB.GetConVarValue("key")
-	g_vehiclekey = LIB.GetConVarValue("vehiclekey")
+	g_key_vehicle = LIB.GetConVarValue("key_vehicle")
 	g_volume = LIB.GetConVarValue("volume")
 	g_coveredvolume = LIB.GetConVarValue("coveredvolume")
 end)

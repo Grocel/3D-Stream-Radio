@@ -61,6 +61,7 @@ function ENT:Initialize( )
 	self:SetCLVolume(1)
 
 	self:AddWireInput("Stream URL", "STRING")
+
 	self:AddWireInput("Play", "NORMAL")
 	self:AddWireInput("Pause", "NORMAL")
 	self:AddWireInput("Mute", "NORMAL")
@@ -289,7 +290,7 @@ function ENT:WiremodThink()
 		LIBUtil.EmptyTableSafe(self._spectrum)
 
 		if hasadvoutputs then
-			self._spectrum[1] = "Standby mode: Connect to this Output to aktivate it."
+			self._spectrum[1] = "Standby mode: Connect to this Output to activate it."
 		end
 	end
 

@@ -85,7 +85,7 @@ if StreamRadioLib and StreamRadioLib.Loaded then
 	StreamRadioLib.Tool.AddLocale(TOOL, "mute_volume_info", "NOTE: These are entity options too. So they only affect the radio they are applied on. The global settings for your client are at 'General Settings'.")
 	StreamRadioLib.Tool.AddLocale(TOOL, "mute_volume_info.desc", "NOTE: These are entity options too. So they only affect the radio they are applied on. The global settings for your client are at 'General Settings'.")
 
-	StreamRadioLib.Tool.AddLocale(TOOL, "streamurl_whitelist_info", "Only whitelisted Stream URLs will work on this server!")
+	StreamRadioLib.Tool.AddLocale(TOOL, "streamurl_whitelist_info", "Whitelist protected server: Only approved Stream URLs will work on this server!")
 
 	StreamRadioLib.Tool.Setup(TOOL)
 else
@@ -155,6 +155,8 @@ function TOOL:BuildToolPanel(CPanel)
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
 
 	self:AddLabel( CPanel, "mute_volume_info", true )
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer())
 
 	self:AddCheckbox( CPanel, "mute", false )
 

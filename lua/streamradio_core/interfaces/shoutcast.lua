@@ -37,8 +37,6 @@ local ShoutcastURLs = {
 	"shoutcast://",
 }
 
-StreamRadioLib.Url.AddCustomProtocol("shoutcast")
-
 function RADIOIFACE:CheckURL(url)
 	for i, v in ipairs(ShoutcastURLs) do
 		local result = string.find(string.lower(url), v, 1, true)
