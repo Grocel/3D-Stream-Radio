@@ -5,17 +5,6 @@ StreamRadioLib.Surface = StreamRadioLib.Surface or {}
 local LIB = StreamRadioLib.Surface
 table.Empty(LIB)
 
-local cam = cam
-local surface = surface
-local string = string
-local math = math
-local draw = draw
-local render = render
-local ipairs = ipairs
-local pairs = pairs
-local tonumber = tonumber
-local Color = Color
-
 local g_font_template = {
 	font = "Arial",
 	size = 0,

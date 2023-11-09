@@ -481,10 +481,10 @@ function ENT:OnRemove()
 
 		if g_isLoaded then
 			StreamRadioLib.UnregisterRadio(creationID)
-		end
 
-		LIBUtil.EmptyTableSafe(classobjs_data)
-		LIBUtil.EmptyTableSafe(classobjs_nw_register)
+			LIBUtil.EmptyTableSafe(classobjs_data)
+			LIBUtil.EmptyTableSafe(classobjs_nw_register)
+		end
 	end)
 
 	if SERVER then

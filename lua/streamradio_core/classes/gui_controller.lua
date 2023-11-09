@@ -94,7 +94,7 @@ function CLASS:Create()
 	end
 
 	local ResizeRT = function()
-		local x, y = self:GetPos()
+		local x = self:GetPos()
 		local w, h = self:GetSize()
 
 		self._RT:SetPos(x, x)
@@ -242,7 +242,7 @@ function CLASS:PosTooltipToCursor(force)
 	local x, y = self:GetPos()
 
 	local cx, cy = self:GetCursor()
-	local cw, ch = self:GetCursorSize()
+	local _, ch = self:GetCursorSize()
 	local pw, ph = self:GetClientSize()
 	local tw, th = self.Tooltip:GetSize()
 
@@ -389,7 +389,7 @@ function CLASS:DrawCursor()
 	if not self:GetAllowCursor() then return end
 	if not self:IsCursorInBounds() then return end
 
-	local ax1, ay1, ax2, ay2 = self:GetArea()
+	local _, _, ax2, ay2 = self:GetArea()
 
 	local cx, cy = self:GetCursor()
 	local cw, ch = self:GetCursorSize()

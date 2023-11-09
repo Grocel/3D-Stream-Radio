@@ -5,11 +5,11 @@ StreamRadioLib.Filesystem = StreamRadioLib.Filesystem or {}
 local LIB = StreamRadioLib.Filesystem
 table.Empty(LIB)
 
-
 local LIBString = StreamRadioLib.String
+local LIBUtil = StreamRadioLib.Util
 
-local g_playlistdir = ( StreamRadioLib.DataDirectory or "" ) .. "/playlists"
-local LuaFilesystemDirectory = "streamradio_core/filesystem"
+local g_playlistdir = LIBUtil.GetMainDirectory("playlists")
+local g_luaFilesystemDirectory = "streamradio_core/filesystem"
 local g_Filesystem = {}
 local g_FilesystemBlacklist = {}
 
@@ -79,15 +79,8 @@ local function AddCommonFunctions(fs)
 		return true
 	end
 
-	function fs:CreateDirForFile(globalpath)
-		local folder = string.GetPathFromFilename(globalpath) or ""
-		if folder == "" then return true end
-
-		if not file.IsDir(folder, "DATA") then
-			file.CreateDir(folder)
-		end
-
-		return file.IsDir(folder, "DATA")
+	function fs:CreateDirectoryForFile(globalpath)
+		return LIBUtil.CreateDirectoryForFile(globalpath)
 	end
 
 	function fs:IsType(globalpath, vpath)
@@ -141,7 +134,7 @@ local function loadFilesystem(script)
 	script = script or ""
 	if script == "" then return nil end
 
-	local scriptpath = LuaFilesystemDirectory .. "/"
+	local scriptpath = g_luaFilesystemDirectory .. "/"
 	local scriptfile = scriptpath .. script
 
 	if not file.Exists(scriptfile, "LUA") then return nil end
@@ -280,7 +273,7 @@ local function SanitizeData(data)
 end
 
 function LIB.Load()
-	local files = file.Find(LuaFilesystemDirectory .. "/*", "LUA")
+	local files = file.Find(g_luaFilesystemDirectory .. "/*", "LUA")
 
 	local filesystems = {};
 

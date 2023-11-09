@@ -7,7 +7,6 @@ local LIB = StreamRadioLib.properties
 table.Empty(LIB)
 
 local LIBNet = StreamRadioLib.Net
-local LIBNetwork = StreamRadioLib.Network
 local LIBError = StreamRadioLib.Error
 local LIBUtil = StreamRadioLib.Util
 
@@ -236,7 +235,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	optionPanel.DoClickInternal = g_emptyFunction
 
 	optionPanel:SetTextInset(10, 0)
-	optionPanel:DockPadding(5,5,5,5)
+	optionPanel:DockPadding(5, 5, 5, 5)
 
 	local ply = LocalPlayer()
 
@@ -246,7 +245,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	upButton:Dock(RIGHT)
 	upButton:SetImage(StreamRadioLib.GetPNGIconPath("sound_add"))
 	upButton:SetText("")
-	upButton:DockMargin(5,0,0,0)
+	upButton:DockMargin(5, 0, 0, 0)
 	upButton:SetTooltip("Increase volume")
 
 	upButton.DoClick = function(panel)
@@ -268,7 +267,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	downButton:Dock(RIGHT)
 	downButton:SetImage(StreamRadioLib.GetPNGIconPath("sound_delete"))
 	downButton:SetText("")
-	downButton:DockMargin(5,0,0,0)
+	downButton:DockMargin(5, 0, 0, 0)
 	downButton:SetTooltip("Decrease volume")
 
 	downButton.DoClick = function(panel)
@@ -290,7 +289,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	muteButton:Dock(RIGHT)
 	muteButton:SetImage(StreamRadioLib.GetPNGIconPath("sound_mute"))
 	muteButton:SetText("")
-	muteButton:DockMargin(0,0,0,0)
+	muteButton:DockMargin(0, 0, 0, 0)
 	muteButton:SetTooltip("Mute")
 
 	muteButton.DoClick = function(panel)
@@ -312,7 +311,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	unmuteButton:Dock(RIGHT)
 	unmuteButton:SetImage(StreamRadioLib.GetPNGIconPath("sound"))
 	unmuteButton:SetText("")
-	unmuteButton:DockMargin(0,0,0,0)
+	unmuteButton:DockMargin(0, 0, 0, 0)
 	unmuteButton:SetTooltip("Unmute")
 
 	unmuteButton.DoClick = function(panel)
@@ -350,7 +349,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	optionPanel.DoClickInternal = g_emptyFunction
 
 	optionPanel:SetTextInset(5, 0)
-	optionPanel:DockPadding(5,5,5,5)
+	optionPanel:DockPadding(5, 5, 5, 5)
 
 	local ply = LocalPlayer()
 
@@ -360,7 +359,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	playButton:Dock(LEFT)
 	playButton:SetImage(StreamRadioLib.GetPNGIconPath("control_play"))
 	playButton:SetText("")
-	playButton:DockMargin(0,0,0,0)
+	playButton:DockMargin(0, 0, 0, 0)
 	playButton:SetTooltip("Play")
 
 	playButton.DoClick = function(panel)
@@ -382,7 +381,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	pauseButton:Dock(LEFT)
 	pauseButton:SetImage(StreamRadioLib.GetPNGIconPath("control_pause"))
 	pauseButton:SetText("")
-	pauseButton:DockMargin(0,0,0,0)
+	pauseButton:DockMargin(0, 0, 0, 0)
 	pauseButton:SetTooltip("Pause")
 
 	pauseButton.DoClick = function(panel)
@@ -404,7 +403,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	stopButton:Dock(LEFT)
 	stopButton:SetImage(StreamRadioLib.GetPNGIconPath("control_stop"))
 	stopButton:SetText("")
-	stopButton:DockMargin(5,0,0,0)
+	stopButton:DockMargin(5, 0, 0, 0)
 	stopButton:SetTooltip("Stop")
 
 	stopButton.DoClick = function(panel)
@@ -426,7 +425,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	previousTrackButton:Dock(LEFT)
 	previousTrackButton:SetImage(StreamRadioLib.GetPNGIconPath("control_start"))
 	previousTrackButton:SetText("")
-	previousTrackButton:DockMargin(5,0,0,0)
+	previousTrackButton:DockMargin(5, 0, 0, 0)
 	previousTrackButton:SetTooltip("Previous track")
 
 	previousTrackButton.DoClick = function(panel)
@@ -448,7 +447,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	nextTrackButton:Dock(LEFT)
 	nextTrackButton:SetImage(StreamRadioLib.GetPNGIconPath("control_end"))
 	nextTrackButton:SetText("")
-	nextTrackButton:DockMargin(5,0,0,0)
+	nextTrackButton:DockMargin(5, 0, 0, 0)
 	nextTrackButton:SetTooltip("Next track")
 
 	nextTrackButton.DoClick = function(panel)
@@ -470,7 +469,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	rewindButton:Dock(LEFT)
 	rewindButton:SetImage(StreamRadioLib.GetPNGIconPath("control_rewind"))
 	rewindButton:SetText("")
-	rewindButton:DockMargin(5,0,0,0)
+	rewindButton:DockMargin(5, 0, 0, 0)
 	rewindButton:SetTooltip("Rewind 10 seconds")
 
 	rewindButton.DoClick = function(panel)
@@ -492,7 +491,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	fastForwardButton:Dock(LEFT)
 	fastForwardButton:SetImage(StreamRadioLib.GetPNGIconPath("control_fastforward"))
 	fastForwardButton:SetText("")
-	fastForwardButton:DockMargin(5,0,0,0)
+	fastForwardButton:DockMargin(5, 0, 0, 0)
 	fastForwardButton:SetTooltip("Fast forward 10 seconds")
 
 	fastForwardButton.DoClick = function(panel)

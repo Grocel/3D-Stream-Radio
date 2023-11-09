@@ -11,6 +11,8 @@ local CLIENT = CLIENT
 
 local StreamRadioLib = StreamRadioLib
 
+local catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
+
 function StreamRadioLib.IsGUIHidden(ply)
 	if not IsValid(ply) and CLIENT then
 		ply = LocalPlayer()
@@ -142,6 +144,8 @@ function StreamRadioLib.GetControlPosDir(ent)
 	if not IsValid(ent) then return nil end
 	if not IsValid(camera) then return nil end
 
+	local pos, dir
+
 	if camera:IsPlayer() then
 		pos = camera:EyePos()
 		dir = camera:GetAimVector()
@@ -158,7 +162,9 @@ end
 
 local g_PlayerTraceCache = {}
 local g_PlayerTraceCacheCount = 0
+
 local g_PlayerTrace = {}
+g_PlayerTrace.filter = {}
 
 function StreamRadioLib.Trace(ent)
 	if not IsValid(ent) and CLIENT then
@@ -212,7 +218,8 @@ function StreamRadioLib.Trace(ent)
 	tmp[entVehicle] = entVehicle
 	tmp[cameraVehicle] = cameraVehicle
 
-	filter = {}
+	local filter = g_PlayerTrace.filter
+	table.Empty(filter)
 
 	for _, filterEnt in pairs(tmp) do
 		if not IsValid(filterEnt) then continue end
@@ -434,8 +441,6 @@ local function ClearCheckPropProtectionCache()
 	g_checkPropProtectionCacheEmpty = true
 	g_checkPropProtectionCacheExpire = nil
 end
-
-catchAndErrorNoHaltWithStack = StreamRadioLib.Util.CatchAndErrorNoHaltWithStack
 
 function StreamRadioLib.CheckPropProtectionAgainstUse(ent, ply)
 	if not IsValid( ent ) then return false end

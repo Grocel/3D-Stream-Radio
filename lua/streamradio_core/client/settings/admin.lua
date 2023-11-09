@@ -13,9 +13,11 @@ LIB.g_CV_List["admin"] = {}
 
 local function AddDangerMenuPanel(CPanel)
 	local subpanel = vgui.Create("DForm")
+
 	subpanel:SetName("Playlists rebuild setting")
 
 	CPanel:AddPanel(subpanel)
+	subpanel:SetCookieName("streamradio_admin_playlists_rebuild")
 
 	subpanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: Be careful what you in this section!\nUnanticipated loss of CUSTOM playlist files can be caused by mistakes!"))
 
@@ -99,9 +101,11 @@ end
 
 local function AddSecurityMenuPanel(CPanel)
 	local subpanel = vgui.Create("DForm")
+
 	subpanel:SetName("Security Options")
 
 	CPanel:AddPanel(subpanel)
+	subpanel:SetCookieName("streamradio_admin_playlists_rebuild")
 
 	subpanel:AddItem(LIBMenu.GetWarnLabel("CAUTION: This affects the server security of this addon.\nOnly disable the whitelist if you know what you are doing!\nBetter you never turn this off!"))
 
@@ -153,9 +157,11 @@ end
 
 local function AddBassMenuPanel(CPanel)
 	local subpanel = vgui.Create("DForm")
+
 	subpanel:SetName("GM_BASS3 Options")
 
 	CPanel:AddPanel(subpanel)
+	subpanel:SetCookieName("streamradio_admin_bass3")
 
 	local hasBass = StreamRadioLib.Bass.IsInstalledOnServer()
 

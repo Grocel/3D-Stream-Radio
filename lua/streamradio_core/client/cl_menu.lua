@@ -210,8 +210,19 @@ function LIB.GetWarnLabel(text)
 	return label
 end
 
+function LIB.GetImportantLabel(text)
+	local label = LIB.GetLabel(text)
+
+	local skindata = label:GetSkin()
+
+	label:SetTextColor(skindata.Colours.Tree.Hover)
+
+	return label
+end
+
+
 function LIB.GetWhitelistEnabledLabel(text)
-	local label = LIB.GetWarnLabel(text)
+	local label = LIB.GetImportantLabel(text)
 
 	local function handleWhitelistEnabled(this)
 		local lastisUrlWhitelistEnabled = this._isUrlWhitelistEnabled

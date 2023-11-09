@@ -272,11 +272,11 @@ local function loadAddon()
 	LIB.Loading = nil
 end
 
-local g_colDefault = Color(255,255,255)
-local g_colError = Color(255,128,128)
-local g_colOk = Color(100,200,100)
-local g_colCL = Color(255,222,137)
-local g_colSV = Color(137,222,255)
+local g_colDefault = Color(255, 255, 255)
+local g_colError = Color(255, 128, 128)
+local g_colOk = Color(100, 200, 100)
+local g_colCL = Color(255, 222, 137)
+local g_colSV = Color(137, 222, 255)
 
 local function printAddon()
 	local errors = LIB.Errors

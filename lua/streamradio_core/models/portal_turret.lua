@@ -126,8 +126,8 @@ function RADIOMDL:_StateCloseWings(ent)
 	local RightWing = ent:LookupBone( "RT_Wing" ) or 0
 	local LeftWing = ent:LookupBone( "LFT_Wing" ) or 0
 
-	local RPos = math.Clamp( ( self.RightWing or 0 ), 0, 1 )
-	local LPos = math.Clamp( ( self.LeftWing or 0 ), 0, 1 )
+	local RPos = math.Clamp(self.RightWing or 0, 0, 1)
+	local LPos = math.Clamp(self.LeftWing or 0, 0, 1)
 
 	if RPos <= 0 and LPos <= 0 then
 		self.WingOpened = false
@@ -147,8 +147,8 @@ function RADIOMDL:_StateOpenWings(ent)
 	local RightWing = ent:LookupBone( "RT_Wing" ) or 0
 	local LeftWing = ent:LookupBone( "LFT_Wing" ) or 0
 
-	local RPos = math.Clamp( ( self.RightWing or 0 ), 0, 0.5 )
-	local LPos = math.Clamp( ( self.LeftWing or 0 ), 0, 0.5 )
+	local RPos = math.Clamp(self.RightWing or 0, 0, 0.5)
+	local LPos = math.Clamp(self.LeftWing or 0, 0, 0.5)
 
 	if RPos >= 0.5 and LPos >= 0.5 then
 		self.WingClosed = false
@@ -328,8 +328,8 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 	local RightWing = ent:LookupBone( "RT_Wing" ) or 0
 	local LeftWing = ent:LookupBone( "LFT_Wing" ) or 0
 
-	local RPos = math.Clamp( ( self.RightWing or 0 ), 0.25, 1 )
-	local LPos = math.Clamp( ( self.LeftWing or 0 ), 0.25, 1 )
+	local RPos = math.Clamp(self.RightWing or 0, 0.25, 1)
+	local LPos = math.Clamp(self.LeftWing or 0, 0.25, 1)
 
 	ent:ManipulateBonePosition( RightWing, Vector( RPos * self.WingSpan, 0, 0 ) )
 	ent:ManipulateBonePosition( LeftWing, Vector( -LPos * self.WingSpan, 0, 0 ) )

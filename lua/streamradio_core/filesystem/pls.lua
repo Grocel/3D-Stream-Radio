@@ -27,7 +27,7 @@ local function decodePLS(RawPlaylist)
 	end
 
 	local CountHeader = string.lower( string.Trim( RawPlaylistTab[2] or "" ) )
-	local Count = tonumber(string.match(CountHeader, '%s*numberofentries%s*=%s*([0-9]+)')) or 0
+	local Count = tonumber(string.match(CountHeader, "%s*numberofentries%s*=%s*([0-9]+)")) or 0
 
 	local Playlist = {}
 
@@ -36,7 +36,7 @@ local function decodePLS(RawPlaylist)
 	end
 
 	for i = 1, Count do
-		line = i * 3
+		local line = i * 3
 
 		local UrlLine = RawPlaylistTab[line] or ""
 		local NameLine = RawPlaylistTab[line + 1] or ""
@@ -89,7 +89,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 end
 
 function RADIOFS:Write(globalpath, vpath, data, callback)
-	if not self:CreateDirForFile(globalpath) then
+	if not self:CreateDirectoryForFile(globalpath) then
 		callback(false)
 		return false
 	end

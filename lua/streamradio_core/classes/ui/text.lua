@@ -49,7 +49,7 @@ function CLASS:Create()
 			self:QueueCall("BuildLines")
 		end
 
-		self.Colors.Main = Color(0,0,0)
+		self.Colors.Main = Color(0, 0, 0)
 	end
 
 	self:SetSkinAble(false)
@@ -72,7 +72,7 @@ function CLASS:BuildLines(force)
 
 	local font = self.TextData.Font
 	local text = self.TextData.Text
-	local w, h = self:GetSize()
+	local w = self:GetSize()
 
 	self:GetWidth()
 
@@ -80,13 +80,12 @@ function CLASS:BuildLines(force)
 
 	local line = {}
 	local linew = 0
-	local linehend = false
 
 	surface.SetFont( font )
 	local checksize = {"W", "M", "L", "I", "i", "l", ".", "g", "|", "_"}
 
 	for k, v in ipairs(checksize) do
-		local tsw, tsh = surface.GetTextSize(v)
+		local tsw = surface.GetTextSize(v)
 
 		if tsw >= w then
 			self:InvalidateLayout()
@@ -121,12 +120,12 @@ function CLASS:BuildLines(force)
 			return
 		end
 
-		local tsw, tsh = surface.GetTextSize( text )
+		local tsw = surface.GetTextSize( text )
 		local newlinew = linew + tsw
 
 		-- Word to long, seperate it
 		if tsw > w then
-			for i=1, #text do
+			for i = 1, #text do
 				addtoline(text[i])
 			end
 
@@ -188,22 +187,20 @@ function CLASS:Render()
 	local x, y = self:GetRenderPos()
 	local w, h = self:GetSize()
 
-	local xalign, yalign = self.TextData.AlignX, self.TextData.AlignY
 	local col = self.Colors.Main or color_black
 	local font = self.TextData.Font
-	
+
 	surface.SetFont( font )
 	surface.SetTextColor( col:Unpack() )
 
 	local lines = self:GetVisibleLines()
-	local textw, texth = self:GetTextSize()
+	local _, texth = self:GetTextSize()
 
 	for i, v in ipairs(lines) do
 		local text = v.text
 		local ox = v.x
 		local oy = v.y
 		local ow = v.w
-		local oh = v.h
 
 		self:DrawText(text, x + ox, y + oy, w, h, ow, texth)
 	end
@@ -253,11 +250,11 @@ function CLASS:GetTotalTextSize()
 end
 
 function CLASS:FitToText(minw, maxw)
- 	self:SetWidth(maxw)
- 	self:BuildLines()
+	self:SetWidth(maxw)
+	self:BuildLines()
 
- 	local w, h = self:GetTotalTextSize()
- 	w = math.Clamp(w, minw, maxw)
+	local w, h = self:GetTotalTextSize()
+	w = math.Clamp(w, minw, maxw)
 
 	self:SetSize(w, h)
 end
@@ -312,9 +309,8 @@ function CLASS:GetVisibleLines()
 	if chlines then return chlines end
 
 	local liney = 0
-	local textw, texth = self:GetTextSize()
+	local _, texth = self:GetTextSize()
 
-	local count = self:GetLineCount()
 	local startline = self:GetStartLine()
 
 	local lines = {}

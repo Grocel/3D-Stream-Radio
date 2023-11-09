@@ -99,7 +99,7 @@ function TOOL:AddSkinList( panel )
 	listpanel:SetMultiSelect(false)
 
 	local col1 = listpanel:AddColumn("No.")
-	local col2 = listpanel:AddColumn("Name")
+	listpanel:AddColumn("Name")
 	local col3 = listpanel:AddColumn("Open")
 
 	col1:SetFixedWidth(30)
@@ -264,8 +264,6 @@ function TOOL:AddFileControlPanel( panel )
 
 		local name = bgpanel:GetFile()
 		checkfile(name)
-
-		local filepath = StreamRadioLib.Skin.GetPath(name)
 
 		Derma_Query(
 			StreamRadioLib.Tool.GetLocaleTranslation(self, "file.delete.desc"),
@@ -487,19 +485,18 @@ function TOOL:GetAimedGui(trace)
 	if not trace.Hit then return end
 
 	local ent = trace.Entity
-	local owner = self:GetOwner()
 
 	if not self:IsValidGUIRadio(ent) then return end
 
 	local entgui = ent:GetGUI()
 	if not IsValid(entgui) then return end
 
-	return ent, entgui
+	return entgui, ent
 end
 
 function TOOL:LeftClick(trace)
 	if not self.ToolLibLoaded then return end
-	local ent, entgui = self:GetAimedGui(trace)
+	local entgui = self:GetAimedGui(trace)
 	if not IsValid(entgui) then return false end
 
 	if CLIENT then return true end
@@ -510,7 +507,7 @@ end
 
 function TOOL:LeftClickClient()
 	if not self.ToolLibLoaded then return end
-	local ent, entgui = self:GetAimedGui()
+	local entgui = self:GetAimedGui()
 	if not IsValid(entgui) then return false end
 
 	entgui:SetSkinOnServer(self:GetSkin(), false)
@@ -518,7 +515,7 @@ end
 
 function TOOL:RightClick(trace)
 	if not self.ToolLibLoaded then return end
-	local ent, entgui = self:GetAimedGui(trace)
+	local entgui = self:GetAimedGui(trace)
 	if not IsValid(entgui) then return false end
 
 	if CLIENT then return true end
@@ -529,7 +526,7 @@ end
 
 function TOOL:RightClickClient()
 	if not self.ToolLibLoaded then return end
-	local ent, entgui = self:GetAimedGui()
+	local entgui = self:GetAimedGui()
 	if not IsValid(entgui) then return false end
 
 	self:SetSkin(entgui:GetSkin())
@@ -537,7 +534,7 @@ end
 
 function TOOL:Reload(trace)
 	if not self.ToolLibLoaded then return end
-	local ent, entgui = self:GetAimedGui(trace)
+	local entgui = self:GetAimedGui(trace)
 	if not IsValid(entgui) then return false end
 
 	if CLIENT then return true end
@@ -548,7 +545,7 @@ end
 
 function TOOL:ReloadClient()
 	if not self.ToolLibLoaded then return end
-	local ent, entgui = self:GetAimedGui()
+	local entgui = self:GetAimedGui()
 	if not IsValid(entgui) then return false end
 
 	entgui:SetSkinOnServer(StreamRadioLib.Skin.GetDefaultSkin(), false)

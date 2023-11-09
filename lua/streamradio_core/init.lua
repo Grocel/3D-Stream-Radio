@@ -63,13 +63,22 @@ end
 
 LIB.DataDirectory = "streamradio"
 
-local _, NetURL = LIB.LoadSH("streamradio_core/neturl.lua")
-LIB.NetURL = NetURL
+do
+    local status, lib = LIBLoadSH("streamradio_core/external/neturl.lua")
+
+    LIB.NetURL = nil
+
+    if not status then
+        g_ok = false
+    else
+        LIB.NetURL = lib
+    end
+end
 
 loadSH("streamradio_core/api.lua")
-loadSH("streamradio_core/util.lua")
 loadSH("streamradio_core/string.lua")
 loadSH("streamradio_core/string_accents.lua")
+loadSH("streamradio_core/util.lua")
 loadSH("streamradio_core/url.lua")
 loadSH("streamradio_core/hook.lua")
 loadSH("streamradio_core/timedpairs.lua")

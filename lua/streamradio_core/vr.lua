@@ -163,7 +163,9 @@ end
 
 local g_PlayerHandTraceCache = nil
 local g_PlayerHandTrace = {}
+
 g_PlayerHandTrace.output = {}
+g_PlayerHandTrace.filter = {}
 
 function LIB.TraceHand()
 	if not CLIENT then
@@ -205,12 +207,12 @@ function LIB.TraceHand()
 	tmp[ply] = ply
 	tmp[plyVehicle] = plyVehicle
 
-	filter = {}
+	local filter = g_PlayerHandTrace.filter
+	table.Empty(filter)
 
 	for _, filterEnt in pairs(tmp) do
 		if not IsValid(filterEnt) then continue end
-
-		filter[#filter + 1] = filterEnt
+		table.insert(filter, filterEnt)
 	end
 
 	g_PlayerHandTrace.filter = filter

@@ -32,12 +32,12 @@ function LIB.Decode(json)
 	json = string.gsub(json, "//.-\n" , "\n")    -- singleline comment
 	json = string.gsub(json, "/%*.-%*/" , "\n")  -- multiline comment
 
-	json = string.gsub(json, ",([%s]*)([%]%}])","%1%2")  -- trailing comma of arrays/objects
+	json = string.gsub(json, ",([%s]*)([%]%}])", "%1%2")  -- trailing comma of arrays/objects
 
-	json = string.gsub(json, "\n[%s]*","\n")     -- remove all spaces at the start of lines
-	json = string.gsub(json, "[%s\n]*\n","\n")   -- remove all empty lines and all spaces at the end of lines
-	json = string.gsub(json, "^\n","")           -- remove first empty new line
-	json = string.gsub(json, "\n$","")           -- remove last empty new line
+	json = string.gsub(json, "\n[%s]*", "\n")     -- remove all spaces at the start of lines
+	json = string.gsub(json, "[%s\n]*\n", "\n")   -- remove all empty lines and all spaces at the end of lines
+	json = string.gsub(json, "^\n", "")           -- remove first empty new line
+	json = string.gsub(json, "\n$", "")           -- remove last empty new line
 
 	json = string.Trim(json)
 

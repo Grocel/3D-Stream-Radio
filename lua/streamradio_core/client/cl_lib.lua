@@ -1,44 +1,5 @@
--- ////////////////////////////////////
---          Stream Radio Lip
--- ////////////////////////////////////
-local IsValid = IsValid
-local tonumber = tonumber
-local tostring = tostring
-local Color = Color
-local LocalPlayer = LocalPlayer
-local concommand = concommand
-local hook = hook
-local math = math
-local string = string
-local net = net
 
 local LIBNet = StreamRadioLib.Net
-local LIBError = StreamRadioLib.Error
-
-LIBNet.Receive("PlaylistMenu", function( length )
-	if ( not istable( StreamRadioLib ) ) then return end
-	if ( not StreamRadioLib.NetReceiveFileEntry ) then return end
-	local entity, name, type, x, y = StreamRadioLib.NetReceiveFileEntry( )
-	if ( not IsValid( entity ) ) then return end
-	if ( not entity.PlaylistMenu ) then return end
-	local fileinfo = {}
-	fileinfo.filename = name
-	fileinfo.filetype = type
-	entity.PlaylistMenu[x] = entity.PlaylistMenu[x] or {}
-	entity.PlaylistMenu[x][y] = fileinfo
-end)
-
-LIBNet.Receive("Playlist", function( length )
-	if ( not istable( StreamRadioLib ) ) then return end
-	if ( not StreamRadioLib.NetReceivePlaylistEntry ) then return end
-	local entity, name, x, y = StreamRadioLib.NetReceivePlaylistEntry( )
-	if ( not IsValid( entity ) ) then return end
-	if ( not entity.Playlist ) then return end
-	local fileinfo = {}
-	fileinfo.filename = name
-	entity.Playlist[x] = entity.Playlist[x] or {}
-	entity.Playlist[x][y] = fileinfo
-end)
 
 local g_camPos = nil
 local g_inRenderScene = false
@@ -222,43 +183,17 @@ end
 function StreamRadioLib.CalcDistanceVolume( distance, max )
 	distance = distance or 0
 	local threshold = 0.25
-	max = math.min( max or 0, StreamRadioLib.GetMuteDistance( ) )
-	local min = ( max or 0 ) / 3
+	max = math.min(max or 0, StreamRadioLib.GetMuteDistance())
+	local min = (max or 0) / 3
 	local fullmin = min / 4
-	if ( min <= 0 ) then return 0 end
-	if ( max <= 0 ) then return 0 end
-	if ( distance > max ) then return 0 end
-	if ( distance <= 0 ) then return 1 end
-	if ( distance <= fullmin ) then return 1 end
-	if ( distance <= min ) then return Lerp( ( distance - fullmin ) / ( min - fullmin ), 1, threshold ) end
+	if min <= 0 then return 0 end
+	if max <= 0 then return 0 end
+	if distance > max then return 0 end
+	if distance <= 0 then return 1 end
+	if distance <= fullmin then return 1 end
+	if distance <= min then return Lerp((distance - fullmin) / (min - fullmin), 1, threshold) end
 
-	return Lerp( ( distance - min ) / ( max - min ), threshold, 0 )
-end
-
-local oldfloat = 0
-
-function StreamRadioLib.PrintFloat( float, len, ... )
-	local float = math.Clamp( float, 0, 1 )
-	local str = ""
-
-	if ( float >= oldfloat ) then
-		oldfloat = float
-	end
-
-	local bar = math.Round( float * len )
-	local space = len - math.Round( float * len )
-	local space1 = math.Round( ( oldfloat - float ) * len )
-	local space2 = space - space1 - 1
-	str = string.rep( "#", bar ) .. string.rep( " ", space1 ) .. ( math.Round( oldfloat * len ) < len and "|" or "" ) .. string.rep( " ", space2 )
-	MsgC( Color( 510 * float, 510 * ( 1 - float ), 0, 255 ), str, " ", string.format( "% 7.2f%%\t", float * 100 ), ..., "\n" )
-
-	if ( float < oldfloat ) then
-		oldfloat = oldfloat - 0.5 * RealFrameTime( )
-	end
-
-	oldvar = float
-
-	return str
+	return Lerp((distance - min) / (max - min), threshold, 0)
 end
 
 return true

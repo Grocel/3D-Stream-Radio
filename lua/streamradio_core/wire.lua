@@ -141,7 +141,9 @@ function LIB.GetUserPos(ent)
 		return nil
 	end
 
-	pos = ent:GetPos()
+	local pos = ent:GetPos()
+
+	return pos
 end
 
 function LIB.GetUserPosDir(ent)

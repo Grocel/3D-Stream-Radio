@@ -2,7 +2,6 @@ AddCSLuaFile()
 DEFINE_BASECLASS( "base_streamradio_gui" )
 
 local StreamRadioLib = StreamRadioLib
-local LIBNetwork = StreamRadioLib.Network
 local LIBWire = StreamRadioLib.Wire
 
 local g_isLoaded = StreamRadioLib and StreamRadioLib.Loaded
@@ -134,7 +133,7 @@ function ENT:SetupDataTables( )
 
 	self._radio_EditValue = self._radio_EditValue or self.EditValue
 	self.EditValue = function(this, variable, value)
-		// This workaround allows for clientonly traffic on those data table vars. 
+		-- This workaround allows for clientonly traffic on those data table vars. 
 
 		if variable == "CLMute" then
 			if SERVER then

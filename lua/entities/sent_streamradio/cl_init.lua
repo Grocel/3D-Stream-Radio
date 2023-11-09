@@ -345,7 +345,7 @@ function ENT:GetWallVolumeFactorSmoothed()
 end
 
 function ENT:IsMuted()
-	ply = LocalPlayer()
+	local ply = LocalPlayer()
 
 	if not IsValid(ply) then return true end
 	if not ply:IsPlayer() then return true end

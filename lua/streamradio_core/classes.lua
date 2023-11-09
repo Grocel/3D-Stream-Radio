@@ -55,7 +55,7 @@ local function CreateClass( classname, baseClass )
 	function new_class:new(useproxy)
 		local newinst = {}
 
-		for k,v in pairs(metamethods) do
+		for k, v in pairs(metamethods) do
 			if rawget(class_mt, v) then continue end
 			class_mt[v] = self[v]
 		end

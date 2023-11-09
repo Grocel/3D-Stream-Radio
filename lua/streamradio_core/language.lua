@@ -42,7 +42,7 @@ function LIB.Translate(identifier, defaultEnglishText)
 	defaultEnglishText = tostring(defaultEnglishText or "")
 
 	if #defaultEnglishText >= 1024 then
-		// Limit by GMod: https://github.com/Facepunch/garrysmod-issues/issues/5524
+		-- Limit by GMod: https://github.com/Facepunch/garrysmod-issues/issues/5524
 		error("defaultEnglishText is too long (length >= 1024)")
 	end
 

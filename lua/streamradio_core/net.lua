@@ -9,8 +9,6 @@ local LIBNetwork = StreamRadioLib.Network
 
 LIBNetwork.AddNetworkString("StaticState")
 LIBNetwork.AddNetworkString("Control")
-LIBNetwork.AddNetworkString("PlaylistMenu")
-LIBNetwork.AddNetworkString("Playlist")
 
 LIBNetwork.AddNetworkString("Editor_Return_Files")
 LIBNetwork.AddNetworkString("Editor_Return_Playlist")
@@ -180,59 +178,6 @@ function StreamRadioLib.NetReceivePlaylistEditor( )
 	local parentpath = net.ReadString( ) or ""
 
 	return url, name, parentpath
-end
-
-function StreamRadioLib.NetSendFileEntry( ent, name, format, x, y )
-	if ( not IsValid( ent ) ) then return end
-	if ( not ent.__IsRadio ) then return end
-	if ( not name ) then return end
-	if ( not format ) then return end
-	if ( not x ) then return end
-	if ( not y ) then return end
-
-	net.WriteEntity( ent )
-	net.WriteString( name )
-	net.WriteUInt( format, 8 )
-	net.WriteUInt( x, 4 )
-	net.WriteUInt( y, 4 )
-end
-
-function StreamRadioLib.NetReceiveFileEntry( )
-	local ent = net.ReadEntity( )
-	if ( not IsValid( ent ) ) then return end
-	if ( not ent.__IsRadio ) then return end
-
-	local name = net.ReadString( ) or ""
-	local format = net.ReadUInt( 8 ) or StreamRadioLib.TYPE_FOLDER
-	local x = net.ReadUInt( 4 ) or 1
-	local y = net.ReadUInt( 4 ) or 1
-
-	return ent, name, format, x, y
-end
-
-function StreamRadioLib.NetSendPlaylistEntry( ent, name, x, y )
-	if ( not IsValid( ent ) ) then return end
-	if ( not ent.__IsRadio ) then return end
-	if ( not name ) then return end
-	if ( not x ) then return end
-	if ( not y ) then return end
-
-	net.WriteEntity( ent )
-	net.WriteString( name )
-	net.WriteUInt( x, 4 )
-	net.WriteUInt( y, 4 )
-end
-
-function StreamRadioLib.NetReceivePlaylistEntry( )
-	local ent = net.ReadEntity( )
-	if ( not IsValid( ent ) ) then return end
-	if ( not ent.__IsRadio ) then return end
-
-	local name = net.ReadString( ) or ""
-	local x = net.ReadUInt( 4 ) or 1
-	local y = net.ReadUInt( 4 ) or 1
-
-	return ent, name, x, y
 end
 
 local function networkStaticAddonStates()

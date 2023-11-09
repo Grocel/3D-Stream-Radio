@@ -144,9 +144,9 @@ local function getTrace(level, maxcount)
 	return trace
 end
 
-local color1 = Color(60, 200, 60);
-local color2 = Color(120,200,120);
-local color3 = Color(240,120,60);
+local color1 = Color(60, 200, 60)
+local color2 = Color(120, 200, 120)
+local color3 = Color(240, 120, 60)
 
 function CLASS:Print(...)
 	local trace = getTrace(3)

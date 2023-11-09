@@ -5,6 +5,8 @@ StreamRadioLib.Util = StreamRadioLib.Util or {}
 local LIB = StreamRadioLib.Util
 table.Empty(LIB)
 
+local LIBString = StreamRadioLib.String
+
 local g_debug = false
 local g_debug_nextcheck = 0
 
@@ -170,6 +172,49 @@ function LIB.EmptyTableSafe(tab)
 	end
 
 	table.Empty(tab)
+end
+
+function LIB.GetMainDirectory(directory)
+	local baseDirectory = StreamRadioLib.DataDirectory or ""
+
+	if baseDirectory == "" then
+		error("StreamRadioLib.DataDirectory is empty")
+		return
+	end
+
+	directory = tostring(directory or "")
+
+	local mainPath = baseDirectory .. "/" .. directory
+	mainPath = LIBString.NormalizeSlashes(mainPath)
+
+	return mainPath
+end
+
+function LIB.CreateDirectoryForFile(path)
+	local baseDirectory = StreamRadioLib.DataDirectory or ""
+
+	if baseDirectory == "" then
+		return false
+	end
+
+	path = tostring(path or "")
+
+	if path == "" then
+		return false
+	end
+
+	if not string.StartsWith(path, baseDirectory) then
+		return false
+	end
+
+	local directory = string.GetPathFromFilename(path) or ""
+	if directory == "" then return true end
+
+	if not file.IsDir(directory, "DATA") then
+		file.CreateDir(directory)
+	end
+
+	return file.IsDir(directory, "DATA")
 end
 
 function LIB.DeleteFolder(path)

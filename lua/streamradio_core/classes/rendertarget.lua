@@ -365,7 +365,6 @@ function CLASS:Clear()
 	if self:IsDisabled() then return end
 
 	local rt = self._RT
-	local mat = rt.mat
 	local tex = rt.tex
 
 	render.PushRenderTarget( tex )

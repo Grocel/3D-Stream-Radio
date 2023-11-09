@@ -65,7 +65,7 @@ function CLASS:Create()
 		self.StreamOBJ:SetVolume(v)
 	end
 
-	self.VolumeBar:SetSize(1,1)
+	self.VolumeBar:SetSize(1, 1)
 
 	self.ControlPanel = self:AddPanelByClassname("radio/gui_player_controls", true)
 	self.ControlPanel:SetSize(1, 1)

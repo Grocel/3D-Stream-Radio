@@ -67,32 +67,30 @@ local RENAME_ERRORS = {
 	[StreamRadioLib.EDITOR_ERROR_RENAME_READ] = true,
 }
 
-local Disabled_Gray = Color( 140, 140, 140, 255 )
-
-local function ShowError( errorheader, errortext, self, func, ... )
-	if not IsValid(self) then return false end
-	if not self:IsVisible() then return false end
+local function ShowError( errorheader, errortext, this, func, ... )
+	if not IsValid(this) then return false end
+	if not this:IsVisible() then return false end
 	local args = {...}
 
 	Derma_Query( errortext, errorheader, "OK", function( )
-		if not IsValid(self) then return end
-		if self:IsLoading() then return end
+		if not IsValid(this) then return end
+		if this:IsLoading() then return end
 		if not func then return end
 
-		func(self, unpack(args))
+		func(this, unpack(args))
 	end)
 
 	return true
 end
 
 --Ask for save: Opens a confirmation box.
-local function AsForSave( self, func, ... )
-	if not IsValid(self) then return false end
-	if not self:IsVisible() then return false end
+local function AsForSave( this, func, ... )
+	if not IsValid(this) then return false end
+	if not this:IsVisible() then return false end
 	if not func then return false end
 
-	if not self.m_bUnsaved then
-		func( self, ... )
+	if not this.m_bUnsaved then
+		func( this, ... )
 		return true
 	end
 
@@ -100,11 +98,11 @@ local function AsForSave( self, func, ... )
 
 	Derma_Query("Are you sure to discard the changes?", "Unsaved playlist!", "Yes", function()
 		-- Discard the changes.
-		if not IsValid(self) then return end
-		if self:IsLoading() then return end
+		if not IsValid(this) then return end
+		if this:IsLoading() then return end
 
-		self:RemoveNewFile()
-		func( self, unpack( args ) )
+		this:RemoveNewFile()
+		func( this, unpack( args ) )
 	end, "No")
 
 	-- Don't discard the changes.
@@ -455,44 +453,6 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 
 		MenuItem:SetImage("icon16/folder_add.png")
 
-		-- Copy/Paste -- @TODO
-		--[[
-			if (filetype ~= StreamRadioLib.TYPE_FOLDER and not newfile) then
-				MenuItem = Menu:AddOption("Copy", function()
-					if ( not IsValid( self ) ) then return end
-					if ( self:IsLoading() ) then return end
-
-					self.Clipboard = path
-				end)
-				MenuItem:SetImage("icon16/page_paste.png")
-
-				MenuItem = Menu:AddOption("Paste", function()
-					if ( not IsValid( self ) ) then return end
-					if ( self:IsLoading() ) then return end
-
-					StreamRadioLib.Editor.Copy( self.Clipboard, path )
-				end)
-				MenuItem:SetImage("icon16/page_paste.png")
-				if ( not self.Clipboard or self.Clipboard == "" ) then
-					MenuItem:SetTextColor( Disabled_Gray ) -- custom disabling
-					MenuItem.DoClick = function() end
-				end
-
-				MenuItem = Menu:AddOption("Cut", function()
-					if ( not IsValid( self ) ) then return end
-					if ( self:IsLoading() ) then return end
-
-					StreamRadioLib.Editor.Rename( self.Clipboard, path )
-					self.Clipboard = nil
-				end)
-				MenuItem:SetImage("icon16/page_paste.png")
-				if ( not self.Clipboard or self.Clipboard == "" ) then
-					MenuItem:SetTextColor( Disabled_Gray ) -- custom disabling
-					MenuItem.DoClick = function() end
-				end
-			end
-		]]
-
 		--Delete
 		if StreamRadioLib.Filesystem.CanDeleteFormat(filetype) and not StreamRadioLib.String.IsVirtualPath(path) then
 			Menu:AddSpacer( )
@@ -668,7 +628,7 @@ function PANEL:Init( )
 		if self:IsLoading( ) then return end
 		local url = line.streamradio_url
 		local name = line.streamradio_name
-		local id = line.streamradio_id
+
 		PlaylistMenu( self, line, url, name, self.PlaylistItems["parentpath"] )
 		self:SelectPlaylistItem( line )
 	end
@@ -1129,7 +1089,7 @@ function PANEL:BuildPlaylistFromTextPanel()
 		return
 	end
 
-	lines = self.PlaylistText:GetText()
+	local lines = self.PlaylistText:GetText()
 	lines = StreamRadioLib.String.NormalizeNewlines(lines, '\n')
 
 	lines = string.Explode("\n", lines, false) or {}
@@ -1689,8 +1649,6 @@ function PANEL:RemovePlaylistItem(item)
 	if not self.PlaylistItems then return false end
 	if self:IsLoading() then return false end
 
-	local url = item.streamradio_url
-	local name = item.streamradio_name
 	local id = item.streamradio_id
 
 	self.PlaylistItems[id] = nil

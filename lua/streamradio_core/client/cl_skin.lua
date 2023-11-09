@@ -3,18 +3,10 @@ local StreamRadioLib = StreamRadioLib
 StreamRadioLib.Skin = StreamRadioLib.Skin or {}
 
 local LIB = StreamRadioLib.Skin
-local MainPath = StreamRadioLib.DataDirectory .. "/skin"
 
-local function CreateDirForFile(filename)
-	local folder = string.GetPathFromFilename(filename) or ""
-	if folder == "" then return true end
+local LIBUtil = StreamRadioLib.Util
 
-	if not file.IsDir(folder, "DATA") then
-		file.CreateDir(folder)
-	end
-
-	return file.IsDir(folder, "DATA")
-end
+local g_mainPath = LIBUtil.GetMainDirectory("skin")
 
 local function IsValidFile(filename)
 	return not file.IsDir(filename, "DATA") and file.Exists(filename, "DATA")
@@ -36,10 +28,10 @@ function LIB.GetPath(name)
 	name = tostring(name or "")
 
 	if name == "" then
-		return MainPath .. "/"
+		return g_mainPath .. "/"
 	end
 
-	local filepath = MainPath .. "/" .. name .. ".txt"
+	local filepath = g_mainPath .. "/" .. name .. ".txt"
 	return filepath
 end
 
@@ -64,7 +56,7 @@ function LIB.Open(name)
 		if not skindata then return end
 
 		skindata.name = name
-		return skindata 
+		return skindata
 	end
 
 	local filepath = LIB.GetPath(name)
@@ -77,7 +69,7 @@ function LIB.Open(name)
 
 	local skindata = StreamRadioLib.JSON.Decode(skinjson)
 	if not skindata then return end
-	
+
 	skindata.name = name
 	return skindata
 end
@@ -98,7 +90,7 @@ function LIB.Save(name, skindata)
 	local skinjson = StreamRadioLib.JSON.Encode(skindata, true) or ""
 	local filepath = LIB.GetPath(name)
 
-	if not CreateDirForFile(filepath) then return false end
+	if not LIBUtil.CreateDirectoryForFile(filepath) then return false end
 	file.Write(filepath, skinjson)
 
 	return IsValidFile(filepath)
@@ -121,7 +113,7 @@ function LIB.Delete(name)
 end
 
 function LIB.GetList()
-	local files = file.Find(MainPath .. "/*.txt", "DATA", "nameasc") 
+	local files = file.Find(g_mainPath .. "/*.txt", "DATA", "nameasc")
 
 	table.insert(files, 1, "default.txt")
 

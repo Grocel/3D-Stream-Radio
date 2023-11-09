@@ -13,8 +13,6 @@ local g_sanitizeOnlineUrlCache = LIBUtil.CreateCacheArray(2048)
 local g_sanitizeOfflineUrlCache = LIBUtil.CreateCacheArray(2048)
 local g_isOfflineURLCache = LIBUtil.CreateCacheArray(2048)
 
-local g_customProtocols = {}
-
 local function GetProtocol(url)
 	url = tostring(url or "")
 

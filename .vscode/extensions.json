@@ -1,6 +1,8 @@
 {
     "recommendations": [
         "venner.vscode-glua-enhanced",
-        "goz3rr.vscode-glualint"
+        "goz3rr.vscode-glualint",
+        "stefan-h-at.source-engine-support"
     ]
 }
+

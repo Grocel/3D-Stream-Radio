@@ -162,7 +162,7 @@ end
 
 function RADIOFS:Write(globalpath, vpath, data, callback)
 	globalpath = self._filepath
-	if not self:CreateDirForFile(globalpath) then
+	if not self:CreateDirectoryForFile(globalpath) then
 		callback(false)
 		return false
 	end

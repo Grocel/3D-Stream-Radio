@@ -13,7 +13,7 @@ RADIOMDL.SpawnFlatOnWall = true
 RADIOMDL.SoundPosOffset = Vector(0, 0, 5)
 RADIOMDL.SoundAngOffset = Angle(0, 0, 0)
 
-RADIOMDL.DisplayAngles = Angle(0, 89.5, 1,5)
+RADIOMDL.DisplayAngles = Angle(0, 89.5, 1, 5)
 
                                --     F,     R,     U
 RADIOMDL.DisplayOffset    = Vector(-4.20, -7.60, 9.38) -- Top Left

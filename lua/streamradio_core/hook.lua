@@ -10,7 +10,7 @@ local g_hooks = {}
 local g_orderCounter = 0
 
 function LIB.GetMainHookIdentifier(eventName)
-	identifier = g_nameprefix .. tostring(eventName or "")
+	local identifier = g_nameprefix .. tostring(eventName or "")
 	return identifier
 end
 
@@ -151,7 +151,7 @@ function LIB.Remove(eventName, identifier)
 end
 
 function LIB.GetBenchmark(eventName)
-	identifier = tostring(identifier or "")
+	eventName = tostring(eventName or "")
 
 	local hookData = g_hooks[eventName]
 	if not hookData then

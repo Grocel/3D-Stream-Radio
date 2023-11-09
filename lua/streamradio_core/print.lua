@@ -78,10 +78,10 @@ function LIB.GetPlayerString(ply)
 	return playerStr
 end
 
-local g_colorSeparator = Color(255,255,255)
-local g_colorDateTime = Color(180,180,180)
-local g_colorAddonName = Color(0,200,0)
-local g_colorPlayer = Color(200,200,0)
+local g_colorSeparator = Color(255, 255, 255)
+local g_colorDateTime = Color(180, 180, 180)
+local g_colorAddonName = Color(0, 200, 0)
+local g_colorPlayer = Color(200, 200, 0)
 
 function LIB.Log(ply, format, ...)
 	local msgstring = LIB.Format(format, ...)
@@ -111,6 +111,31 @@ function LIB.Log(ply, format, ...)
 	Msg(" ")
 
 	MsgN(msgstring)
+end
+
+local g_oldfloat = 0
+
+function LIB.PrintFloatBar( float, len, ... )
+	local float = math.Clamp( float, 0, 1 )
+	local str = ""
+
+	if float >= g_oldfloat then
+		g_oldfloat = float
+	end
+
+	local bar = math.Round(float * len)
+	local space = len - math.Round(float * len)
+	local space1 = math.Round((g_oldfloat - float) * len)
+
+	local space2 = space - space1 - 1
+	str = string.rep("#", bar) .. string.rep(" ", space1) .. (math.Round(g_oldfloat * len) < len and "|" or "") .. string.rep(" ", space2)
+	MsgC(Color(510 * float, 510 * (1 - float), 0, 255), str, " ", string.format("% 7.2f%%\t", float * 100), ..., "\n")
+
+	if float < g_oldfloat then
+		g_oldfloat = g_oldfloat - 0.5 * RealFrameTime()
+	end
+
+	return str
 end
 
 return true

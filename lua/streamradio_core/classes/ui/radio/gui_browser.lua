@@ -416,7 +416,7 @@ end
 function CLASS:_PerformButtonLayout(buttonx, buttony)
 	if not self.SideButtons then return end
 
-	local w, h = self:GetClientSize()
+	local _, h = self:GetClientSize()
 	local buttonw = 0
 
 	for k, v in ipairs(self.SideButtons) do

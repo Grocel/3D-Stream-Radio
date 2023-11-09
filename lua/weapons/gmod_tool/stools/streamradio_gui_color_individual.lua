@@ -28,7 +28,7 @@ TOOL.SkinVars = {
 	},
 
 	color_hover = {
-		default = Color(192,192,192, 255),
+		default = Color(192, 192, 192, 255),
 		order = 5,
 	},
 
@@ -43,7 +43,7 @@ TOOL.SkinVars = {
 	},
 
 	color_disabled = {
-		default = Color(128,128,128, 255),
+		default = Color(128, 128, 128, 255),
 		order = 8,
 	},
 
@@ -178,7 +178,7 @@ function TOOL:AddModeList( panel )
 	listpanel:SetMultiSelect(false)
 
 	local col1 = listpanel:AddColumn("No.")
-	local col2 = listpanel:AddColumn("Item")
+	listpanel:AddColumn("Item")
 	local col3 = listpanel:AddColumn("Color")
 	local col4 = listpanel:AddColumn("Active")
 
@@ -410,7 +410,7 @@ end
 
 function TOOL:LeftClick(trace)
 	if not self.ToolLibLoaded then return end
-	local aimedpanel, entgui, ent = self:GetAimedObject(trace)
+	local aimedpanel = self:GetAimedObject(trace)
 	if not IsValid(aimedpanel) then return false end
 
 	if CLIENT then return true end
@@ -421,7 +421,7 @@ end
 
 function TOOL:RightClick(trace)
 	if not self.ToolLibLoaded then return end
-	local aimedpanel, entgui, ent = self:GetAimedObject(trace)
+	local aimedpanel = self:GetAimedObject(trace)
 	if not IsValid(aimedpanel) then return false end
 
 	if CLIENT then return true end
@@ -432,7 +432,7 @@ end
 
 function TOOL:LeftClickClient()
 	if not self.ToolLibLoaded then return end
-	local aimedpanel, entgui, ent = self:GetAimedObject()
+	local aimedpanel, entgui = self:GetAimedObject()
 	if not IsValid(aimedpanel) then return end
 
 	local skinhierarchy = aimedpanel:GetSkinIdentifyerHierarchy()
@@ -454,7 +454,7 @@ end
 
 function TOOL:RightClickClient()
 	if not self.ToolLibLoaded then return end
-	local aimedpanel, entgui, ent = self:GetAimedObject()
+	local aimedpanel, entgui = self:GetAimedObject()
 	if not IsValid(aimedpanel) then return end
 
 	local skindata = aimedpanel:GetSkinValues() or {}
@@ -489,7 +489,7 @@ function TOOL:Think()
 	if not self.ToolLibLoaded then return end
 	if SERVER then return end
 
-	local aimedpanel, entgui, ent = self:GetAimedObject()
+	local aimedpanel, entgui = self:GetAimedObject()
 	if not IsValid(aimedpanel) then
 		if IsValid(self.highlighter_hover) then
 			self.highlighter_hover:Remove()

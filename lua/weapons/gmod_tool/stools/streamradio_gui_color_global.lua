@@ -380,7 +380,7 @@ function TOOL:AddModeList( panel )
 	listpanel:SetMultiSelect(false)
 
 	local col1 = listpanel:AddColumn("No.")
-	local col2 = listpanel:AddColumn("Item")
+	listpanel:AddColumn("Item")
 	local col3 = listpanel:AddColumn("Color")
 	local col4 = listpanel:AddColumn("Active")
 
@@ -400,8 +400,8 @@ function TOOL:AddModeList( panel )
 		local data = self:GetColors(true)
 		local changed = false
 
-		if ( input.IsMouseDown( MOUSE_LEFT ) ) then return end
-		if ( listpanel.NextConVarCheck > RealTime() ) then return end
+		if input.IsMouseDown(MOUSE_LEFT) then return end
+		if listpanel.NextConVarCheck > RealTime() then return end
 
 		listpanel.NextConVarCheck = RealTime() + 0.2
 
@@ -535,7 +535,6 @@ function TOOL:GetAimedGui(trace)
 	if not trace.Hit then return end
 
 	local ent = trace.Entity
-	local owner = self:GetOwner()
 
 	if not self:IsValidGUIRadio(ent) then return end
 
@@ -548,7 +547,7 @@ end
 function TOOL:LeftClick(trace)
 	if not self.ToolLibLoaded then return end
 
-	local entgui, ent = self:GetAimedGui(trace)
+	local entgui = self:GetAimedGui(trace)
 	if not IsValid(entgui) then return false end
 
 	if CLIENT then return true end
@@ -560,7 +559,7 @@ end
 function TOOL:RightClick(trace)
 	if not self.ToolLibLoaded then return end
 
-	local entgui, ent = self:GetAimedGui(trace)
+	local entgui = self:GetAimedGui(trace)
 	if not IsValid(entgui) then return false end
 
 	if CLIENT then return true end
@@ -572,7 +571,7 @@ end
 function TOOL:LeftClickClient()
 	if not self.ToolLibLoaded then return end
 
-	local entgui, ent = self:GetAimedGui()
+	local entgui = self:GetAimedGui()
 	if not IsValid(entgui) then return end
 
 	local data = self:GetColors()
@@ -591,7 +590,7 @@ end
 function TOOL:RightClickClient()
 	if not self.ToolLibLoaded then return end
 
-	local entgui, ent = self:GetAimedGui()
+	local entgui = self:GetAimedGui()
 	if not IsValid(entgui) then return end
 
 	local skindata = {}
@@ -599,6 +598,7 @@ function TOOL:RightClickClient()
 	for varname, skinvar in pairs(self.SkinVars) do
 		local hierarchies = skinvar.hierarchies or {}
 		local hrvarname = skinvar.name
+		local value = nil
 
 		for _, skinhierarchy in pairs(hierarchies) do
 			local panels = entgui:GetPanelsBySkinIdentifyer(skinhierarchy)
@@ -622,7 +622,7 @@ end
 function TOOL:Reload(trace)
 	if not self.ToolLibLoaded then return end
 
-	local entgui, ent = self:GetAimedGui()
+	local entgui = self:GetAimedGui()
 	if not IsValid(entgui) then return false end
 
 	if CLIENT then return true end
@@ -634,7 +634,7 @@ end
 function TOOL:ReloadClient()
 	if not self.ToolLibLoaded then return end
 
-	local entgui, ent = self:GetAimedGui()
+	local entgui = self:GetAimedGui()
 	if not IsValid(entgui) then return end
 
 	entgui:SetSkinOnServer(StreamRadioLib.Skin.GetDefaultSkin(), false)

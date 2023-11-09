@@ -7,29 +7,20 @@ table.Empty(LIB)
 
 local LIBNet = StreamRadioLib.Net
 
-local pairs = pairs
-local type = type
-local IsValid = IsValid
-local file = file
-local table = table
-local string = string
-local util = util
-local player = player
-local ents = ents
-local net = net
-local ListenPath = ""
-local CallbackFunc = nil
-local CallbackArgs = {}
-local CallbackSelf = nil
+local g_listenPath = ""
+
+local g_callbackFunc = nil
+local g_callbackArgs = {}
+local g_callbackObj = nil
 
 function LIB.ListenToPath( path )
-	ListenPath = tostring( path or "" )
+	g_listenPath = tostring( path or "" )
 
-	return ListenPath
+	return g_listenPath
 end
 
 function LIB.GetListenPath( )
-	return ListenPath
+	return g_listenPath
 end
 
 function LIB.CreateDir( path )
@@ -149,50 +140,50 @@ function LIB.Rename(path_old, path_new)
 	return true
 end
 
-function LIB.SetCallback(func, self, ...)
+function LIB.SetCallback(func, this, ...)
 	if not isfunction(func) then
-		CallbackFunc = nil
-		CallbackArgs = {}
-		CallbackSelf = nil
+		g_callbackFunc = nil
+		g_callbackArgs = {}
+		g_callbackObj = nil
 
 		return
 	end
 
-	CallbackFunc = func
-	CallbackArgs = {...}
-	CallbackSelf = self
+	g_callbackFunc = func
+	g_callbackArgs = {...}
+	g_callbackObj = this
 end
 
 LIBNet.Receive("Editor_Return_Files", function( length )
 	local path, name, type, filepath = StreamRadioLib.NetReceiveFileEditor( )
-	if not isfunction(CallbackFunc) then return end
+	if not isfunction(g_callbackFunc) then return end
 
-	if CallbackSelf then
-		CallbackFunc( CallbackSelf, "files", path, name, filepath, type, unpack( CallbackArgs or {} ) )
+	if g_callbackObj then
+		g_callbackFunc( g_callbackObj, "files", path, name, filepath, type, unpack( g_callbackArgs or {} ) )
 	else
-		CallbackFunc( "files", path, name, filepath, type, unpack( CallbackArgs or {} ) )
+		g_callbackFunc( "files", path, name, filepath, type, unpack( g_callbackArgs or {} ) )
 	end
 end)
 
 LIBNet.Receive("Editor_Return_Playlist", function( length )
 	local url, name, filepath = StreamRadioLib.NetReceivePlaylistEditor( )
-	if not isfunction(CallbackFunc) then return end
+	if not isfunction(g_callbackFunc) then return end
 
-	if CallbackSelf then
-		CallbackFunc( CallbackSelf, "playlist", url, name, filepath, unpack( CallbackArgs or {} ) )
+	if g_callbackObj then
+		g_callbackFunc( g_callbackObj, "playlist", url, name, filepath, unpack( g_callbackArgs or {} ) )
 	else
-		CallbackFunc( "playlist", url, name, filepath, unpack( CallbackArgs or {} ) )
+		g_callbackFunc( "playlist", url, name, filepath, unpack( g_callbackArgs or {} ) )
 	end
 end)
 
 LIBNet.Receive("Editor_Error", function( length )
 	local path, code = StreamRadioLib.NetReceiveEditorError( )
-	if not isfunction(CallbackFunc) then return end
+	if not isfunction(g_callbackFunc) then return end
 
-	if CallbackSelf then
-		CallbackFunc( CallbackSelf, "error", path, code, unpack( CallbackArgs or {} ) )
+	if g_callbackObj then
+		g_callbackFunc( g_callbackObj, "error", path, code, unpack( g_callbackArgs or {} ) )
 	else
-		CallbackFunc( "error", path, code, unpack( CallbackArgs or {} ) )
+		g_callbackFunc( "error", path, code, unpack( g_callbackArgs or {} ) )
 	end
 end)
 

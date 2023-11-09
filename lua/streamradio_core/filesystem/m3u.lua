@@ -15,7 +15,7 @@ RADIOFS.loadToWhitelist = true
 
 local function decodeM3U(RawPlaylist)
 	local RawPlaylistTab = string.Split( RawPlaylist, "\n" )
-	local AdvancedM3U = string.lower( string.Trim( RawPlaylistTab[1] or "" ) ) == '#extm3u'
+	local AdvancedM3U = string.lower( string.Trim( RawPlaylistTab[1] or "" ) ) == "#extm3u"
 	local Playlist = {}
 
 	if not AdvancedM3U then
@@ -91,7 +91,7 @@ function RADIOFS:Read(globalpath, vpath, callback)
 end
 
 function RADIOFS:Write(globalpath, vpath, data, callback)
-	if not self:CreateDirForFile(globalpath) then
+	if not self:CreateDirectoryForFile(globalpath) then
 		callback(false)
 		return false
 	end

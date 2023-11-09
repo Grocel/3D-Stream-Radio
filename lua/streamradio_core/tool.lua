@@ -8,25 +8,29 @@ table.Empty(LIB)
 local LIBNetwork = StreamRadioLib.Network
 local LIBNet = StreamRadioLib.Net
 
-function LIB.GetTool(ply)
+function LIB.GetTool(ply, toolmode)
 	if not IsValid(ply) then
-		if SERVER then return end
+		if SERVER then
+			return nil
+		end
+
 		ply = LocalPlayer()
 	end
 
-	if not IsValid(ply) then return end
+	if not IsValid(ply) then
+		return nil
+	end
 
-	local tool = ply:GetWeapon("gmod_tool")
-	if not IsValid(tool) then return end
+	local toolobj = ply:GetTool(toolmode)
+	if not toolobj then
+		return nil
+	end
 
-	if not tool.GetToolObject then return end
-	if not tool.GetMode then return end
+	if toolobj.Mode ~= toolmode then
+		return nil
+	end
 
-	local toolobj = tool:GetToolObject()
-	if not toolobj then return end
-	if toolobj.Mode ~= tool:GetMode() then return end
-
-	return toolobj, tool
+	return toolobj
 end
 
 local g_locale_specialcases = {
@@ -189,9 +193,9 @@ function LIB.Setup(toolobj)
 		end
 
 		var = tostring(var)
-		var = string.Replace(var, '"', "")
+		var = string.Replace(var, "\"", "")
 
-		ply:ConCommand(self.Mode .. "_" .. name .. ' "' .. var .. '"')
+		ply:ConCommand(self.Mode .. "_" .. name .. " \"" .. var .. "\"")
 	end
 
 	function toolobj:SetClientNumber(name, var)
@@ -236,9 +240,11 @@ function LIB.Setup(toolobj)
 
 	function toolobj:AddReadOnlyTextBox( panel, name )
 		local boxPanel = vgui.Create("DForm")
+
 		boxPanel:SetName(StreamRadioLib.Tool.GetLocale(self, name))
 
 		panel:AddPanel(boxPanel)
+		boxPanel:SetCookieName(name)
 
 		local label = vgui.Create( "Streamradio_VGUI_ReadOnlyTextEntry" )
 		boxPanel:AddItem( label )
@@ -254,6 +260,17 @@ function LIB.Setup(toolobj)
 
 	function toolobj:AddWhitelistEnabledLabel( panel, name, descbool )
 		local label = StreamRadioLib.Menu.GetWhitelistEnabledLabel(StreamRadioLib.Tool.GetLocale(self, name))
+		panel:AddPanel( label )
+
+		if descbool then
+			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
+		end
+
+		return label
+	end
+
+	function toolobj:AddImportantLabel( panel, name, descbool )
+		local label = StreamRadioLib.Menu.GetImportantLabel(StreamRadioLib.Tool.GetLocale(self, name))
 		panel:AddPanel( label )
 
 		if descbool then
@@ -386,16 +403,15 @@ function LIB.Setup(toolobj)
 		end
 
 		StreamRadioLib.Timer.Until("ToolReload_" .. _toolmode, 0.1, function()
-			local this = LIB.GetTool()
+			local ply = LocalPlayer()
+			local this = LIB.GetTool(ply, _toolmode)
 			if not this then return end
-			if this.Mode ~= _toolmode then return end
 
 			local CPanel = g_reloadpanels[_toolmode]
 			if not IsValid(CPanel) then return end
 
 			if not this.BuildToolPanel then return end
 
-			CPanel._toolobj = this
 			this.ToolPanel = CPanel
 
 			local toolpresets = this.Presets or {}
@@ -403,7 +419,7 @@ function LIB.Setup(toolobj)
 			local CVars = toolpresets.CVars or {}
 
 			if #CVars <= 0 then
-				for k,v in pairs(this.ClientConVar or {}) do
+				for k, v in pairs(this.ClientConVar or {}) do
 					table.insert(CVars, this.Mode .. "_" .. k)
 				end
 			end
@@ -474,15 +490,8 @@ function LIB.RegisterClientToolHook(tool, toolhook)
 		local nwtoolname = net.ReadString()
 		local bwhook = net.ReadString()
 
-		local tool = ply:GetWeapon("gmod_tool")
-
-		if not IsValid(tool) then return end
-		if tool:GetMode() ~= nwtoolname then return end
-
-		local toolobj = tool:GetToolObject()
-
+		local toolobj = LIB.GetTool(ply, nwtoolname)
 		if not toolobj then return end
-		if toolobj.Mode ~= nwtoolname then return end
 
 		local func = toolobj[bwhook .. "Client"]
 		if not func then return end

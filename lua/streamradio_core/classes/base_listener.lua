@@ -575,7 +575,7 @@ function CLASS:AssignToListenGroupInternal()
 		return
 	end
 
-	listengroupid = self:AssignToListenGroup()
+	local listengroupid = self:AssignToListenGroup()
 	listengroupid = tonumber(listengroupid)
 
 	if not listengroupid then

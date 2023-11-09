@@ -409,12 +409,10 @@ function LIB.Download(url, callback, saveAsUrl)
 end
 
 function LIB.Load()
-	if StreamRadioLib.DataDirectory then
-		local cacheRealm = SERVER and "sv" or "cl"
+	local cacheRealm = SERVER and "sv" or "cl"
 
-		g_mainDir = string.format("%s/cache-%s", StreamRadioLib.DataDirectory, cacheRealm)
-		g_mainDirLegacy = string.format("%s/cache", StreamRadioLib.DataDirectory)
-	end
+	g_mainDir = LIBUtil.GetMainDirectory(string.format("cache-%s", cacheRealm))
+	g_mainDirLegacy = LIBUtil.GetMainDirectory("cache")
 
 	LIBUtil.DeleteFolder(g_mainDirLegacy)
 	Cache_Cleanup(true)

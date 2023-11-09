@@ -114,7 +114,7 @@ function CLASS:Create()
 		end
 
 		local isPlayMode = stream:IsPlayMode()
-	
+
 		if isPlayMode then
 			self:CallHook("OnPause")
 			stream:Pause()
@@ -320,7 +320,7 @@ function CLASS:Create()
 	self:UpdatePlaybackLoopMode()
 	self:UpdatePlayBar()
 
-	self.PlayBar:SetSize(1,1)
+	self.PlayBar:SetSize(1, 1)
 
 	if CLIENT then
 		self:StartFastThink()

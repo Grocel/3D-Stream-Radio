@@ -7,17 +7,12 @@ end
 
 local tostring = tostring
 local tonumber = tonumber
-local type = type
 local isfunction = isfunction
 local IsValid = IsValid
 local Vector = Vector
-local setmetatable = setmetatable
 
-local sound = sound
-local util = util
 local string = string
 local math = math
-local hook = hook
 local SERVER = SERVER
 local CLIENT = CLIENT
 
@@ -33,7 +28,7 @@ local LIBUrl = StreamRadioLib.Url
 local LIBStream = StreamRadioLib.Stream
 
 local BASE = CLASS:GetBaseClass()
-local g_maxSongLenForCache = 60 * 60 * 1.5 // 1.5 Hours
+local g_maxSongLenForCache = 60 * 60 * 1.5 -- 1.5 Hours
 
 local function LoadBass()
 	local hasBass = LIBBass.LoadDLL()
@@ -142,7 +137,7 @@ function CLASS:Create()
 			v = LIBUrl.SanitizeUrl(v)
 
 			if rawv ~= v then
-				// avoid calling it twice on unclean input
+				-- avoid calling it twice on unclean input
 				self.URL.external = v
 				return
 			end
@@ -223,7 +218,7 @@ function CLASS:Create()
 
 	self.StateTable_r = {}
 
-	for i,v in ipairs(self.StateTable) do
+	for i, v in ipairs(self.StateTable) do
 		self.StateTable_r[v] = i
 	end
 
