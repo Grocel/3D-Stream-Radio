@@ -307,7 +307,7 @@ function PANEL:GetOrCreateStream()
 		self:UpdateURLState(STATE_ERROR)
 	end
 
-	stream.OnRetry = function( thisStream, err )
+	stream.OnRetry = function( thisStream )
 		if not IsValid(self) then
 			return false
 		end
@@ -316,12 +316,21 @@ function PANEL:GetOrCreateStream()
 		return true
 	end
 
-	stream.OnSearch = function( thisStream, err )
+	stream.OnSearch = function( thisStream )
 		if not IsValid( self ) then
 			return false
 		end
 
 		self:UpdateURLState(STATE_IDLE)
+		return true
+	end
+
+	stream.CanIgnoreWhitelist = function( thisStream )
+		if not IsValid( self ) then
+			return false
+		end
+
+		-- This stream is for the local client only and safe to use. No whitelist is needed here. Avoids UX problems also.
 		return true
 	end
 

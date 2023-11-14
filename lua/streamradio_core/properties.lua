@@ -9,6 +9,7 @@ table.Empty(LIB)
 local LIBNet = StreamRadioLib.Net
 local LIBError = StreamRadioLib.Error
 local LIBUtil = StreamRadioLib.Util
+local LIBUrl = StreamRadioLib.Url
 
 local g_mainOptionAdded = false
 local g_subOptions = {}
@@ -1028,6 +1029,14 @@ LIB.AddSubOption("admin_title", {
 		if not LIBUtil.IsAdmin( ply ) then return false end
 		if not LIB.CanBeTargeted( ent, ply ) then return false end
 
+		if StreamRadioLib.IsUrlWhitelistEnabled() then
+			local url = ent:GetStreamURL()
+			if url ~= "" then
+				-- Trigger updating the cache in the background if needed
+				StreamRadioLib.Whitelist.IsAllowedAsync(url)
+			end
+		end
+
 		local allowed = LIB.CheckFilters(
 			{
 				"admin_whitelist_add",
@@ -1055,18 +1064,25 @@ LIB.AddSubOption("admin_whitelist_add", {
 	Filter = function( self, ent, ply )
 		if not LIBUtil.IsAdmin( ply ) then return false end
 		if not LIB.CanBeTargeted( ent, ply ) then return false end
+		if not StreamRadioLib.IsUrlWhitelistEnabled() then return false end
 
 		local url = ent:GetStreamURL()
 		if url == "" then return false end
 
-		if StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
+		if LIBUrl.IsOfflineURL(url) then
+			return false
+		end
 
+		if StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
 		return true
 	end,
 
 	Action = function( self, ent )
 		local url = ent:GetStreamURL()
 		StreamRadioLib.Whitelist.QuickWhitelistAdd(url)
+
+		-- Trigger updating the cache in the background if needed
+		StreamRadioLib.Whitelist.IsAllowedAsync(url)
 	end,
 })
 
@@ -1079,18 +1095,25 @@ LIB.AddSubOption("admin_whitelist_remove", {
 	Filter = function( self, ent, ply )
 		if not LIBUtil.IsAdmin( ply ) then return false end
 		if not LIB.CanBeTargeted( ent, ply ) then return false end
+		if not StreamRadioLib.IsUrlWhitelistEnabled() then return false end
 
 		local url = ent:GetStreamURL()
 		if url == "" then return false end
 
-		if not StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
+		if LIBUrl.IsOfflineURL(url) then
+			return false
+		end
 
+		if not StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
 		return true
 	end,
 
 	Action = function( self, ent )
 		local url = ent:GetStreamURL()
 		StreamRadioLib.Whitelist.QuickWhitelistRemove(url)
+
+		-- Trigger updating the cache in the background if needed
+		StreamRadioLib.Whitelist.IsAllowedAsync(url)
 	end,
 })
 

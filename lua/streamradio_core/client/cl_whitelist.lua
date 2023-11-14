@@ -153,6 +153,8 @@ function LIB.QuickWhitelistAdd(url)
 		net.WriteString(url)
 		net.WriteBool(true)
 	net.SendToServer()
+
+	g_whitelistCache:Remove(url)
 end
 
 function LIB.QuickWhitelistRemove(url)
@@ -179,6 +181,8 @@ function LIB.QuickWhitelistRemove(url)
 		net.WriteString(url)
 		net.WriteBool(false)
 	net.SendToServer()
+
+	g_whitelistCache:Remove(url)
 end
 
 return true

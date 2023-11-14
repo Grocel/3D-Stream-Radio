@@ -3,6 +3,7 @@ local StreamRadioLib = StreamRadioLib
 local g_allowSpectrum = false
 local g_enableUrlWhitelist = true
 local g_enableUrlWhitelistOnCFCWhitelist = true
+local g_enableUrlWhitelistTrustAdminRadios = true
 
 local g_lastThink = 0
 
@@ -25,6 +26,13 @@ local g_cvUrlWhitelistEnableOnCFCWhitelist = CreateConVar(
 	"0",
 	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
 	"Enables built-in Stream URL whitelist even if 'CFC Client HTTP Whitelist' is installed and 'sv_streamradio_url_whitelist_enable' is on. Otherwise built-in whitelist stays inactive as long CFC's one is active. 0 = Disable, 1 = Enable, Default: 0"
+)
+
+local g_cvUrlWhitelistTrustAdminRadios = CreateConVar(
+	"sv_streamradio_url_whitelist_trust_admin_radios",
+	"1",
+	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
+	"Trust Stream URLs from radios owned by admins. Skips built-in whitelist checks for admin radios. 0 = No, 1 = Yes, Default: 1"
 )
 
 local g_cvRebuildCommunityPlaylists = CreateConVar(
@@ -66,6 +74,11 @@ function StreamRadioLib.IsUrlWhitelistEnabledOnCFCWhitelist()
 	return true
 end
 
+function StreamRadioLib.IsUrlWhitelistAdminRadioTrusted()
+	if not g_enableUrlWhitelistTrustAdminRadios then return false end
+	return true
+end
+
 function StreamRadioLib.GetRebuildCommunityPlaylistsMode()
 	local mode = g_cvRebuildCommunityPlaylists:GetInt()
 
@@ -94,7 +107,7 @@ local function calcUrlWhitelistEnabled()
 	end
 
 	if StreamRadioLib.Cfchttp.CanCheckWhitelist() then
-		-- CFC Client HTTP whitelist is available, disable our's then.
+		-- CFC Client HTTP whitelist is available, disable our whitelist system then.
 		return false
 	end
 
@@ -104,6 +117,13 @@ end
 local function calcUrlWhitelistEnabledOnCFCWhitelist()
 	if game.SinglePlayer() then return false end
 	if not g_cvUrlWhitelistEnableOnCFCWhitelist:GetBool() then return false end
+
+	return true
+end
+
+local function calcUrlWhitelistEnabledTrustAdminRadios()
+	if game.SinglePlayer() then return true end
+	if not g_cvUrlWhitelistTrustAdminRadios:GetBool() then return false end
 
 	return true
 end
@@ -123,6 +143,7 @@ StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
 		local old_enableUrlWhitelist = g_enableUrlWhitelist
 		local old_enableUrlWhitelistOnCFCWhitelist = g_enableUrlWhitelistOnCFCWhitelist
 
+		g_enableUrlWhitelistTrustAdminRadios = calcUrlWhitelistEnabledTrustAdminRadios()
 		g_enableUrlWhitelistOnCFCWhitelist = calcUrlWhitelistEnabledOnCFCWhitelist()
 		g_enableUrlWhitelist = calcUrlWhitelistEnabled()
 

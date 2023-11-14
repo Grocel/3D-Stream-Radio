@@ -124,6 +124,11 @@ local function AddSecurityMenuPanel(CPanel)
 	subpanel:AddItem(LIBMenu.GetLabel("The whitelist is based of the installed playlists. Edit them to change the whitelist or use the quick whitelist options on a radio entity."))
 	subpanel:AddItem(LIBMenu.GetLabel("It is always disabled on single player."))
 
+	subpanel:CheckBox(
+		"Always trust radios owned by admins (skips whitelist)",
+		"sv_streamradio_url_whitelist_trust_admin_radios"
+	)
+
 	subpanel:AddItem(LIBMenu.GetSpacer())
 
 	subpanel:AddItem(LIBMenu.GetWhitelistFAQButton())

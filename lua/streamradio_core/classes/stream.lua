@@ -667,7 +667,7 @@ function CLASS:FastThink()
 
 	local masterLength = self:GetMasterLength()
 
-	self.State.Ended = self:HasEnded()
+	self.State.Ended = self:HasEndedInternal()
 	self.State.Seeking = self:_IsSeekingInternal()
 	self.State.Length = self:GetLength()
 	self.State.ValidChannel = IsValid(self.Channel)
@@ -721,6 +721,10 @@ function CLASS:DoUnexpectedStopCheck()
 		return
 	end
 
+	if self:HasEnded() then
+		return
+	end
+
 	self:KillStream()
 end
 
@@ -752,6 +756,14 @@ function CLASS:IsAllowedInternalUrl(url, callback, logFailure)
 end
 
 function CLASS:IsAllowedExternalUrl(url, callback)
+	if self:CallHook("CanIgnoreWhitelist", url) then
+		-- Sometimes we don't want/need to check the addon's whitelist
+		-- E.g. when the owner of the radio entity is an admin.
+
+		callback(self, true, nil)
+		return
+	end
+
 	StreamRadioLib.Whitelist.IsAllowedAsync(url, function(allowed)
 		if not IsValid(self) then return end
 
@@ -792,7 +804,7 @@ function CLASS:DoUrlBackgroundCheck()
 		return
 	end
 
-	if not self:IsOnline() then
+	if not self:IsOnlineUrl() then
 		return
 	end
 
@@ -825,7 +837,7 @@ function CLASS:DoUrlBackgroundCheck()
 			return
 		end
 
-		if not self:IsOnline() then
+		if not self:IsOnlineUrl() then
 			return
 		end
 
@@ -2050,6 +2062,14 @@ function CLASS:HasEnded()
 		return false
 	end
 
+	return self.State.Ended
+end
+
+function CLASS:HasEndedInternal()
+	if not self.Valid then
+		return false
+	end
+
 	local curtime = 0
 	local length = 0
 
@@ -2849,6 +2869,11 @@ function CLASS:OnSearch(url)
 	return true -- Allow url to be played
 end
 
+function CLASS:CanIgnoreWhitelist(url)
+	-- override
+	return false -- Ignore the build-in whitelist?
+end
+
 function CLASS:OnClose()
 	-- override
 end
@@ -2864,7 +2889,7 @@ end
 
 function CLASS:OnRetry(err, internalUrl, state, interface)
 	-- override
-	return true -- retry again?
+	return true -- Retry again?
 end
 
 function CLASS:OnError(err)

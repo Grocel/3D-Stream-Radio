@@ -162,6 +162,10 @@ function ENT:GetOrCreateStream()
 		return call("StreamOnSearch", ...)
 	end
 
+	stream.CanIgnoreWhitelist = function( ... )
+		return call("StreamCanIgnoreWhitelist", ...)
+	end
+
 	stream.OnMute = function( ... )
 		return call("StreamOnMute", ...)
 	end
@@ -196,6 +200,20 @@ function ENT:StreamOnSearch()
 	self:CheckTransmitState()
 
 	return true
+end
+
+function ENT:StreamCanIgnoreWhitelist()
+	if not StreamRadioLib.IsUrlWhitelistAdminRadioTrusted() then
+		return false
+	end
+
+	local owner = self:GetRealRadioOwner()
+	if LIBUtil.IsAdmin(owner) then
+		-- Admins are allowed to bypass built-in whitelisting for better UX.
+		return true
+	end
+
+	return false
 end
 
 function ENT:StreamOnRetry()
