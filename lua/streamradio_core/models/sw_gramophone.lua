@@ -90,14 +90,13 @@ function RADIOMDL:Initialize(ent)
 	end
 
 	if ent._mdl_skinset then return end
-	math.randomseed( ( SysTime() * 24 + 38512 ) * 37 + 5124 + ent:GetCreationID() )
 
 	local spin = math.random( 0, 360 )
 	ent:SetPoseParameter( "spin_speaker", spin )
 	ent:RegisterDupePose( "spin_speaker" )
 
-	local skin = math.random( 0, 3 )
-	ent:SetSkin( skin )
+	local skinid = math.random( 0, 3 )
+	ent:SetSkin( skinid )
 
 	ent._mdl_skinset = true
 end

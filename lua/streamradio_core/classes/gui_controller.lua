@@ -60,9 +60,9 @@ function CLASS:Create()
 		return self:AssignToListenGroup()
 	end
 
-	self._Skin.OnUpdateSkin = function(this, skin)
+	self._Skin.OnUpdateSkin = function(this, skindata)
 		if not IsValid(self) then return end
-		self:SetSkinInternal(skin)
+		self:SetSkinInternal(skindata)
 	end
 
 	self.SkinMap["color"] = nil;

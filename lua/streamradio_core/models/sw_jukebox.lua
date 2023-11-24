@@ -118,12 +118,11 @@ function RADIOMDL:Initialize(ent)
 	end
 
 	if ent._mdl_skinset then return end
-	math.randomseed( ( SysTime() * 7 + 8464 ) * 23 + 86454 + ent:GetCreationID() )
 
-	local skin = math.random(0, 4)
-	ent:SetSkin( skin )
+	local skinid = math.random(0, 4)
+	ent:SetSkin( skinid )
 
-	local color = Color( math.random( 0, 255 ), math.random( 0, 255 ), math.random( 0, 255 ) )
+	local color = ColorRand()
 	ent:SetColor( color )
 
 	ent._mdl_skinset = true

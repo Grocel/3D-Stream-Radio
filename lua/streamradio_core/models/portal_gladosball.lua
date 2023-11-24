@@ -31,7 +31,7 @@ function RADIOMDL:SoundLevel(ent, soundlevel)
 
 	soundlevel = math.Clamp(soundlevel, 0, 1)
 
-	local skin = skins[math.Round(soundlevel * 3) + 1] or 0
-	ent:SetSkin( skin )
+	local skinid = skins[math.Round(soundlevel * 3) + 1] or 0
+	ent:SetSkin( skinid )
 end
 

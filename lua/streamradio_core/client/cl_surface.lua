@@ -32,7 +32,7 @@ function LIB.Loading( x, y, w, h, color, cycles )
 	color = color or color_white
 	cycles = math.floor( cycles or 0 )
 
-	if ( cycles < 5 ) then
+	if cycles < 5 then
 		cycles = 5
 	end
 
@@ -53,20 +53,36 @@ end
 
 LIB._CreatedFonts = LIB._CreatedFonts or {}
 
-function LIB.AddFont(size, weight, base, additional_data)
+function LIB.AddFont(size, weight, baseFontName, additionalData)
 	local ft = g_font_template
 
 	size = tonumber(size) or ft.size
 	weight = tonumber(weight) or ft.weight
-	base = tostring(base or ft.font)
+	baseFontName = tostring(baseFontName or ft.font)
+	additionalData = additionalData or {}
 
-	local additional_data_name = ""
+	local additionalDataName = {}
+	local additionalDataNameEmpty = true
 
-	for k, v in pairs(additional_data or {}) do
-		additional_data_name = additional_data_name .. string.format("[%s=%s]", tostring(k), tostring(v))
+	for k, v in SortedPairs(additionalData or {}) do
+		if v == g_font_template[k] then
+			continue
+		end
+
+		local name = string.format("[%s=%s]", tostring(k), tostring(v))
+		table.insert(additionalDataName, name)
+
+		additionalDataNameEmpty = false
 	end
 
-	local ID = string.format("3DStreamRadio_Font_{[%d][%d][%s]}{%s}", size, weight, base, additional_data_name)
+	if additionalDataNameEmpty then
+		additionalDataName = ""
+	else
+		additionalDataName = table.concat(additionalDataName)
+		additionalDataName = util.MD5(additionalDataName)
+	end
+
+	local ID = string.format("3DStreamRadio_Font_[%s][%d][%d][%s]", baseFontName, size, weight, additionalDataName)
 
 	if LIB._CreatedFonts[ID] then
 		return ID
@@ -74,7 +90,7 @@ function LIB.AddFont(size, weight, base, additional_data)
 
 	local font = table.Copy(ft)
 
-	for k, v in pairs(additional_data or {}) do
+	for k, v in pairs(additionalData or {}) do
 		font[k] = v
 	end
 
@@ -82,7 +98,7 @@ function LIB.AddFont(size, weight, base, additional_data)
 	font.weight = weight
 	font.font = base
 
-	surface.CreateFont( ID, font )
+	surface.CreateFont(ID, font)
 
 	LIB._CreatedFonts[ID] = true
 	return ID

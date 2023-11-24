@@ -57,12 +57,12 @@ function CLASS:Create()
 		self:NetReceive("skin", function(this, id, len, ply)
 			local skinlen = net.ReadUInt(16)
 			local skinencoded = net.ReadData(skinlen)
-			local newskin = g_decode(skinencoded)
+			local newskindata = g_decode(skinencoded)
 			local newhash = LIBNet.ReceiveHash()
 
 			-- Store the result of our request for later use
-			g_skincache:Set(newhash, newskin)
-			self:SetSkin(newskin)
+			g_skincache:Set(newhash, newskindata)
+			self:SetSkin(newskindata)
 		end)
 	else
 		LIBNetwork.AddNetworkString("skin")
@@ -86,9 +86,9 @@ function CLASS:Create()
 
 			local skinlen = net.ReadUInt(16)
 			local skinencoded = net.ReadData(skinlen)
-			local skin = g_decode(skinencoded)
+			local skindata = g_decode(skinencoded)
 
-			self:SetSkinOnServer(skin, true)
+			self:SetSkinOnServer(skindata, true)
 		end)
 	end
 end
@@ -139,9 +139,9 @@ function CLASS:UpdateSkinInternal()
 	self:CallHook("OnUpdateSkin", self:GetSkin())
 end
 
-function CLASS:SetSkin(skin)
-	skin = skin or {}
-	self.Skin = skin
+function CLASS:SetSkin(skindata)
+	skindata = skindata or {}
+	self.Skin = skindata
 
 	self:DelCacheValue("SkinEncoded")
 
@@ -169,17 +169,17 @@ function CLASS:_SendSkinToServer()
 	self._skintoserver = nil
 end
 
-function CLASS:SetSkinOnServer(skin, merge)
-	skin = skin or {}
+function CLASS:SetSkinOnServer(skindata, merge)
+	skindata = skindata or {}
 
 	if CLIENT then
 		if merge then
-			local oldskin = self._skintoserver or {}
-			local newskin = table.Merge(oldskin, skin)
+			local oldskindata = self._skintoserver or {}
+			local newskindata = table.Merge(oldskindata, skindata)
 
-			self._skintoserver = newskin
+			self._skintoserver = newskindata
 		else
-			self._skintoserver = skin
+			self._skintoserver = skindata
 		end
 
 		self:QueueCall("_SendSkinToServer")
@@ -187,12 +187,12 @@ function CLASS:SetSkinOnServer(skin, merge)
 	end
 
 	if merge then
-		local oldskin = self:GetSkin()
-		local newskin = table.Merge(oldskin, skin)
+		local oldskindata = self:GetSkin()
+		local newskindata = table.Merge(oldskindata, skindata)
 
-		self:SetSkin(newskin)
+		self:SetSkin(newskindata)
 	else
-		self:SetSkin(skin)
+		self:SetSkin(skindata)
 	end
 end
 
@@ -209,11 +209,11 @@ function CLASS:GetSkin()
 end
 
 function CLASS:SetProperty(hierarchy, property, value)
-	local skin = self:GetSkin()
+	local skindata = self:GetSkin()
 
-	skin = StreamRadioLib.SetSkinTableProperty(skin, hierarchy, property, value)
+	skindata = StreamRadioLib.SetSkinTableProperty(skindata, hierarchy, property, value)
 
-	self:SetSkin(skin)
+	self:SetSkin(skindata)
 end
 
 function CLASS:SetPropertyOnServer(hierarchy, property, value)
@@ -222,9 +222,9 @@ function CLASS:SetPropertyOnServer(hierarchy, property, value)
 		return
 	end
 
-	local skin = self._skintoserver or {}
-	skin = StreamRadioLib.SetSkinTableProperty(skin, hierarchy, property, value)
-	self:SetSkinOnServer(skin, false)
+	local skindata = self._skintoserver or {}
+	skindata = StreamRadioLib.SetSkinTableProperty(skindata, hierarchy, property, value)
+	self:SetSkinOnServer(skindata, false)
 end
 
 function CLASS:GetHashFromSkin(skinEncoded)
