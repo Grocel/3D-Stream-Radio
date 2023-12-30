@@ -882,8 +882,8 @@ else
 		WireLib.TriggerOutput(self, name, value)
 	end
 
-	function ENT:TriggerInput(name, value)
-		local wired = self:IsConnectedInputWire(name) or self:IsConnectedWirelink()
+	function ENT:TriggerInput(name, value, ext)
+		local wired = self:IsConnectedInputWire(name) or self:IsConnectedWirelink() or istable(ext) and ext.wirelink
 		self:OnWireInputTrigger(name, value, wired)
 	end
 

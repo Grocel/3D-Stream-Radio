@@ -16,8 +16,6 @@
 		"*.html",
 		"*.gma",
 		"*.zip",
-		"bin/*",
-		"bin/*",
 		"noupload/*",
 		"*.md",
 		"LICENSE",

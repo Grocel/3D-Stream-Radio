@@ -329,8 +329,6 @@ function LIB.Load()
 	end
 
 	StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST = table.concat(formats, ", ")
-
-	collectgarbage("collect")
 end
 
 function LIB.FilterInvalidFilesnames(filenames)

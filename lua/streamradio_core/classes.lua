@@ -222,8 +222,6 @@ function StreamRadioLib.ReloadClasses()
 	AddClass("rendertarget", "base_listener")
 	AddClass("stream", "base_listener")
 	AddClass("clientconvar", "base_listener")
-
-	collectgarbage( "collect" )
 end
 
 function StreamRadioLib.CreateOBJ(name, ...)

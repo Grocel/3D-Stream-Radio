@@ -79,8 +79,6 @@ function LIB.Load()
 	end
 
 	table.SortByMember(g_intefaces, "priority", false)
-
-	collectgarbage("collect")
 end
 
 function LIB.GetInterface(name)

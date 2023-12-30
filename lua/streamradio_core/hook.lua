@@ -15,13 +15,13 @@ function LIB.GetMainHookIdentifier(eventName)
 end
 
 local function CallHooks(hookData, ...)
-	-- Called by all hooks the addon adds the game, including think and tick.
+	-- Called by all hooks the addon adds to the game, including think and tick.
 	-- It is a proxy that distribute calls to all internal addon hooks.
 	-- This reduces overhead from the native hook library.
 
 	-- Prevent error spams when the addon is not completely loaded
-	if not StreamRadioLib then return end
-	if not StreamRadioLib.Loaded then return end
+	if not StreamRadioLib then return nil end
+	if not StreamRadioLib.Loaded then return nil end
 
 	local byOrder = hookData.byOrder
 	if not byOrder then
@@ -81,6 +81,27 @@ local function BuildOrder(hookData)
 	hookData.byOrder = byOrder
 end
 
+function LIB.Has(eventName, identifier)
+	identifier = tostring(identifier or "")
+	eventName = tostring(eventName or "")
+
+	local hookData = g_hooks[eventName]
+	if not hookData then
+		return false
+	end
+
+	local byName = hookData.byName
+	if not byName then
+		return false
+	end
+
+	if not byName[identifier] then
+		return false
+	end
+
+	return true
+end
+
 function LIB.Add(eventName, identifier, func, order)
 	if not isfunction(func) then return end
 
@@ -108,7 +129,7 @@ function LIB.Add(eventName, identifier, func, order)
 	}
 
 	hookData.benchmark = hookData.benchmark or 0
-	hookData.benchmarkAvg = hookData.benchmark or 0
+	hookData.benchmarkAvg = hookData.benchmarkAvg or 0
 
 	BuildOrder(hookData)
 

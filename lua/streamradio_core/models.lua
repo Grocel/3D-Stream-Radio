@@ -133,7 +133,6 @@ local function AddMultiModels(script, modellist)
 		RADIOMDL = nil
 	end
 
-	collectgarbage( "collect" )
 	return true
 end
 
@@ -158,8 +157,6 @@ function LIB.LoadModelSettings()
 		if not IsValid(ent) then continue end
 		ent:SetUpModel()
 	end
-
-	collectgarbage( "collect" )
 end
 
 function LIB.GetModelSettings(model, setting)

@@ -142,8 +142,6 @@ do
 		_G.StreamRadioLib.Loaded = nil
 	end
 
-	collectgarbage( "collect" )
-
 	if errorString == g_addonBrokenError then
 		-- something went horribly wrong, so tell the user about it.
 
