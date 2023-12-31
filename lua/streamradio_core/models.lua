@@ -72,7 +72,7 @@ local function AddModel(script)
 	if script[1] == "_" then return false end
 
 	local scriptfile = LuaModelDirectory .. "/" .. script
-	if not file.Exists(scriptfile, "LUA") then return false end
+	if not StreamRadioLib.LuaExists(scriptfile) then return false end
 
 	RADIOMDL = nil
 	RADIOMDL = {}
@@ -104,7 +104,7 @@ local function AddMultiModels(script, modellist)
 
 	local scriptfile = LuaModelDirectory .. "/" .. script
 
-	if ( not file.Exists( scriptfile, "LUA" ) ) then return false end
+	if ( not StreamRadioLib.LuaExists( scriptfile ) ) then return false end
 
 	StreamRadioLib.SaveCSLuaFile(scriptfile, true)
 

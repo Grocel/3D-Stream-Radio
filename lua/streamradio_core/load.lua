@@ -42,6 +42,7 @@ local g_loader_ok = true
 
 local g_loaded_cs = {}
 local g_loaded_lua = {}
+local g_exists_lua = {}
 local g_errors = {}
 local g_maxErrors = 32
 
@@ -128,9 +129,35 @@ local function registerErrorFeedbackHook()
 	end
 end
 
+local g_lua_path = SERVER and "lsv" or "lcl"
+
 local function luaExists(lua)
-	local realm = SERVER and "lsv" or "lcl"
-	return file.Exists(lua, realm)
+	lua = tostring(lua or "")
+	lua = string.lower(lua or "")
+
+	if lua == "" then
+		return false
+	end
+
+	if g_exists_lua[lua] ~= nil then
+		-- Cache the results for an even faster performance
+		return g_exists_lua[lua] or false
+	end
+
+	-- We use a manual implementation, because file.Exists() on "LUA" paths can be VERY slow on some systems.
+	-- See https://github.com/Facepunch/garrysmod-issues/issues/5674
+
+	local f = file.Open(lua, "r", g_lua_path)
+
+	if not f then
+		g_exists_lua[lua] = false
+		return false
+	end
+
+	f:Close()
+
+	g_exists_lua[lua] = true
+	return true
 end
 
 local function saveCSLuaFile(lua, force)
@@ -224,6 +251,10 @@ end
 function LIB.LoadSV(lua, force)
 	if CLIENT then return true end
 	return saveInclude(lua, force)
+end
+
+function LIB.LuaExists(lua)
+	return luaExists(lua)
 end
 
 local function loadAddon()

@@ -22,7 +22,7 @@ local function AddInterface(script)
 	local scriptpath = LuaInterfaceDirectory .. "/"
 	local scriptfile = scriptpath .. script
 
-	if not file.Exists(scriptfile, "LUA") then return false end
+	if not StreamRadioLib.LuaExists(scriptfile) then return false end
 
 	RADIOIFACE = nil
 	RADIOIFACE = {}

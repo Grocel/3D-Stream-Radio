@@ -159,7 +159,7 @@ local function AddClass(name, parentname)
 
 	local scriptfile = LuaClassDirectory .. "/" .. name .. ".lua"
 
-	if ( not file.Exists( scriptfile, "LUA" ) ) then return false end
+	if ( not StreamRadioLib.LuaExists( scriptfile ) ) then return false end
 
 	if name ~= parentname and not AddClass( parentname ) then
 		return false

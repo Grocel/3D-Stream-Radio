@@ -137,7 +137,7 @@ local function loadFilesystem(script)
 	local scriptpath = g_luaFilesystemDirectory .. "/"
 	local scriptfile = scriptpath .. script
 
-	if not file.Exists(scriptfile, "LUA") then return nil end
+	if not StreamRadioLib.LuaExists(scriptfile) then return nil end
 
 	RADIOFS = nil
 	RADIOFS = {}
