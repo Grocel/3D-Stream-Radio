@@ -78,3 +78,6 @@ function RADIOIFACE:Convert(url, callback)
 
 	return
 end
+
+return true
+

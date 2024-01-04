@@ -3,74 +3,22 @@
 if not StreamRadioLib then return end
 local LIB = StreamRadioLib
 
-local LIBLoadSH = LIB.LoadSH
-local LIBLoadCL = LIB.LoadCL
-local LIBLoadSV = LIB.LoadSV
+local loadSH = LIB.LoadSH
+local loadCL = LIB.LoadCL
+local loadSV = LIB.LoadSV
 
-if not LIBLoadSH then return end
-if not LIBLoadCL then return end
-if not LIBLoadSV then return end
-
-local g_ok = true
-
-local function loadSH(lua, ...)
-    local status, loaded = LIBLoadSH(lua, ...)
-
-    if not status then
-        g_ok = false
-        return false
-    end
-
-    if not loaded then
-        g_ok = false
-        return false
-    end
-
-    return true
-end
-
-local function loadCL(lua, ...)
-    local status, loaded = LIBLoadCL(lua, ...)
-
-    if not status then
-        g_ok = false
-        return false
-    end
-
-    if CLIENT and not loaded then
-        g_ok = false
-        return false
-    end
-
-    return true
-end
-
-local function loadSV(lua, ...)
-    local status, loaded = LIBLoadSV(lua, ...)
-
-    if not status then
-        g_ok = false
-        return false
-    end
-
-    if SERVER and not loaded then
-        g_ok = false
-        return false
-    end
-
-    return true
-end
+if not loadSH then return end
+if not loadCL then return end
+if not loadSV then return end
 
 LIB.DataDirectory = "streamradio"
 
 do
-    local status, lib = LIBLoadSH("streamradio_core/external/neturl.lua")
+    local status, lib = loadSH("streamradio_core/external/neturl.lua")
 
     LIB.NetURL = nil
 
-    if not status then
-        g_ok = false
-    else
+    if status then
         LIB.NetURL = lib
     end
 end
@@ -139,10 +87,6 @@ end
 
 StreamRadioLib.Cfchttp.Load()
 StreamRadioLib.Cache.Load()
-
-if not g_ok then
-    return
-end
 
 return true
 

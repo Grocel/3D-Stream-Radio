@@ -12,3 +12,5 @@ RADIOMDL.NoDisplay = true
 RADIOMDL.SpawnAng = Angle( 0, 0, 0 )
 RADIOMDL.SpawnFlatOnWall = false
 
+return true
+

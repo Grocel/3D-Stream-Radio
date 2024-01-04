@@ -137,8 +137,6 @@ local function loadFilesystem(script)
 	local scriptpath = g_luaFilesystemDirectory .. "/"
 	local scriptfile = scriptpath .. script
 
-	if not StreamRadioLib.LuaExists(scriptfile) then return nil end
-
 	RADIOFS = nil
 	RADIOFS = {}
 
@@ -277,7 +275,7 @@ function LIB.Load()
 
 	local filesystems = {};
 
-	for _, f in pairs(files or {}) do
+	for _, f in ipairs(files or {}) do
 		local fs = loadFilesystem(f)
 		if not fs then
 			continue

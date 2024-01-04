@@ -22,8 +22,6 @@ local function AddInterface(script)
 	local scriptpath = LuaInterfaceDirectory .. "/"
 	local scriptfile = scriptpath .. script
 
-	if not StreamRadioLib.LuaExists(scriptfile) then return false end
-
 	RADIOIFACE = nil
 	RADIOIFACE = {}
 
@@ -32,7 +30,12 @@ local function AddInterface(script)
 
 	RADIOIFACE.subinterfaces = {}
 
-	StreamRadioLib.LoadSH(scriptfile, true)
+	local loaded = StreamRadioLib.LoadSH(scriptfile, true)
+
+	if not loaded then
+		RADIOIFACE = nil
+		return false
+	end
 
 	local name = string.Trim(RADIOIFACE.name or "")
 	RADIOIFACE.priority = tonumber(RADIOIFACE.priority or 0) or 0
@@ -74,7 +77,7 @@ function LIB.Load()
 	g_intefaces = {}
 	g_intefacesByName = {}
 
-	for _, f in pairs(files or {}) do
+	for _, f in ipairs(files or {}) do
 		AddInterface(f)
 	end
 

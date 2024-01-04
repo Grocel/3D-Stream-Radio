@@ -1,6 +1,6 @@
 if SERVER then
 	CLASS = nil
-	return
+	return true
 end
 
 local StreamRadioLib = StreamRadioLib
@@ -514,4 +514,6 @@ function CLASS:__eg(other)
 
 	return true
 end
+
+return true
 

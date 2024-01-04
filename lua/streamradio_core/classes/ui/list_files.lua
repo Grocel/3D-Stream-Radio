@@ -153,3 +153,5 @@ function CLASS:PostDupe(data)
 	self:SetPath(data.Path)
 end
 
+return true
+

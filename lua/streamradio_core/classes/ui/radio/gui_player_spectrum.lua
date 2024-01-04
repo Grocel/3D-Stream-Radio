@@ -309,3 +309,6 @@ end
 function CLASS:GetStream()
 	return self.StreamOBJ
 end
+
+return true
+

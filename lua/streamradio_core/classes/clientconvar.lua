@@ -377,3 +377,6 @@ function CLASS:Remove()
 	self._convar = nil
 	BASE.Remove(self)
 end
+
+return true
+

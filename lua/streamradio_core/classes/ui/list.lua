@@ -565,3 +565,6 @@ function CLASS:OnModelSetup(setup)
 		self:SetGridSize(w, h)
 	end
 end
+
+return true
+

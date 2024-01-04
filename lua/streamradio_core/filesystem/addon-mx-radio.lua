@@ -197,3 +197,6 @@ function RADIOFS:Write(globalpath, vpath, data, callback)
 	callback(true)
 	return true
 end
+
+return true
+

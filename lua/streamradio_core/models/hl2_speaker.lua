@@ -12,3 +12,5 @@ RADIOMDL.SpawnAng = Angle( -90, 0, 0 )
 RADIOMDL.SpawnFlatOnWall = false
 RADIOMDL.SpawnAtOrigin = false
 
+return true
+

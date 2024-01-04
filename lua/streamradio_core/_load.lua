@@ -129,8 +129,6 @@ local function registerErrorFeedbackHook()
 	end
 end
 
-local g_lua_path = SERVER and "lsv" or "lcl"
-
 local function luaExists(lua)
 	lua = tostring(lua or "")
 	lua = string.lower(lua or "")
@@ -140,21 +138,15 @@ local function luaExists(lua)
 	end
 
 	if g_exists_lua[lua] ~= nil then
-		-- Cache the results for an even faster performance
 		return g_exists_lua[lua] or false
 	end
 
-	-- We use a manual implementation, because file.Exists() on "LUA" paths can be VERY slow on some systems.
-	-- See https://github.com/Facepunch/garrysmod-issues/issues/5674
+	local exists = file.Exists(lua, "LUA")
 
-	local f = file.Open(lua, "r", g_lua_path)
-
-	if not f then
+	if not exists then
 		g_exists_lua[lua] = false
 		return false
 	end
-
-	f:Close()
 
 	g_exists_lua[lua] = true
 	return true
@@ -215,11 +207,24 @@ local function saveInclude(lua, force)
 	end
 
 	local status, result = xpcall(function()
-		if not luaExists(lua) then
-			error("Couldn't include file '" .. lua .. "' (File not found)")
+		if SERVER then
+			-- Too slow on clientside on some servers
+			-- See: https://github.com/Facepunch/garrysmod-issues/issues/5674
+
+			if not luaExists(lua) then
+				error("Couldn't include file '" .. lua .. "' (File not found)")
+				return nil
+			end
 		end
 
-		return include(lua)
+		local r = include(lua)
+
+		if not r then
+			error("Couldn't include file '" .. lua .. "' (Error during execution or file not found)")
+			return nil
+		end
+
+		return r
 	end, throwError)
 
 	if not status then
@@ -253,11 +258,11 @@ function LIB.LoadSV(lua, force)
 	return saveInclude(lua, force)
 end
 
-function LIB.LuaExists(lua)
-	return luaExists(lua)
-end
+local g_loadTime = 0
 
 local function loadAddon()
+	local loadStartTime = SysTime()
+
 	local VERSION = VERSION or 0
 	local versionError = nil
 
@@ -285,7 +290,7 @@ local function loadAddon()
 		LIB.Loaded = true
 		LIB.Loading = true
 
-		local status, loaded = LIB.LoadSH("streamradio_core/init.lua")
+		local status, loaded = LIB.LoadSH("streamradio_core/_include.lua")
 
 		if not status then
 			g_loader_ok = false
@@ -301,6 +306,8 @@ local function loadAddon()
 	end
 
 	LIB.Loading = nil
+
+	g_loadTime = SysTime() - loadStartTime
 end
 
 local g_colDefault = Color(255, 255, 255)
@@ -322,9 +329,12 @@ local function printAddon()
 		realmcol = g_colSV
 	end
 
+	local loadTimeString = string.format("Took %0.3f sec.", g_loadTime)
+	local border = "##########################################################################################"
+
 	MsgN()
 	MsgN()
-	MsgC(realmcol, "###########################################################################")
+	MsgC(realmcol, border)
 	MsgN()
 	MsgN()
 
@@ -335,11 +345,11 @@ local function printAddon()
 			appendError(string.format("Error loading addon on the %s!", realmname))
 		end
 
-		MsgC(g_colError, "could not be loaded on the " .. realmname .. ".")
+		MsgC(g_colError, "could not be loaded on the " .. realmname .. ". " .. loadTimeString)
 		MsgN()
 		MsgN()
 
-		MsgC(realmcol, "###########################################################################")
+		MsgC(realmcol, border)
 		MsgN()
 		MsgN()
 
@@ -358,12 +368,12 @@ local function printAddon()
 			MsgN()
 		end
 	else
-		MsgC(g_colOk, "is loaded on the " .. realmname .. ".")
+		MsgC(g_colOk, "is loaded on the " .. realmname .. ". " .. loadTimeString)
 		MsgN()
 	end
 
 	MsgN()
-	MsgC(realmcol, "###########################################################################")
+	MsgC(realmcol, border)
 	MsgN()
 	MsgN()
 end

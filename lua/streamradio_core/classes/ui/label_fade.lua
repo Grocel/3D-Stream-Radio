@@ -200,3 +200,6 @@ function CLASS:Render()
 
 	self:DrawText(self.InternalText, x, y, w, h)
 end
+
+return true
+

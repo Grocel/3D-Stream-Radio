@@ -266,3 +266,6 @@ function CLASS:PostDupe(dupedata)
 		self:ApplyLegacyDataFromDupe(dupedata)
 	end)
 end
+
+return true
+

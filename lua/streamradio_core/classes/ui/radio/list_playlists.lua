@@ -62,3 +62,6 @@ function CLASS:PostDupe(data)
 		self:CallHook("OnInvalidDupeFilepath")
 	end
 end
+
+return true
+

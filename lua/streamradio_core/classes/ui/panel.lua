@@ -1638,3 +1638,6 @@ function CLASS:OnModelSetup(setup)
 		self:SetPosY(x)
 	end
 end
+
+return true
+

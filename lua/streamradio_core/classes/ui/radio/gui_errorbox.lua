@@ -274,3 +274,6 @@ function CLASS:PerformLayout(...)
 
 	self:_PerformButtonLayout(margin, margin)
 end
+
+return true
+

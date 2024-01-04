@@ -217,3 +217,6 @@ function CLASS:IsVisible()
 
 	return BASE.IsVisible(self)
 end
+
+return true
+

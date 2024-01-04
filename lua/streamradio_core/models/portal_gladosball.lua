@@ -35,3 +35,5 @@ function RADIOMDL:SoundLevel(ent, soundlevel)
 	ent:SetSkin( skinid )
 end
 
+return true
+

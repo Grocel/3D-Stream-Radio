@@ -164,3 +164,6 @@ function RADIOMDL:Think(ent)
 	ent:SetPoseParameter( "move_needle", armpos )
 	ent:InvalidateBoneCache()
 end
+
+return true
+

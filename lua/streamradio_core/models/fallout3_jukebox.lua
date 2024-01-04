@@ -109,3 +109,6 @@ end
 RADIOMDL.Sounds = {
 	Noise = "",
 }
+
+return true
+

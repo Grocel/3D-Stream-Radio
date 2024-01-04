@@ -374,3 +374,6 @@ function RADIOMDL:SoundLevel(ent, soundlevel)
 	self.EyeColorDyn.g = 0
 	self.EyeColorDyn.r = math.floor(31 + 224 * soundlevel)
 end
+
+return true
+

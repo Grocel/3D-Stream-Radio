@@ -238,3 +238,6 @@ end
 function CLASS:PostDupe(data)
 	self.State.PlayerOpened = data.PlayerOpened
 end
+
+return true
+

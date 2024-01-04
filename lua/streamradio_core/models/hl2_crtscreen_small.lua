@@ -106,3 +106,5 @@ function RADIOMDL:SetupGUI(ent, gui_controller, mainpanel)
 	end)
 end
 
+return true
+

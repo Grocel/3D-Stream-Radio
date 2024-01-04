@@ -44,3 +44,6 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 
 	ent:ManipulateBonePosition( Speaker, Vector( 0, speakerlevel * (SpeakerSize / 36), 0 ) )
 end
+
+return true
+

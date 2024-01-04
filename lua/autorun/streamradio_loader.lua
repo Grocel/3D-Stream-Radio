@@ -117,8 +117,8 @@ do
 	initStreamRadioLibGlobal()
 
 	local status, loaded = xpcall(function()
-		AddCSLuaFile("streamradio_core/load.lua")
-		return include("streamradio_core/load.lua")
+		AddCSLuaFile("streamradio_core/_load.lua")
+		return include("streamradio_core/_load.lua")
 	end, ErrorNoHaltWithStack)
 
 	if not _G.StreamRadioLib then

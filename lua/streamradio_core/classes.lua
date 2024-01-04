@@ -150,16 +150,14 @@ local function AddClass(name, parentname)
 	name = normalize_classname(name)
 	parentname = normalize_classname(parentname)
 
-	if ( name == "" ) then return false end
-	if ( parentname == "" ) then
+	if name == "" then return false end
+	if parentname == "" then
 		parentname = "base"
 	end
 
-	if ( StreamRadioLib.Classes[name] ) then return true end
+	if StreamRadioLib.Classes[name] then return true end
 
 	local scriptfile = LuaClassDirectory .. "/" .. name .. ".lua"
-
-	if ( not StreamRadioLib.LuaExists( scriptfile ) ) then return false end
 
 	if name ~= parentname and not AddClass( parentname ) then
 		return false
@@ -168,7 +166,12 @@ local function AddClass(name, parentname)
 	local parent = StreamRadioLib.Classes[parentname]
 	CLASS = CreateClass(name, parent)
 
-	StreamRadioLib.LoadSH(scriptfile, true)
+	local loaded = StreamRadioLib.LoadSH(scriptfile, true)
+
+	if not loaded then
+		CLASS = nil
+		return false
+	end
 
 	if not CLASS then
 		CLASS = nil

@@ -14,3 +14,5 @@ RADIOMDL.SpawnFlatOnWall = false
 RADIOMDL.SoundPosOffset = Vector( 0, 0, 18 )
 RADIOMDL.SoundAngOffset = Angle( 0, 0, 0 )
 
+return true
+

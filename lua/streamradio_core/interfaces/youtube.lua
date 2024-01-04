@@ -59,3 +59,6 @@ function RADIOIFACE:Convert(url, callback)
 	callback(self, false, nil, ERROR_UNSUPPORTED)
 	return
 end
+
+return true
+

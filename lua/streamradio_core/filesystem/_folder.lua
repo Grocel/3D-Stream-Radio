@@ -62,3 +62,6 @@ function RADIOFS:Delete(globalpath, vpath, callback)
 end
 
 RADIOFS.Read = nil
+
+return true
+

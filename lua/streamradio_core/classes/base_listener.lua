@@ -1079,3 +1079,6 @@ end
 
 function CLASS:PostDupe(data)
 end
+
+return true
+

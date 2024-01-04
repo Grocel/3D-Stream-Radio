@@ -288,3 +288,6 @@ end
 
 function CLASS:ActivateNetworkedMode()
 end
+
+return true
+

@@ -236,11 +236,11 @@ function LIB.DeleteFolder(path)
 
 	local files, folders = file.Find(path .. "/*", "DATA")
 
-	for k, v in pairs(files or {}) do
+	for k, v in ipairs(files or {}) do
 		file.Delete(path .. "/" .. v)
 	end
 
-	for k, v in pairs(folders or {}) do
+	for k, v in ipairs(folders or {}) do
 		LIB.DeleteFolder(path .. "/" .. v)
 	end
 

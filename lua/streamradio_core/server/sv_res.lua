@@ -7,7 +7,7 @@ local function CopyFiles( dir )
 	file.CreateDir( dir )
 	local files, directories = file.Find(WorkshopDataDirectory .. "/" .. dir .. "/*", "GAME")
 
-	for _, f in pairs(files or {}) do
+	for _, f in ipairs(files or {}) do
 		local filename = dir .. "/" .. f
 		local fullpath = WorkshopDataDirectory .. "/" .. filename
 
@@ -20,7 +20,7 @@ local function CopyFiles( dir )
 		file.Write(newfilename, file.Read(fullpath, "GAME") or "")
 	end
 
-	for _, d in pairs(directories or {}) do
+	for _, d in ipairs(directories or {}) do
 		CopyFiles(dir .. "/" .. d)
 	end
 end

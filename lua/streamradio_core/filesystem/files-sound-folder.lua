@@ -179,3 +179,6 @@ function RADIOFS:Read(globalpath, vpath, callback)
 	callback(true, playlist)
 	return true
 end
+
+return true
+

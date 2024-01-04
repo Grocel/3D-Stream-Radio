@@ -160,3 +160,6 @@ function RADIOMDL:WhileLoading(ent)
 	local sequence = ent:LookupSequence( "idle" )
 	ent:SetAnim( sequence, 0, 1 )
 end
+
+return true
+

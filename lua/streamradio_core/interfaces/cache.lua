@@ -52,3 +52,6 @@ function RADIOIFACE:Convert(url, callback)
 
 	callback(self, true, path)
 end
+
+return true
+

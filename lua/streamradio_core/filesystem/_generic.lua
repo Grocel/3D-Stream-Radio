@@ -22,3 +22,6 @@ end
 function RADIOFS:Exists(globalpath, vpath)
 	return false
 end
+
+return true
+

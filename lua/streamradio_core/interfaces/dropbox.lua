@@ -90,3 +90,6 @@ function RADIOIFACE:Convert(url, callback)
 
 	callback(self, true, streamUrl)
 end
+
+return true
+

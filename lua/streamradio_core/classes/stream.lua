@@ -2899,3 +2899,6 @@ end
 function CLASS:OnMute(muted)
 	-- override
 end
+
+return true
+

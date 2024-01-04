@@ -532,3 +532,6 @@ end
 function CLASS:GetSyncMode()
 	return self._syncmode or  false
 end
+
+return true
+

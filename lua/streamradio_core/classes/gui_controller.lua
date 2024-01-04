@@ -807,3 +807,6 @@ end
 function CLASS:IsReady()
 	return self.isReady or false
 end
+
+return true
+

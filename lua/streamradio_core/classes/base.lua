@@ -247,3 +247,6 @@ function CLASS:__eg(other)
 	if not other then return false end
 	return self:GetID() ~= other:GetID()
 end
+
+return true
+

@@ -14,3 +14,5 @@ RADIOMDL.SpawnAtOrigin = true
 RADIOMDL.SoundPosOffset = Vector( 10.5, 0, -1.9 )
 RADIOMDL.SoundAngOffset = Angle( 22.5, 0, 0 )
 
+return true
+

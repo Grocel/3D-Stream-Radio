@@ -405,3 +405,6 @@ function CLASS:PostDupe(data)
 	self:SetFraction(data.Fraction)
 	self:SetAllowFractionEdit(data.AllowEdit)
 end
+
+return true
+

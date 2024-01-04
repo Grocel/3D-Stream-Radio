@@ -72,14 +72,14 @@ local function AddModel(script)
 	if script[1] == "_" then return false end
 
 	local scriptfile = LuaModelDirectory .. "/" .. script
-	if not StreamRadioLib.LuaExists(scriptfile) then return false end
 
 	RADIOMDL = nil
 	RADIOMDL = {}
 
 	AddCommonFunctions()
 
-	StreamRadioLib.LoadSH(scriptfile, true)
+	local loaded = StreamRadioLib.LoadSH(scriptfile, true)
+
 	local modelname = string.lower(string.Trim(RADIOMDL.model or ""))
 
 	if modelname == "" then
@@ -90,7 +90,7 @@ local function AddModel(script)
 	Models[modelname] = RADIOMDL
 	RADIOMDL = nil
 
-	return true
+	return loaded
 end
 
 local function AddMultiModels(script, modellist)
@@ -104,15 +104,13 @@ local function AddMultiModels(script, modellist)
 
 	local scriptfile = LuaModelDirectory .. "/" .. script
 
-	if ( not StreamRadioLib.LuaExists( scriptfile ) ) then return false end
-
 	StreamRadioLib.SaveCSLuaFile(scriptfile, true)
 
 	RADIOMDL = nil
-	for _, modelname in pairs( modellist ) do
+	for _, modelname in ipairs( modellist ) do
 		modelname = string.lower( string.Trim( modelname or "" ) )
 
-		if ( modelname == "" ) then
+		if modelname == "" then
 			RADIOMDL = nil
 			continue
 		end
@@ -121,10 +119,15 @@ local function AddMultiModels(script, modellist)
 		RADIOMDL = {}
 		RADIOMDL.modelname = modelname
 
-		StreamRadioLib.LoadSH(scriptfile, true)
+		local loaded = StreamRadioLib.LoadSH(scriptfile, true)
+
+		if not loaded then
+			RADIOMDL = nil
+			continue
+		end
 
 		modelname = string.lower( string.Trim( RADIOMDL.modelname or "" ) )
-		if ( modelname == "" ) then
+		if modelname == "" then
 			RADIOMDL = nil
 			continue
 		end
@@ -140,14 +143,14 @@ function LIB.LoadModelSettings()
 	local files = file.Find( LuaModelDirectory .. "/*", "LUA" )
 	Models = {}
 
-	for _, f in pairs( files or {} ) do
+	for _, f in ipairs( files or {} ) do
 		AddModel(f)
 	end
 
 	local nm_modelpath = "models/nickmaps/speakers"
 	local nm_speakers = file.Find( nm_modelpath .. "/*.mdl", "GAME" )
 
-	for index, modelname in pairs( nm_speakers ) do
+	for index, modelname in ipairs( nm_speakers ) do
 		nm_speakers[index] = nm_modelpath .. "/" .. modelname
 	end
 

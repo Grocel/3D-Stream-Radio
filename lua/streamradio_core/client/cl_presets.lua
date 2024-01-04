@@ -794,7 +794,7 @@ do
 
 		local settings = StreamRadioLib.GetPresetsTable(g_radioColorToolName)
 
-		for _, f in pairs( files or {} ) do
+		for _, f in ipairs( files or {} ) do
 			local presetsString = file.Read( "settings/presets/streamradio_gui_color_global/" .. f, "GAME" ) or ""
 			if presetsString == "" then
 				continue

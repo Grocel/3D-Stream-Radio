@@ -540,3 +540,6 @@ end
 function CLASS:PostDupe(data)
 	self.State.PlaylistOpened = data.PlaylistOpened
 end
+
+return true
+

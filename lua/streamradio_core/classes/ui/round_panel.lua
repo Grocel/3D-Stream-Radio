@@ -40,3 +40,6 @@ function CLASS:OnModelSetup(setup)
 		self:SetCornerSize(setup.cornersize)
 	end
 end
+
+return true
+

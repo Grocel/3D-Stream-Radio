@@ -314,3 +314,6 @@ function CLASS:OnModelSetup(setup)
 		self:SetFont(setup.font)
 	end
 end
+
+return true
+

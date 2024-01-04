@@ -27,3 +27,6 @@ function RADIOIFACE:Convert(url, callback)
 	callback(self, true, url)
 	return
 end
+
+return true
+

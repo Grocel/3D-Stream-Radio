@@ -198,3 +198,6 @@ LIBWhitelist.AddCheckFunction("shoutcast", function(url)
 
 	return true
 end)
+
+return true
+

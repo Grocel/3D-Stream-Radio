@@ -282,3 +282,6 @@ end
 function CLASS:PostDupe(data)
 	self:SetSkin(data.skin)
 end
+
+return true
+

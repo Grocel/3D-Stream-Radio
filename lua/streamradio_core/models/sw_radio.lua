@@ -157,3 +157,6 @@ function RADIOMDL:Speaker(ent, speakerlevel)
 	ent:SetPoseParameter("speakers", speakerlevel)
 	ent:InvalidateBoneCache()
 end
+
+return true
+
