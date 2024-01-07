@@ -57,7 +57,7 @@ loadSH("streamradio_core/vr.lua")
 loadSH("streamradio_core/wire.lua")
 
 loadSV("streamradio_core/server/sv_lib.lua")
-loadSV("streamradio_core/server/sv_res.lua")
+loadSV("streamradio_core/server/sv_resource.lua")
 loadSV("streamradio_core/server/sv_playlist_edit.lua")
 loadSV("streamradio_core/server/sv_permaprops.lua")
 loadSV("streamradio_core/server/sv_whitelist.lua")
