@@ -226,8 +226,6 @@ function StreamRadioLib.Trace(ent)
 		table.insert(filter, filterEnt)
 	end
 
-	g_PlayerTrace.filter = filter
-
 	local trace = util.TraceLine(g_PlayerTrace)
 
 	-- prevent the cache from overflowing
@@ -247,27 +245,17 @@ end
 
 local g_PI = math.pi
 local g_TAU = g_PI * 2
+local g_starTracePoses = {}
 
-function StreamRadioLib.StarTrace(traceparams, size, edges, layers)
-	traceparams = traceparams or {}
-
-	local centerpos = traceparams.start or Vector()
-
-	size = math.abs(size or 0)
-	edges = math.abs(edges or 0)
+local function buildStarTracePoses(layers, edges)
 	layers = math.abs(layers or 0)
+	edges = math.abs(edges or 0)
 
-	traceparams.start = centerpos
-	traceparams.output = nil
+	for l = 1, layers do
+		local u = g_TAU / layers * l
 
-	local traceposes = {}
-	local traces = {}
-
-	for e = 1, edges do
-		local u = g_TAU / edges * e
-
-		for l = 1, layers do
-			local v = g_TAU / layers * l
+		for e = 1, edges do
+			local v = g_TAU / edges * e
 
 			local x = math.cos(u) * math.cos(v)
 			local y = math.cos(u) * math.sin(v)
@@ -276,28 +264,43 @@ function StreamRadioLib.StarTrace(traceparams, size, edges, layers)
 			local v = Vector(x, y, z)
 			v:Normalize()
 
-			if traceposes[v] then continue end
-			traceposes[v] = true
+			if g_starTracePoses[v] then continue end
+			g_starTracePoses[v] = true
 		end
 	end
 
-	traceposes[Vector(0, 0, 1)] = true
-	traceposes[Vector(0, 1, 0)] = true
-	traceposes[Vector(1, 0, 0)] = true
+	g_starTracePoses[Vector(0, 0, 1)] = true
+	g_starTracePoses[Vector(0, 1, 0)] = true
+	g_starTracePoses[Vector(1, 0, 0)] = true
 
-	traceposes[Vector(0, 0, -1)] = true
-	traceposes[Vector(0, -1, 0)] = true
-	traceposes[Vector(-1, 0, 0)] = true
+	g_starTracePoses[Vector(0, 0, -1)] = true
+	g_starTracePoses[Vector(0, -1, 0)] = true
+	g_starTracePoses[Vector(-1, 0, 0)] = true
+end
 
-	for v, _ in pairs(traceposes) do
+buildStarTracePoses(10, 6)
+
+function StreamRadioLib.StarTrace(traceparams, size)
+	traceparams = traceparams or {}
+
+	local centerpos = traceparams.start or Vector()
+
+	size = math.abs(size or 0)
+
+	traceparams.start = centerpos
+	traceparams.output = nil
+
+	local traces = {}
+
+	for v, _ in pairs(g_starTracePoses) do
 		local endpos = centerpos + v * size
 		traceparams.endpos = endpos
 
 		local trace = util.TraceLine(traceparams)
 
 		-- Tracers Debug
-		-- debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.1, color_white, false)
-		-- debugoverlay.Line(trace.HitPos or endpos, endpos, 0.1, color_black, false)
+		-- debugoverlay.Line(centerpos, trace.HitPos or endpos, 0.5, color_white, false)
+		-- debugoverlay.Line(trace.HitPos or endpos, endpos, 0.5, color_black, false)
 
 		table.insert(traces, trace)
 	end

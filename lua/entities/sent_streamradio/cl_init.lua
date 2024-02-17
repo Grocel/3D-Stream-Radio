@@ -190,30 +190,47 @@ function ENT:OnModelSetup()
 end
 
 function ENT:GetWallTraceParamenters()
-	if not self.WallTraceParamenters then
-		self.WallTraceParamenters = {
-			mask = MASK_SHOT_PORTAL,
-			filter = function(ent)
-				if not IsValid(ent) then return false end
-				if not IsValid(self) then return false end
+	local wallTraceParamenters = self.WallTraceParamenters
 
-				if ent == self then return false end
-				if ent.__IsRadio then return false end
-				if ent:IsPlayer() then return false end
-				if ent:IsVehicle() then return false end
-				if ent:IsNPC() then return false end
+	if not wallTraceParamenters then
+		self.WallTraceParamenters = {}
 
-				local camera = StreamRadioLib.GetCameraEnt()
-				if IsValid(camera) and ent == camera then return false end
-
-				return true
-			end
-		}
+		wallTraceParamenters = self.WallTraceParamenters
+		wallTraceParamenters.mask = MASK_SHOT_PORTAL
+		wallTraceParamenters.filter = {}
 	end
 
-	self.WallTraceParamenters.output = self.WallTraceParamenters.output or {}
+	wallTraceParamenters.output = wallTraceParamenters.output or {}
 
-	return self.WallTraceParamenters
+	local camera = StreamRadioLib.GetCameraEnt(ent)
+	local cameraVehicle = false
+
+	if IsValid(camera) then
+		cameraVehicle = camera.GetVehicle and camera:GetVehicle() or false
+	else
+		camera = false
+	end
+
+	local tmp = {}
+
+	tmp[self] = self
+	tmp[camera] = camera
+	tmp[cameraVehicle] = cameraVehicle
+
+	local filter = wallTraceParamenters.filter
+	table.Empty(filter)
+
+	for _, filterEnt in pairs(tmp) do
+		if not IsValid(filterEnt) then continue end
+		table.insert(filter, filterEnt)
+	end
+
+	for _, filterEnt in pairs(StreamRadioLib.SpawnedRadios) do
+		table.insert(filter, filterEnt)
+	end
+
+	wallTraceParamenters.filter = filter
+	return wallTraceParamenters
 end
 
 function ENT:TraceToCamera(frompos)
@@ -228,18 +245,13 @@ function ENT:TraceToCamera(frompos)
 	local result = traceparams.output
 
 	-- Tracers Debug
-	-- debugoverlay.Line(frompos, result.HitPos or endpos, 0.1, color_white, false)
-	-- debugoverlay.Line(result.HitPos or endpos, endpos, 0.1, color_black, false)
+	-- debugoverlay.Line(frompos, result.HitPos or endpos, 0.5, color_white, false)
+	-- debugoverlay.Line(result.HitPos or endpos, endpos, 0.5, color_black, false)
 
 	return result
 end
 
 function ENT:TraceWalls(radius)
-	local coveredvol = StreamRadioLib.GetCoveredVolume()
-	if coveredvol >= 1 then
-		return 1
-	end
-
 	local startpos = self.SoundPos
 
 	local camtrace = self:TraceToCamera(startpos)
@@ -251,7 +263,7 @@ function ENT:TraceWalls(radius)
 
 	traceparams.start = startpos
 
-	local traces = StreamRadioLib.StarTrace(traceparams, radius, 16, 16)
+	local traces = StreamRadioLib.StarTrace(traceparams, radius)
 
 	local blockcount = 0
 	local wallcount = 0
@@ -285,7 +297,9 @@ function ENT:TraceWalls(radius)
 
 	local f = blockcount / wallcount
 
-	local volfactor = math.Clamp((1 - f) * 2, coveredvol, 1)
+	f = (1 - f) * 2
+
+	local volfactor = math.Clamp(f, 0, 1)
 	return volfactor
 end
 
@@ -300,7 +314,15 @@ function ENT:GetWallVolumeFactor()
 		return 0
 	end
 
-	if StreamRadioLib.GetCoveredVolume() >= 1 then
+	local coveredvol = StreamRadioLib.GetCoveredVolume()
+
+	if coveredvol >= 1 then
+		self.wallvolcache = nil
+		return 1
+	end
+
+	local streamingRadioCount = StreamRadioLib.GetStreamingRadioCount()
+	if streamingRadioCount <= 0 then
 		self.wallvolcache = nil
 		return 1
 	end
@@ -308,16 +330,37 @@ function ENT:GetWallVolumeFactor()
 	local now = RealTime()
 
 	self.wallvolcache = self.wallvolcache or {}
-	if (self.wallvolcache.nexttime or 0) >= now then
-		return self.wallvolcache.value or 0
+	local cache = self.wallvolcache
+	local oldvalue = cache.value or 0
+
+	if cache.nexttime and cache.nexttime > now then
+		return math.max(oldvalue, coveredvol)
 	end
 
-	local mintime = math.max(FrameTime() * 3, 0.075)
+	local startTime = SysTime()
 
-	self.wallvolcache.value = self:TraceWalls(self.Radius)
-	self.wallvolcache.nexttime = now + math.Rand(mintime, mintime * 4)
+	local value = self:TraceWalls(self.Radius) or 1
 
-	return self.wallvolcache.value or 1
+	local endTime = SysTime()
+	local runtime = endTime - startTime
+
+	local mintime = math.max(RealFrameTime() * 30, runtime * streamingRadioCount * 50, 0.1)
+
+	if oldvalue <= 0 and value <= 0 then
+		-- already quiet radios should retest less often
+		mintime = math.max(mintime * 3, 0.5)
+	elseif oldvalue >= 1 and value >= 1 then
+		-- already clear radios should retest less often
+		mintime = math.max(mintime * 3, 0.5)
+	end
+
+	mintime = math.Rand(mintime, mintime * 2)
+	mintime = math.min(mintime, 3)
+
+	cache.nexttime = now + mintime
+
+	cache.value = value
+	return math.max(value, coveredvol)
 end
 
 function ENT:GetWallVolumeFactorSmoothed()
@@ -635,9 +678,9 @@ function ENT:OnMasterradioChange(masterradio, oldmasterradio)
 	end
 end
 
-function ENT:DrawTranslucent()
-	BaseClass.DrawTranslucent(self)
-	self:CallModelFunction("Draw")
+function ENT:DrawTranslucent(...)
+	BaseClass.DrawTranslucent(self, ...)
+	self:CallModelFunction("Draw", ...)
 end
 
 function ENT:PostFakeRemove()

@@ -692,8 +692,8 @@ function ENT:ShowDebug()
 end
 
 if CLIENT then
-	function ENT:DrawTranslucent()
-		self:DrawModel()
+	function ENT:DrawTranslucent(flags)
+		self:DrawModel(flags)
 
 		if not g_isWiremodLoaded then return end
 		Wire_Render(self)

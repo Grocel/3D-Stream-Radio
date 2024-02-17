@@ -215,8 +215,6 @@ function LIB.TraceHand()
 		table.insert(filter, filterEnt)
 	end
 
-	g_PlayerHandTrace.filter = filter
-
 	util.TraceLine(g_PlayerHandTrace)
 	g_PlayerHandTraceCache = g_PlayerHandTrace.output
 

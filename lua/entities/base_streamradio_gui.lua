@@ -1097,8 +1097,8 @@ if CLIENT then
 		cam.End3D2D( )
 	end
 
-	function ENT:DrawTranslucent( )
-		BaseClass.DrawTranslucent( self )
+	function ENT:DrawTranslucent(...)
+		BaseClass.DrawTranslucent(self, ...)
 		self.isseen = true
 		self:DrawGUI()
 	end
