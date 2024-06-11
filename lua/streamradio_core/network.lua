@@ -365,6 +365,7 @@ function LIB.SetupDataTables(entOrOntTable)
 		entTable = entOrOntTable:GetTable()
 	end
 
+	if not entTable then return end
 	LIB.SetupEntityTable(ent)
 
 	local NW = entTable.StreamRadioDT
@@ -433,6 +434,8 @@ end
 
 local function pollNwStackKillThis(stackItem)
 	local entTable = stackItem[1]
+	if not entTable then return end
+
 	local ent = entTable.Entity
 
 	if not entTable.IsValid(ent) then return end
@@ -452,6 +455,7 @@ local function pollNwStackLoopThis(stackItem)
 	if not ent then return end
 	if not setter then return end
 
+	if not entTable then return end
 	if not entTable.IsValid(ent) then return end
 	if entTable.IsMarkedForDeletion(ent) then return end
 
@@ -668,7 +672,14 @@ StreamRadioLib.Hook.Add("Tick", "Entity_Network_Tick", function()
 	LIB.PollNwStack()
 
 	for index, ent in pairs(StreamRadioLib.SpawnedRadios) do
+		if not ent then
+			continue
+		end
+
 		local entTable = ent:GetTable()
+		if not entTable then
+			continue
+		end
 
 		if not entTable.IsValid(ent) then
 			continue
@@ -680,6 +691,9 @@ end)
 
 function LIBDebug.DumpDTNetworkStats(ent)
 	local entTable = ent:GetTable()
+	if not entTable then
+		return
+	end
 
 	local NW = entTable.StreamRadioDT or {}
 	local Count = NW.Count or {}
@@ -709,6 +723,9 @@ end
 
 function LIBDebug.DumpDTNetworkVars(ent)
 	local entTable = ent:GetTable()
+	if not entTable then
+		return
+	end
 
 	local NW = entTable.StreamRadioDT or {}
 
