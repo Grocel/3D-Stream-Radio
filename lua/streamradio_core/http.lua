@@ -73,6 +73,8 @@ local function request(url, callback, parameters, method, headers, body, type)
 		return
 	end
 
+	local failed = false
+
 	requestdata.failed = function(err)
 		callcallbacks(rq, false, {
 			err = err or "",
@@ -92,6 +94,7 @@ local function request(url, callback, parameters, method, headers, body, type)
 		})
 
 		cleanDoneQuene()
+		failed = true
 	end
 
 	requestdata.success = function(code, body, headers)
@@ -125,11 +128,16 @@ local function request(url, callback, parameters, method, headers, body, type)
 		})
 
 		cleanDoneQuene()
+		failed = false
 	end
 
-	HTTP(requestdata)
-
 	rq.started = true
+
+	local success = HTTP(requestdata)
+
+	if not success and not failed then
+		requestdata.failed("HTTP failed")
+	end
 end
 
 function LIB.RequestRaw(url, callback, body, method, headers, type)

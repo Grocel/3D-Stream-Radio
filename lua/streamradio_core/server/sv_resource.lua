@@ -1,23 +1,20 @@
 resource.AddWorkshop( "246756300" ) -- Workshop download
 
--- Workaround Garry code that disallows shipping *.txt files for the data folder to Workshop.
-local WorkshopDataDirectory = "materials/3dstreamradio/_data"
+local g_staticDataDirectory = "data_static"
 
 local function CopyFiles( dir )
 	file.CreateDir( dir )
-	local files, directories = file.Find(WorkshopDataDirectory .. "/" .. dir .. "/*", "GAME")
+	local files, directories = file.Find(g_staticDataDirectory .. "/" .. dir .. "/*", "GAME")
 
 	for _, f in ipairs(files or {}) do
 		local filename = dir .. "/" .. f
-		local fullpath = WorkshopDataDirectory .. "/" .. filename
+		local fullpath = g_staticDataDirectory .. "/" .. filename
 
-		if not file.Exists(fullpath, "GAME") then continue end
+		if not file.Exists(fullpath, "GAME") then
+			continue
+		end
 
-		local ext = string.GetExtensionFromFilename(filename)
-		if ext ~= "vmt" then continue end
-
-		local newfilename = string.StripExtension(filename) .. ".txt"
-		file.Write(newfilename, file.Read(fullpath, "GAME") or "")
+		file.Write(filename, file.Read(fullpath, "GAME") or "")
 	end
 
 	for _, d in ipairs(directories or {}) do

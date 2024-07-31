@@ -9,7 +9,7 @@ LIB.Loaded = nil
 LIB.Errors = {}
 
 local function getVersion()
-	local versiondata = file.Read("materials/3dstreamradio/_data/version.vmt", "GAME") or ""
+	local versiondata = file.Read("data_static/streamradio/version.txt", "GAME") or ""
 	versiondata = string.Explode("[\r\n|\r|\n]", versiondata, true) or {}
 
 	local Version = string.Trim(tostring(versiondata[1] or ""))
@@ -270,13 +270,13 @@ local function loadAddon()
 		-- Sometimes the version is not known, yet.
 
 		if CLIENT then
-			local NEED_VERSION = 230904
+			local NEED_VERSION = 240730
 
 			if VERSION < NEED_VERSION then
 				versionError = string.format("Your GMod-Client (version: %s) is too old!\nPlease update the GMod-Client to version %s or newer!", VERSION, NEED_VERSION)
 			end
 		else
-			local NEED_VERSION = 230628
+			local NEED_VERSION = 240730
 
 			if VERSION < NEED_VERSION then
 				versionError = string.format("The GMod-Server (version: %s) is too old!\nPlease update the GMod-Server to version %s or newer!\nTell an Admin!", VERSION, NEED_VERSION)

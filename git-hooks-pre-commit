@@ -1,5 +1,5 @@
 #!/bin/sh
-filename="materials/3dstreamradio/_data/version.vmt"
+filename="data_static/streamradio/version.txt"
 version=$(head -n 1 $filename)
 nextversion=$(($version + 1))
 timestap=$(date -u +%s)
