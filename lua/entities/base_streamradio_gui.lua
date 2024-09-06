@@ -1027,12 +1027,11 @@ if CLIENT then
 	end
 
 	function ENT:ShouldRemoveGUI()
-		local ply = LocalPlayer()
-
 		if self.DisplayLess then
 			return true
 		end
 
+		local ply = LocalPlayer()
 		if StreamRadioLib.IsGUIHidden(ply) then
 			return true
 		end
@@ -1054,6 +1053,7 @@ if CLIENT then
 			return
 		end
 
+		local ply = LocalPlayer()
 		if not self:CheckDistanceToEntity(ply, StreamRadioLib.GetDrawDistance(), nil, StreamRadioLib.GetCameraViewPos(ply)) then
 			return
 		end

@@ -208,6 +208,26 @@ function LIB.IsValidFilename(filename)
 	return true
 end
 
+function LIB.StreamMetaStringToTable(meta)
+	meta = tostring(meta or "")
+	meta = string.Trim(meta or "")
+
+	local result = {}
+
+	for k, v in string.gmatch(meta, "([%w_]+)%s*=%s*([^;]*)[;]?") do
+		k = string.lower(k)
+		if k == "" then
+			continue
+		end
+
+		v = string.gsub(v, "^'(.*)'$", "%1")
+		v = string.Trim(v or "")
+
+		result[k] = v
+	end
+
+	return result
+end
 
 return true
 

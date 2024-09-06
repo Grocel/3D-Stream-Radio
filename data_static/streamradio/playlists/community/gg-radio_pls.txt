@@ -1,6 +1,0 @@
-[playlist]
-NumberOfEntries=1
-File1=https://api.tmw.media/ggradio/stream
-Title1=GGRadio.net
-Length1=-1
-Version=2

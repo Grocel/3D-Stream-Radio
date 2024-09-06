@@ -26,6 +26,7 @@ local LIBError = StreamRadioLib.Error
 local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url
 local LIBStream = StreamRadioLib.Stream
+local LIBString = StreamRadioLib.String
 
 local BASE = CLASS:GetBaseClass()
 local g_maxSongLenForCache = 60 * 60 * 1.5 -- 1.5 Hours
@@ -2174,20 +2175,12 @@ function CLASS:ReviveStream()
 end
 
 local function getTagsMetaAsTable(channel)
-	local data = channel:GetTagsMeta()
-	if not data then
+	local meta = channel:GetTagsMeta()
+	if not meta then
 		return nil
 	end
 
-	local result = {}
-
-	data = string.Trim(data)
-
-	for k, v in string.gmatch(data, "([%w_]+)%s*=%s*'(.+)';") do
-		k = string.lower(k)
-		result[k] = v
-	end
-
+	local result = LIBString.StreamMetaStringToTable(meta)
 	return result
 end
 
