@@ -1,6 +1,7 @@
 local StreamRadioLib = StreamRadioLib
 
 local g_allowSpectrum = false
+local g_enableUrlRequestLog = false
 local g_enableUrlWhitelist = true
 local g_enableUrlWhitelistOnCFCWhitelist = true
 local g_enableUrlWhitelistTrustAdminRadios = true
@@ -12,6 +13,13 @@ local g_cvMaxServerSpectrum = CreateConVar(
 	"5",
 	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
 	"Sets the maximum count of radios that can have advanced wire outputs such as FFT spectrum or song tags. 0 = Off, Default: 5"
+)
+
+local g_cvUrlRequestLogEnable = CreateConVar(
+	"sv_streamradio_url_request_log_enable",
+	"1",
+	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
+	"Log requested stream URLs to console. Always logs on developer > 0.  0 = Disable, 1 = Enable, Default: 1"
 )
 
 local g_cvUrlWhitelistEnable = CreateConVar(
@@ -64,6 +72,11 @@ function StreamRadioLib.AllowSpectrum()
 	return g_allowSpectrum
 end
 
+function StreamRadioLib.IsUrlRequestLogEnabled()
+	if not g_enableUrlRequestLog then return false end
+	return true
+end
+
 function StreamRadioLib.IsUrlWhitelistEnabled()
 	if not g_enableUrlWhitelist then return false end
 	return true
@@ -95,6 +108,13 @@ local function calcAllowSpectrum()
 	if max == 0 then return false end
 
 	return StreamRadioLib.GetStreamingRadioCount() < max
+end
+
+local function calcEnableUrlRequestLog()
+	if StreamRadioLib.Util.IsDebug() then return true end
+	if not g_cvUrlRequestLogEnable:GetBool() then return false end
+
+	return true
 end
 
 local function calcUrlWhitelistEnabled()
@@ -139,6 +159,7 @@ StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
 
 	if g_lastThink < now then
 		g_allowSpectrum = calcAllowSpectrum()
+		g_enableUrlRequestLog = calcEnableUrlRequestLog()
 
 		local old_enableUrlWhitelist = g_enableUrlWhitelist
 		local old_enableUrlWhitelistOnCFCWhitelist = g_enableUrlWhitelistOnCFCWhitelist

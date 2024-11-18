@@ -660,26 +660,38 @@ LIB.AddStreamErrorCode({
 The server does not allow playback of this URL to prevent abuse.
 You can ask an admin to whitelist this URL by adding it to the playlists.
 
-CAUTION: Please don't ask to have the whitelist disabled or removed. It is there for your own security.
+CAUTION: Please don't ask to have the whitelist disabled or removed. It is there for your own security. Ask your admin for details.
 ]],
 })
 
 LIB.AddStreamErrorCode({
 	id = 1001,
+	name = "STREAM_ERROR_URL_BLOCKED",
+	description = "This URL is blocked on this server",
+	helpurl = "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668761564/",
+	helptext = [[
+The server does not allow playback of this URL to prevent abuse. It has been blocked by external code.
+
+CAUTION: Please don't ask to have this block disabled or removed. It is there for your own security. Ask your admin for details.
+]],
+})
+
+LIB.AddStreamErrorCode({
+	id = 1010,
 	name = "STREAM_ERROR_WIRE_ADVOUT_DISABLED",
 	description = "Advanced outputs are disabled",
 	helptext = "",
 })
 
 LIB.AddStreamErrorCode({
-	id = 1002,
+	id = 1020,
 	name = "STREAM_ERROR_MISSING_GM_BASS3",
 	description = "GM_BASS3 is missing",
 	helptext = "",
 })
 
 LIB.AddStreamErrorCode({
-	id = 1003,
+	id = 1030,
 	name = "STREAM_ERROR_BAD_DRIVE_LETTER_PATH",
 	description = "Drive letter paths are not supported, use relative paths",
 	helptext = [[

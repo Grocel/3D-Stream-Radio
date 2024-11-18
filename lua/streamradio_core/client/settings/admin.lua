@@ -111,6 +111,11 @@ local function AddSecurityMenuPanel(CPanel)
 
 	subpanel:AddItem(LIBMenu.GetSpacerLine())
 
+	subpanel:CheckBox(
+		"Log stream URLs to console",
+		"sv_streamradio_url_request_log_enable"
+	)
+
 	local urlWhitelistCombobox, urlWhitelistLabel = subpanel:ComboBox(
 		"URL Whitelist",
 		"sv_streamradio_url_whitelist_enable"

@@ -162,8 +162,12 @@ function ENT:GetOrCreateStream()
 		return call("StreamOnSearch", ...)
 	end
 
-	stream.CanIgnoreWhitelist = function( ... )
-		return call("StreamCanIgnoreWhitelist", ...)
+	stream.CanSkipUrlChecks = function( ... )
+		return call("StreamCanSkipUrlChecks", ...)
+	end
+
+	stream.CanBypassUrlBlock = function( ... )
+		return call("StreamCanBypassUrlBlock", ...)
 	end
 
 	stream.OnMute = function( ... )
@@ -202,7 +206,16 @@ function ENT:StreamOnSearch()
 	return true
 end
 
-function ENT:StreamCanIgnoreWhitelist()
+function ENT:StreamCanSkipUrlChecks()
+	return false
+end
+
+function ENT:StreamCanBypassUrlBlock(blockedByHook)
+	if blockedByHook then
+		-- was blocked by external code
+		return false
+	end
+
 	if not StreamRadioLib.IsUrlWhitelistAdminRadioTrusted() then
 		return false
 	end

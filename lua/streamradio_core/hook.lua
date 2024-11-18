@@ -5,12 +5,18 @@ StreamRadioLib.Hook = StreamRadioLib.Hook or {}
 local LIB = StreamRadioLib.Hook
 table.Empty(LIB)
 
-local g_nameprefix = "3DStreamRadio_mainHook_"
+local g_namePrefixMain = "3DStreamRadio_mainHook_"
+local g_nameprefixCustom = "3DStreamRadio_"
 local g_hooks = {}
 local g_orderCounter = 0
 
 function LIB.GetMainHookIdentifier(eventName)
-	local identifier = g_nameprefix .. tostring(eventName or "")
+	local identifier = g_namePrefixMain .. tostring(eventName or "")
+	return identifier
+end
+
+function LIB.GetCostomHookIdentifier(eventName)
+	local identifier = g_nameprefixCustom .. tostring(eventName or "")
 	return identifier
 end
 
@@ -169,6 +175,26 @@ function LIB.Remove(eventName, identifier)
 		hook.Remove(eventName, hookIdentifier)
 		hookData.hasHook = nil
 	end
+end
+
+function LIB.Run(eventName, ...)
+	eventName = tostring(eventName or "")
+	return hook.Run(eventName, ...)
+end
+
+function LIB.AddCustom(eventName, ...)
+	local eventName = LIB.GetMainHookIdentifier(eventName)
+	return LIB.Add(eventName, ...)
+end
+
+function LIB.RemoveCustom(eventName, ...)
+	local eventName = LIB.GetMainHookIdentifier(eventName)
+	return LIB.Remove(eventName, ...)
+end
+
+function LIB.RunCustom(eventName, ...)
+	local eventName = LIB.GetMainHookIdentifier(eventName)
+	return LIB.Run(eventName, ...)
 end
 
 function LIB.GetBenchmark(eventName)

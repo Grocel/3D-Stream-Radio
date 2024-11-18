@@ -81,9 +81,7 @@ StreamRadioLib.Url.Load()
 StreamRadioLib.Interface.Load()
 StreamRadioLib.Filesystem.Load()
 
-if SERVER then
-    StreamRadioLib.Whitelist.Load()
-end
+StreamRadioLib.Whitelist.Load()
 
 StreamRadioLib.Cfchttp.Load()
 StreamRadioLib.Cache.Load()

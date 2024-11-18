@@ -91,6 +91,7 @@ local retry_errors_block = {
 
 local retry_errors_urlblocked = {
 	[LIBError.STREAM_ERROR_URL_NOT_WHITELISTED] = true,
+	[LIBError.STREAM_ERROR_URL_BLOCKED] = true,
 }
 
 local function loadLibs()
@@ -757,19 +758,31 @@ function CLASS:IsAllowedInternalUrl(url, callback, logFailure)
 end
 
 function CLASS:IsAllowedExternalUrl(url, callback)
-	if self:CallHook("CanIgnoreWhitelist", url) then
-		-- Sometimes we don't want/need to check the addon's whitelist
-		-- E.g. when the owner of the radio entity is an admin.
-
+	if self:CallHook("CanSkipUrlChecks", url) then
+		-- Sometimes we want to ignore the addon's whitelist
 		callback(self, true, nil)
 		return
 	end
 
-	StreamRadioLib.Whitelist.IsAllowedAsync(url, function(allowed)
+	local ent = self:GetEntity()
+	local context = StreamRadioLib.Whitelist.BuildContext(ent)
+
+	StreamRadioLib.Whitelist.IsAllowedAsync(url, context, function(allowed, blockedByHook)
 		if not IsValid(self) then return end
 
 		if not allowed then
-			callback(self, allowed, LIBError.STREAM_ERROR_URL_NOT_WHITELISTED)
+			if self:CallHook("CanBypassUrlBlock", url, blockedByHook) then
+				-- Sometimes we want to ignore the block, but still to perform the checks.
+				callback(self, true, nil)
+				return
+			end
+
+			if blockedByHook then
+				callback(self, allowed, LIBError.STREAM_ERROR_URL_BLOCKED)
+				return
+			end
+
+			callback(self, false, LIBError.STREAM_ERROR_URL_NOT_WHITELISTED)
 			return
 		end
 
@@ -791,7 +804,7 @@ function CLASS:DoUrlBackgroundCheck()
 		return
 	end
 
-	self.nextUrlBackgroundCheck = now + 1 + math.random() * 2
+	self.nextUrlBackgroundCheck = now + 1 + math.random() * 9
 
 	if self:GetMuted() then
 		return
@@ -823,7 +836,7 @@ function CLASS:DoUrlBackgroundCheck()
 	self.urlBackgroundCheckRuns = true
 
 	self:IsAllowedUrlPair(externalUrl, internalUrl, function(this, isAllowed)
-		self.nextUrlBackgroundCheck = RealTime() + 1 + math.random() * 2
+		self.nextUrlBackgroundCheck = RealTime() + 1 + math.random() * 9
 		self.urlBackgroundCheckRuns = nil
 
 		if self:GetMuted() then
@@ -846,7 +859,7 @@ function CLASS:DoUrlBackgroundCheck()
 
 		if not isAllowed then
 			if not isWhitelistError then
-				-- Attempt to reconnect respecting the changed rules. It will likely fail and run its relatively complex error handling.
+				-- Attempt to reconnect respecting the changed rules. It will likely fail and run its complex error handling.
 				self:Reconnect()
 			end
 		else
@@ -2862,9 +2875,14 @@ function CLASS:OnSearch(url)
 	return true -- Allow url to be played
 end
 
-function CLASS:CanIgnoreWhitelist(url)
+function CLASS:CanSkipUrlChecks(url)
 	-- override
 	return false -- Ignore the build-in whitelist?
+end
+
+function CLASS:CanBypassUrlBlock(url, blockedByHook)
+	-- override
+	return false -- Bypass the URL block?
 end
 
 function CLASS:OnClose()

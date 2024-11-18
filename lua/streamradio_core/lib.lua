@@ -486,7 +486,7 @@ function StreamRadioLib.CheckPropProtectionAgainstUse(ent, ply)
 	end
 
 	if SERVER then
-		local status, use = catchAndErrorNoHaltWithStack(hook.Run, "PlayerUse", ply, ent)
+		local status, use = catchAndErrorNoHaltWithStack(StreamRadioLib.Hook.Run, "PlayerUse", ply, ent)
 
 		if not status then
 			return false

@@ -12,6 +12,7 @@ local LIBFilesystem = StreamRadioLib.Filesystem
 local LIBTimer = StreamRadioLib.Timer
 local LIBPrint = StreamRadioLib.Print
 local LIBString = StreamRadioLib.String
+local LIBHook = StreamRadioLib.Hook
 
 local g_quickWhitelistPlaylistFolder = "quick-whitelists"
 
@@ -23,16 +24,20 @@ local g_emptyFunction = function() end
 
 LIBNet.Receive("whitelist_check_url", function(len, ply)
 	local url = net.ReadString()
+	local ent = net.ReadEntity()
 
 	url = LIBUrl.SanitizeUrl(url)
 	if url == "" then
 		return
 	end
 
-	LIB.IsAllowedAsync(url, function(result)
+	local context = LIB.BuildContext(ent, ply)
+
+	LIB.IsAllowedAsync(url, context, function(result, blockedByHook)
 		LIBNet.Start("whitelist_check_url_result")
 			net.WriteString(url)
 			net.WriteBool(result)
+			net.WriteBool(blockedByHook)
 		net.Send(ply)
 	end)
 end)
@@ -114,47 +119,109 @@ function LIB.AddCheckFunction(name, func)
 	g_whitelistFunction[name] = func
 end
 
-function LIB.IsAllowedSync(url, logFailure)
+function LIB.BuildContext(ent, ply)
+	context = context or {}
+
+	if not IsValid(ent) or not isentity(ent) then
+		ent = nil
+	end
+
+	if ent and ent.__IsRadio and not IsValid(ply) then
+		ply = ent:GetRealRadioOwner()
+	end
+
+	if not IsValid(ply) or not ply:IsPlayer() then
+		ply = nil
+	end
+
+	context.entity = ent
+	context.player = ply
+
+	return context
+end
+
+function LIB.SanitizeContext(context)
+	context = context or {}
+
+	local ent = context.entity
+	local ply = context.player
+
+	if not IsValid(ply) or not ply:IsPlayer() then
+		context.player = nil
+	end
+
+	if not IsValid(ent) or not isentity(ent) then
+		context.entity = nil
+	end
+
+	return context
+end
+
+function LIB.IsAllowedSync(url, context)
 	url = tostring(url or "")
 
 	if url == "" then
-		return false
+		return false, false
 	end
 
 	if LIBUrl.IsOfflineURL(url) then
-		return true
+		return true, false
 	end
 
 	url = LIBUrl.SanitizeOnlineUrl(url)
 	if url == "" then
-		return false
+		return false, false
+	end
+
+	context = LIB.SanitizeContext(context)
+
+	local ply = context.player
+	local ent = context.entity
+
+	local isAllowed = LIBHook.RunCustom("UrlIsAllowed", url, ply, ent)
+
+	if isAllowed == false then
+		return false, true
 	end
 
 	if not StreamRadioLib.IsUrlWhitelistEnabled() then
 		-- allow all URLs if the whitelist is disabled
-		return true
+		return true, false
 	end
 
 	local playlistPaths = g_whitelistByUrl[url]
 	local isWhitelisted = playlistPaths and not table.IsEmpty(playlistPaths)
 
 	if isWhitelisted then
-		return true
+		return true, false
 	end
 
 	if callCheckFunctions(url) then
-		return true
+		return true, false
 	end
 
-	return false
+	return nil, nil
 end
 
-function LIB.IsAllowedAsync(url, callback)
+function LIB.IsAllowedAsync(url, context, callback)
 	url = tostring(url or "")
 	callback = callback or g_emptyFunction
 
-	local result = LIB.IsAllowedSync(url)
-	callback(result)
+	context = LIB.SanitizeContext(context)
+
+	local result, blockedByHook = LIB.IsAllowedSync(url, context)
+
+	if result ~= nil then
+		callback(result, blockedByHook or false)
+		return
+	end
+
+	if not StreamRadioLib.IsUrlWhitelistEnabled() then
+		callback(true, false)
+		return
+	end
+
+	callback(false, false)
 end
 
 function LIB.Add(urls, playlistPath)
@@ -610,8 +677,27 @@ local function BuildWhitelistInternal()
 	LIBFilesystem.Find("", recursiveLookup)
 end
 
+local function AddUrlLogger()
+	LIBHook.AddCustom("UrlIsAllowed", "UrlLogging", function(url, ply, ent)
+		if not StreamRadioLib.IsUrlRequestLogEnabled() then
+			return
+		end
+
+		local msgstring = nil
+
+		if IsValid(ent) then
+			msgstring = LIBPrint.Format("STREAM URL - Requested via %s: %s", tostring(ent), url)
+		else
+			msgstring = LIBPrint.Format("STREAM URL - Requested: %s", url)
+		end
+
+		LIBPrint.Log(ply, msgstring)
+	end)
+end
+
 function LIB.Load()
 	BuildWhitelistInternal()
+	AddUrlLogger()
 end
 
 function LIB.BuildWhitelist()

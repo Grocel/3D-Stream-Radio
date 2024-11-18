@@ -325,12 +325,13 @@ function PANEL:GetOrCreateStream()
 		return true
 	end
 
-	stream.CanIgnoreWhitelist = function( thisStream )
+	stream.CanSkipUrlChecks = function( thisStream )
 		if not IsValid( self ) then
 			return false
 		end
 
-		-- This stream is for the local client only and safe to use. No whitelist is needed here. Avoids UX problems also.
+		-- This stream is for the local client only and safe to use.
+		-- No whitelist is needed here. Avoids UX problems also.
 		return true
 	end
 

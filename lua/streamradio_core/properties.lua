@@ -1029,12 +1029,12 @@ LIB.AddSubOption("admin_title", {
 		if not LIBUtil.IsAdmin( ply ) then return false end
 		if not LIB.CanBeTargeted( ent, ply ) then return false end
 
-		if StreamRadioLib.IsUrlWhitelistEnabled() then
-			local url = ent:GetStreamURL()
-			if url ~= "" then
-				-- Trigger updating the cache in the background if needed
-				StreamRadioLib.Whitelist.IsAllowedAsync(url)
-			end
+		local url = ent:GetStreamURL()
+		if url ~= "" then
+			local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
+
+			-- Trigger updating the cache in the background if needed
+			StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
 		end
 
 		local allowed = LIB.CheckFilters(
@@ -1073,7 +1073,12 @@ LIB.AddSubOption("admin_whitelist_add", {
 			return false
 		end
 
-		if StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
+		local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
+		local result, blockedByHook = StreamRadioLib.Whitelist.IsAllowedSync(url, context)
+
+		if blockedByHook then return false end
+		if result then return false end
+
 		return true
 	end,
 
@@ -1082,7 +1087,8 @@ LIB.AddSubOption("admin_whitelist_add", {
 		StreamRadioLib.Whitelist.QuickWhitelistAdd(url)
 
 		-- Trigger updating the cache in the background if needed
-		StreamRadioLib.Whitelist.IsAllowedAsync(url)
+		local context = StreamRadioLib.Whitelist.BuildContext(ent)
+		StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
 	end,
 })
 
@@ -1104,7 +1110,12 @@ LIB.AddSubOption("admin_whitelist_remove", {
 			return false
 		end
 
-		if not StreamRadioLib.Whitelist.IsAllowedSync(url) then return false end
+		local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
+		local result, blockedByHook = StreamRadioLib.Whitelist.IsAllowedSync(url, context)
+
+		if blockedByHook then return false end
+		if not result then return false end
+
 		return true
 	end,
 
@@ -1113,7 +1124,8 @@ LIB.AddSubOption("admin_whitelist_remove", {
 		StreamRadioLib.Whitelist.QuickWhitelistRemove(url)
 
 		-- Trigger updating the cache in the background if needed
-		StreamRadioLib.Whitelist.IsAllowedAsync(url)
+		local context = StreamRadioLib.Whitelist.BuildContext(ent)
+		StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
 	end,
 })
 

@@ -83,7 +83,7 @@ function LIB.Uid()
 end
 
 local g_createCacheArrayMeta = {
-	Set = function(self, cacheid, data)
+	Set = function(self, cacheid, data, expires)
 		if cacheid == nil then
 			return
 		end
@@ -93,30 +93,51 @@ local g_createCacheArrayMeta = {
 			return
 		end
 
-		local hadCache = false
-		local cache = self.cache
-
-		if cache[cacheid] then
-			hadCache = true
-		end
-
 		if self.limit > 0 and self.count > self.limit then
 			self:Empty()
 		end
 
-		cache[cacheid] = data
+		local cache = self.cache
+		local cacheItem = cache[cacheid]
 
-		if not hadCache then
+		if not cacheItem then
+			cacheItem = {}
+			cache[cacheid] = cacheItem
+
 			self.count = self.count + 1
 		end
+
+		cacheItem.data = data
+		cacheItem.expires = expires
 	end,
 
-	Get = function(self, cacheid)
+	Get = function(self, cacheid, now)
 		if cacheid == nil then
 			return nil
 		end
 
-		return self.cache[cacheid]
+		local cache = self.cache
+		local cacheItem = cache[cacheid]
+
+		if not cacheItem then
+			return nil
+		end
+
+		local data = cacheItem.data
+		if data == nil then
+			self:Remove(cacheid)
+			return nil
+		end
+
+		now = now or 0
+		local expires = cacheItem.expires or 0
+
+		if now > 0 and expires > 0 and expires < now then
+			self:Remove(cacheid)
+			return nil
+		end
+
+		return data
 	end,
 
 	Remove = function(self, cacheid)
@@ -125,7 +146,6 @@ local g_createCacheArrayMeta = {
 		end
 
 		local cache = self.cache
-
 		if cache[cacheid] == nil then
 			return
 		end
@@ -134,12 +154,8 @@ local g_createCacheArrayMeta = {
 		self.count = math.max(self.count - 1, 0)
 	end,
 
-	Has = function(self, cacheid)
-		if cacheid == nil then
-			return false
-		end
-
-		return self.cache[cacheid] ~= nil
+	Has = function(self, cacheid, now)
+		return self:Get(cacheid, now) ~= nil
 	end,
 
 	Empty = function(self)

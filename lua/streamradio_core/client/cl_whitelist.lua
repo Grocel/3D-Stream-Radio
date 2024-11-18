@@ -8,6 +8,7 @@ table.Empty(LIB)
 local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url
 local LIBNet = StreamRadioLib.Net
+local LIBHook = StreamRadioLib.Hook
 
 local g_whitelistCache = LIBUtil.CreateCacheArray(2048)
 local g_whitelistCallbacks = {}
@@ -19,31 +20,41 @@ end)
 
 local g_emptyFunction = function() end
 
-local function callCallbacks(result, url)
-	local callbacks = g_whitelistCallbacks[url]
+local function callCallbacks(url, ...)
+	local callbacksList = g_whitelistCallbacks[url]
 	g_whitelistCallbacks[url] = nil
 
-	if not callbacks then
+	if not callbacksList then
 		return
 	end
 
-	for _, callback in ipairs(callbacks) do
-		callback(result)
+	for _, callbacks in pairs(callbacksList) do
+		for _, callback in ipairs(callbacks) do
+			callback(...)
+		end
 	end
 end
 
 LIBNet.Receive("whitelist_check_url_result", function()
 	local url = net.ReadString()
 	local result = net.ReadBool()
+	local blockedByHook = net.ReadBool()
 
 	url = LIBUrl.SanitizeUrl(url)
 	if url == "" then
 		return
 	end
 
-	g_whitelistCache:Set(url, result)
+	local now = CurTime()
+	local lifetime = blockedByHook and 600 or 3600
+	local expires = now + lifetime
 
-	callCallbacks(result, url)
+	g_whitelistCache:Set(url, {
+		result = result,
+		blockedByHook = blockedByHook,
+	}, expires)
+
+	callCallbacks(url, result, blockedByHook)
 end)
 
 LIBNet.Receive("whitelist_clear_cache", function()
@@ -72,52 +83,114 @@ function LIB.AddCheckFunction(name, func)
 	g_whitelistFunction[name] = func
 end
 
-function LIB.IsAllowedSync(url)
+function LIB.BuildContext(ent, ply)
+	context = context or {}
+
+	if not IsValid(ent) or not isentity(ent) then
+		ent = nil
+	end
+
+	if ent and ent.__IsRadio and not IsValid(ply) then
+		ply = ent:GetRealRadioOwner()
+	end
+
+	if not IsValid(ply) or not ply:IsPlayer() then
+		ply = nil
+	end
+
+	context.entity = ent
+	context.player = ply
+
+	return context
+end
+
+function LIB.SanitizeContext(context)
+	context = context or {}
+
+	local ent = context.entity
+	local ply = context.player
+
+	if not IsValid(ply) or not ply:IsPlayer() then
+		context.player = LocalPlayer()
+	end
+
+	if not IsValid(ent) or not isentity(ent) then
+		context.entity = nil
+	end
+
+	return context
+end
+
+function LIB.IsAllowedSync(url, context)
 	url = tostring(url or "")
 
 	if url == "" then
-		return false
+		return false, false
 	end
 
 	if LIBUrl.IsOfflineURL(url) then
-		return true
+		return true, false
 	end
 
 	url = LIBUrl.SanitizeOnlineUrl(url)
 	if url == "" then
-		return false
+		return false, false
+	end
+
+	context = LIB.SanitizeContext(context)
+
+	local now = CurTime()
+
+	local cacheItem = g_whitelistCache:Get(url, now)
+	if cacheItem then
+		-- Use cached result instead of asking the server again
+
+		local result = cacheItem.result or false
+		local blockedByHook = cacheItem.blockedByHook or false
+
+		return result, blockedByHook
+	end
+
+	local ply = context.player
+	local ent = context.entity
+
+	local isAllowed = LIBHook.RunCustom("UrlIsAllowed", url, ply, ent)
+
+	if isAllowed == false then
+		return false, true
 	end
 
 	if not StreamRadioLib.IsUrlWhitelistEnabled() then
 		-- allow all URLs if the whitelist is disabled
-		return true
+		return nil, false
 	end
 
 	if callCheckFunctions(url) then
-		return true
+		return true, false
 	end
 
-	if g_whitelistCache:Has(url) then
-		local result = g_whitelistCache:Get(url)
-		return result
-	end
-
-	return nil
+	return nil, nil
 end
 
-function LIB.IsAllowedAsync(url, callback)
+function LIB.IsAllowedAsync(url, context, callback)
 	url = tostring(url or "")
 	callback = callback or g_emptyFunction
 
-	local result = LIB.IsAllowedSync(url)
+	context = LIB.SanitizeContext(context)
+	local ent = context.entity or NULL
+
+	local result, blockedByHook = LIB.IsAllowedSync(url, context)
 
 	if result ~= nil then
-		callback(result)
+		callback(result, blockedByHook or false)
 		return
 	end
 
-	local callbacks = g_whitelistCallbacks[url] or {}
-	g_whitelistCallbacks[url] = callbacks
+	local callbacksList = g_whitelistCallbacks[url] or {}
+	g_whitelistCallbacks[url] = callbacksList
+
+	local callbacks = callbacksList[ent] or {}
+	callbacksList[ent] = callbacks
 
 	local hasSend = #callbacks > 0
 	table.insert(callbacks, callback)
@@ -125,6 +198,7 @@ function LIB.IsAllowedAsync(url, callback)
 	if not hasSend then
 		LIBNet.Start("whitelist_check_url")
 			net.WriteString(url)
+			net.WriteEntity(ent)
 		net.SendToServer()
 	end
 end
@@ -183,6 +257,10 @@ function LIB.QuickWhitelistRemove(url)
 	net.SendToServer()
 
 	g_whitelistCache:Remove(url)
+end
+
+function LIB.Load()
+	LIB.InvalidateCache()
 end
 
 return true
