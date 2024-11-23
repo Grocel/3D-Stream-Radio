@@ -6,17 +6,17 @@ local LIB = StreamRadioLib.Hook
 table.Empty(LIB)
 
 local g_namePrefixMain = "3DStreamRadio_mainHook_"
-local g_nameprefixCustom = "3DStreamRadio_"
+local g_namePrefixCustom = "3DStreamRadio_"
 local g_hooks = {}
 local g_orderCounter = 0
 
-function LIB.GetMainHookIdentifier(eventName)
+local function getMainHookIdentifier(eventName)
 	local identifier = g_namePrefixMain .. tostring(eventName or "")
 	return identifier
 end
 
-function LIB.GetCostomHookIdentifier(eventName)
-	local identifier = g_nameprefixCustom .. tostring(eventName or "")
+local function getCustomHookIdentifier(eventName)
+	local identifier = g_namePrefixCustom .. tostring(eventName or "")
 	return identifier
 end
 
@@ -140,7 +140,7 @@ function LIB.Add(eventName, identifier, func, order)
 	BuildOrder(hookData)
 
 	if not hookData.hasHook then
-		local hookIdentifier = LIB.GetMainHookIdentifier(eventName)
+		local hookIdentifier = getMainHookIdentifier(eventName)
 
 		hook.Remove(eventName, hookIdentifier)
 		hook.Add(eventName, hookIdentifier, function(...)
@@ -170,7 +170,7 @@ function LIB.Remove(eventName, identifier)
 	BuildOrder(hookData)
 
 	if table.IsEmpty(byName) then
-		local hookIdentifier = LIB.GetMainHookIdentifier(eventName)
+		local hookIdentifier = getMainHookIdentifier(eventName)
 
 		hook.Remove(eventName, hookIdentifier)
 		hookData.hasHook = nil
@@ -183,17 +183,17 @@ function LIB.Run(eventName, ...)
 end
 
 function LIB.AddCustom(eventName, ...)
-	local eventName = LIB.GetMainHookIdentifier(eventName)
+	local eventName = getCustomHookIdentifier(eventName)
 	return LIB.Add(eventName, ...)
 end
 
 function LIB.RemoveCustom(eventName, ...)
-	local eventName = LIB.GetMainHookIdentifier(eventName)
+	local eventName = getCustomHookIdentifier(eventName)
 	return LIB.Remove(eventName, ...)
 end
 
 function LIB.RunCustom(eventName, ...)
-	local eventName = LIB.GetMainHookIdentifier(eventName)
+	local eventName = getCustomHookIdentifier(eventName)
 	return LIB.Run(eventName, ...)
 end
 
