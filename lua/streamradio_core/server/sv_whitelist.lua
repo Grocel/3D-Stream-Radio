@@ -677,27 +677,8 @@ local function BuildWhitelistInternal()
 	LIBFilesystem.Find("", recursiveLookup)
 end
 
-local function AddUrlLogger()
-	LIBHook.AddCustom("UrlIsAllowed", "UrlLogging", function(url, ply, ent)
-		if not StreamRadioLib.IsUrlRequestLogEnabled() then
-			return
-		end
-
-		local msgstring = nil
-
-		if IsValid(ent) then
-			msgstring = LIBPrint.Format("STREAM URL - Requested via %s: %s", tostring(ent), url)
-		else
-			msgstring = LIBPrint.Format("STREAM URL - Requested: %s", url)
-		end
-
-		LIBPrint.Log(ply, msgstring)
-	end)
-end
-
 function LIB.Load()
 	BuildWhitelistInternal()
-	AddUrlLogger()
 end
 
 function LIB.BuildWhitelist()

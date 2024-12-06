@@ -111,10 +111,17 @@ local function AddSecurityMenuPanel(CPanel)
 
 	subpanel:AddItem(LIBMenu.GetSpacerLine())
 
-	subpanel:CheckBox(
+	local urlLogCombobox, urlLogLabel = subpanel:ComboBox(
 		"Log stream URLs to console",
-		"sv_streamradio_url_request_log_enable"
+		"sv_streamradio_url_log_mode"
 	)
+	StreamRadioLib.Menu.PatchComboBox(urlLogCombobox, urlLogLabel)
+
+	urlLogCombobox:SetSortItems(false)
+	urlLogCombobox:AddChoice("No logging", 0, false, "icon16/collision_off.png")
+	urlLogCombobox:AddSpacer()
+	urlLogCombobox:AddChoice("Log online URLs only", 1, false, "icon16/page_world.png")
+	urlLogCombobox:AddChoice("Log all URLs", 2, false, "icon16/world.png")
 
 	local urlWhitelistCombobox, urlWhitelistLabel = subpanel:ComboBox(
 		"URL Whitelist",

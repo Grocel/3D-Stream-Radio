@@ -7,6 +7,7 @@ local StreamRadioLib = StreamRadioLib
 local LIBNetwork = StreamRadioLib.Network
 local LIBWire = StreamRadioLib.Wire
 local LIBUtil = StreamRadioLib.Util
+local LIBHook = StreamRadioLib.Hook
 
 local WireLib = WireLib
 
@@ -50,6 +51,10 @@ function ENT:SetupDataTables()
 
 	StreamRadioLib.RegisterRadio(self)
 	LIBNetwork.SetupDataTables(self)
+
+	self:AddDTNetworkVar( "Entity", "RadioOwner" )
+	self:AddDTNetworkVar( "Entity", "LastUser" )
+	self:AddDTNetworkVar( "Entity", "LastUsingEntity" )
 end
 
 function ENT:SetAnim( Animation, Frame, Rate )
@@ -660,7 +665,14 @@ function ENT:PlayStreamInternal(url, name)
 end
 
 function ENT:OnPlayStreamInternal(url, name)
-	-- Override me
+	local owner = self:GetRealRadioOwner()
+	local lastUser = self:GetLastUser()
+
+	if not IsValid(lastUser) then
+		lastUser = owner
+	end
+
+	LIBHook.RunCustom("OnPlayStream", url, name, self, lastUser)
 end
 
 function ENT:GetStreamURL()

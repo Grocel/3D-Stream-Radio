@@ -618,7 +618,6 @@ function ENT:SetupDataTables()
 	if not g_isLoaded then return end
 	BaseClass.SetupDataTables(self)
 
-	self:AddDTNetworkVar( "Entity", "RadioOwner" )
 	self:AddDTNetworkVar( "Bool", "HasPlaylist" )
 
 	self:AddDTNetworkVar( "Bool", "DisableDisplay", {

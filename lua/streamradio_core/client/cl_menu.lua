@@ -57,7 +57,9 @@ function LIB.GetLinkButton(text, urlStr)
 	local infoRed = Color(160, 0, 0)
 
 	button.Think = function(this)
-		oldThink(this)
+		if oldThink then
+			oldThink(this)
+		end
 
 		local lastGameMenuVisible = this._gameMenuVisible
 		local gameMenuVisible = gui.IsGameUIVisible()
@@ -124,7 +126,9 @@ function LIB.GetAdminButton(label, ignoreVR)
 
 	local oldThink = button.Think
 	button.Think = function(this)
-		oldThink(this)
+		if oldThink then
+			oldThink(this)
+		end
 
 		local changeAdmin, isAdmin = handleAdmin(this)
 		local changeVR, isVR = handleVR(this)
@@ -447,7 +451,10 @@ function LIB.PatchComboBox(combobox, label)
 
 	local oldSetText = combobox.SetText
 	combobox.SetText = function(this, ...)
-		oldSetText(this, ...)
+		if oldSetText then
+			oldSetText(this, ...)
+		end
+
 		StreamRadioLib.Timedcall(updateIcon)
 	end
 

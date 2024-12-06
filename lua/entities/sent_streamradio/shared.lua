@@ -25,8 +25,6 @@ function ENT:SetupDataTables( )
 
 	self:AddDTNetworkVar("Bool", "WireMode")
 	self:AddDTNetworkVar("Bool", "ToolMode")
-	self:AddDTNetworkVar("Entity", "LastUser")
-	self:AddDTNetworkVar("Entity", "LastUsingEntity")
 	self:AddDTNetworkVar("Entity", "MasterRadio")
 
 	local adv_wire = nil
