@@ -6,7 +6,7 @@ local LIB = StreamRadioLib.VR
 table.Empty(LIB)
 
 function LIB.IsInstalled()
-	return istable(vrmod)
+	return vrmod ~= nil
 end
 
 function LIB.IsActive(ply)
