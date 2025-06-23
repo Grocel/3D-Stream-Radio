@@ -78,6 +78,24 @@ function LIB.GetPlayerString(ply)
 	return playerStr
 end
 
+function LIB.GetRadioEntityString(ent)
+	if not IsValid(ent) then
+		return tostring(ent or NULL)
+	end
+
+	if not ent.__IsRadio then
+		return tostring(ent)
+	end
+
+	local radioName = string.format(
+		"%s [%s]",
+		ent.PrintName,
+		ent:EntIndex()
+	)
+
+	return radioName
+end
+
 local g_colorSeparator = Color(255, 255, 255)
 local g_colorDateTime = Color(180, 180, 180)
 local g_colorAddonName = Color(0, 200, 0)

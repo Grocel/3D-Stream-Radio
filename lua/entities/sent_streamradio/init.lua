@@ -4,6 +4,7 @@ include( "shared.lua" )
 DEFINE_BASECLASS( "base_streamradio_gui" )
 
 local StreamRadioLib = StreamRadioLib
+local LIBPrint = StreamRadioLib.Print
 local LIBError = StreamRadioLib.Error
 local LIBWire = StreamRadioLib.Wire
 local LIBUtil = StreamRadioLib.Util
@@ -208,25 +209,49 @@ function ENT:OnTakeDamage( dmg )
 	self:TakePhysicsDamage( dmg )
 end
 
-function ENT:OnReloaded( )
-	if not IsValid( self ) then return end
+function ENT:OnReloaded()
+	if not IsValid(self) then return end
 	if not g_isLoaded then return end
 
-	local ply, model, pos, ang = self:GetRealRadioOwner(), self:GetModel( ), self:GetPos( ), self:GetAngles( )
-	StreamRadioLib.Print.Msg(ply, "Reloaded %s", tostring(self))
-	self:Remove( )
+	local ply = self:GetRealRadioOwner()
+	local model = self:GetModel()
+	local pos = self:GetPos()
+	local ang = self:GetAngles()
+	local radioName = LIBPrint.GetRadioEntityString(self)
 
-	StreamRadioLib.Timedcall( function( ply, model, pos, ang )
-		local ent = StreamRadioLib.SpawnRadio( ply, model, pos, ang )
-		if ( not IsValid( ent ) ) then return end
-		if ( not IsValid( ply ) ) then return end
-		local TOOL_Class = "streamradio"
-		undo.Create( TOOL_Class )
-		undo.AddEntity( ent )
-		undo.SetPlayer( ply )
-		undo.Finish( )
-		ply:AddCleanup( TOOL_Class, ent )
-	end, ply, model, pos, ang )
+	local motion = false
+
+	local selfPhys = self:GetPhysicsObject()
+	if IsValid(selfPhys) then
+		motion = selfPhys:IsMotionEnabled()
+	end
+
+	self:Remove()
+
+	StreamRadioLib.Timedcall(function(ply, model, pos, ang)
+		local ent = StreamRadioLib.SpawnRadio(ply, model, pos, ang)
+		if not IsValid(ent) then
+			return
+		end
+
+		local entPhys = ent:GetPhysicsObject()
+		if IsValid(entPhys) then
+			entPhys:EnableMotion(motion)
+		end
+
+		LIBPrint.Msg(ply, "%s respawned after reload.", radioName)
+
+		if IsValid(ply) then
+			local TOOL_Class = "streamradio"
+
+			undo.Create(TOOL_Class)
+			undo.AddEntity(ent)
+			undo.SetPlayer(ply)
+			undo.Finish()
+
+			ply:AddCleanup(TOOL_Class, ent)
+		end
+	end, ply, model, pos, ang)
 end
 
 function ENT:UpdateVolume()

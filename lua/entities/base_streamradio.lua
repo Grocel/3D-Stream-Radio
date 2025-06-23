@@ -20,8 +20,6 @@ ENT.Editable = false
 ENT.Spawnable = false
 ENT.AdminOnly = false
 
-ENT.WireDebugName = "Stream Radio"
-
 function ENT:AddDTNetworkVar(datatype, name, ...)
 	if not g_isLoaded then
 		return
