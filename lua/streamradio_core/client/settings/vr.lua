@@ -1,37 +1,41 @@
 local StreamRadioLib = StreamRadioLib
 
+if StreamRadioLib.ReloadAddon() then
+	return
+end
+
 StreamRadioLib.Settings = StreamRadioLib.Settings or {}
 local LIB = StreamRadioLib.Settings
+
+local T = StreamRadioLib.Locale.Translate
 
 local LIBMenu = StreamRadioLib.Menu
 
 LIB.g_CV_List["vr"] = {}
 
-LIB.AddConVar("vr", "vr_enable_touch", "cl_streamradio_vr_enable_touch", "1", {
-	label = "Enable VR Touch Control",
+LIB.AddConVar("vr", "touch_enable", "cl_streamradio_vr_touch_enable", "1", {
+	label = T("?settings.vr.touch_enable.label", "Enable VR Touch Control", true),
 	help = "Enable Radio controlling via touch in VR when set to 1. Default: 1",
 	type = "bool",
 	userdata = true,
 })
 
-LIB.AddConVar("vr", "vr_enable_trigger", "cl_streamradio_vr_enable_trigger", "1", {
-	label = "Enable VR Trigger Control",
+LIB.AddConVar("vr", "trigger_enable", "cl_streamradio_vr_trigger_enable", "1", {
+	label = T("?settings.vr.trigger_enable.label", "Enable VR Trigger Control", true),
 	help = "Enable Radio controlling via trigger in VR when set to 1. Default: 1",
 	type = "bool",
 	userdata = true,
 })
 
-LIB.AddConVar("vr", "vr_enable_cursor", "cl_streamradi_vr_enable_cursor", "1", {
-	label = "Show cursor in VR",
+LIB.AddConVar("vr", "gui_cursor_enable", "cl_streamradio_vr_gui_cursor_enable", "1", {
+	label = T("?settings.vr.gui_cursor_enable.label", "Show cursor in VR", true),
 	help = "Shows the cursor on radio GUIs in VR when set to 1. Default: 1",
 	type = "bool",
 })
 
 local function BuildMenuPanel(CPanel)
-	if not IsValid(CPanel) then return end
-
 	local toplabel = vgui.Create("DLabel")
-	toplabel:SetText("3D Stream Radio VR settings")
+	toplabel:SetText(T("?settings.vr.panel.title", "3D Stream Radio VR settings"))
 	toplabel:SetDark(true)
 	toplabel:SizeToContents()
 	CPanel:AddPanel(toplabel)
@@ -46,17 +50,20 @@ local function BuildMenuPanel(CPanel)
 		return
 	end
 
-	if not StreamRadioLib.VR.IsInstalled() then
+	local hasVR = StreamRadioLib.VR.IsInstalled()
+
+	if not hasVR then
 		CPanel:AddPanel(LIBMenu.GetVRErrorPanel())
 
 		CPanel:AddPanel(LIBMenu.GetSpacer())
 
 		CPanel:AddPanel(LIBMenu.GetVRAddonButton())
-		CPanel:AddPanel(LIBMenu.GetVRFAQButton())
-		return
+		CPanel:AddItem(LIBMenu.GetSpacerLine())
+	else
+		CPanel:AddPanel(LIBMenu.GetVRInfoPanel())
 	end
 
-	CPanel:AddPanel(LIBMenu.GetVRInfoPanel())
+
 	CPanel:AddPanel(LIBMenu.GetSpacer(5))
 
 	for i, v in ipairs(LIB.GetConVarListByNamespace("vr")) do
@@ -66,10 +73,14 @@ local function BuildMenuPanel(CPanel)
 		if not IsValid(p) then continue end
 
 		p:SetTooltip(v:GetPanellabel())
+		p:SetEnabled(hasVR)
 	end
 
+	local VRAddonPanelButton = LIBMenu.GetVRAddonPanelButton()
+	VRAddonPanelButton:SetEnabled(hasVR)
+
 	CPanel:AddPanel(LIBMenu.GetSpacer(5))
-	CPanel:AddPanel(LIBMenu.GetVRAddonPanelButton())
+	CPanel:AddPanel(VRAddonPanelButton)
 	CPanel:AddPanel(LIBMenu.GetSpacer(5))
 	CPanel:AddPanel(LIBMenu.GetVRFAQButton())
 	CPanel:AddPanel(LIBMenu.GetCreditsPanel())

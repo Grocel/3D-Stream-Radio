@@ -1,9 +1,10 @@
 local StreamRadioLib = StreamRadioLib
+local LIB = StreamRadioLib:NewLib("Menu")
 
-StreamRadioLib.Menu = StreamRadioLib.Menu or {}
+local LIBLocale = StreamRadioLib.Locale
 
-local LIB = StreamRadioLib.Menu
-table.Empty(LIB)
+local T = LIBLocale.Translate
+local F = LIBLocale.Format
 
 function LIB.GetLinkButton(text, urlStr)
 	text = tostring(text or "")
@@ -21,7 +22,13 @@ function LIB.GetLinkButton(text, urlStr)
 			return
 		end
 
-		button:SetTooltip(text .. "\n\nURL: " .. url .. "\n\nRight click to copy the URL to clipboard.")
+		local tooltip = F(
+			"?vgui.menu.link_button.generic.tooltip",
+			"%s\n\nURL: %s\n\nRight click to copy the URL to clipboard.",
+			text, url
+		)
+
+		button:SetTooltip(tooltip)
 	end
 
 	button.GetURL = function(this)
@@ -74,12 +81,15 @@ function LIB.GetLinkButton(text, urlStr)
 		this:SetDisabled(addInfo)
 
 		if addInfo then
+			local hint = ""
+
 			if StreamRadioLib.VR.IsActive(ply) then
-				this:SetText(text .. "\n[Please confirm on monitor]")
+				hint = T("?vgui.menu.link_button.generic.hint.vr.label", "Please confirm on monitor")
 			else
-				this:SetText(text .. "\n[Please confirm]")
+				hint = T("?vgui.menu.link_button.generic.hint.nonvr.label", "Please confirm")
 			end
 
+			this:SetText(string.format("%s\n[%s]", text, hint))
 			this:SetTextColor(infoRed)
 		else
 			this._infoWasPressed = nil
@@ -145,16 +155,38 @@ function LIB.GetAdminButton(label, ignoreVR)
 		local text = label
 
 		if locked then
-			tooltip = tooltip .. " (not available)"
+			tooltip = string.format(
+				"%s (%s)",
+				tooltip,
+				T("?vgui.menu.admin_button.generic.hint.not_available.tooltip", "Not available")
+			)
 
 			if not isAdmin then
-				tooltip = tooltip .. "\n - You must be an admin!"
-				text = text .. " (Admin only!)"
+				tooltip = string.format(
+					"%s\n - %s",
+					tooltip,
+					T("?vgui.menu.admin_button.generic.hint.admin_only.tooltip", "You must be an admin!")
+				)
+
+				text = string.format(
+					"%s (%s)",
+					text,
+					T("?vgui.menu.admin_button.generic.hint.admin_only.label", "Admin only!")
+				)
 			end
 
 			if isVR then
-				tooltip = tooltip .. "\n - You must not be in VR!"
-				text = text .. " (Not in VR!)"
+				tooltip = string.format(
+					"%s\n - %s",
+					tooltip,
+					T("?vgui.menu.admin_button.generic.hint.nonvr_only.tooltip", "You must not be in VR!")
+				)
+
+				text = string.format(
+					"%s (%s)",
+					text,
+					T("?vgui.menu.admin_button.generic.hint.nonvr_only.label", "Not in VR!")
+				)
 			end
 		end
 
@@ -175,14 +207,19 @@ function LIB.AddDangerButton(label, data)
 	local message = tostring(data.message or "")
 	local icon = data.icon or "icon16/error.png"
 
+	local dangerHint = T("?vgui.menu.danger_button.generic.dialog_box.hint", "This can not be undone!")
+
 	if message ~= "" then
-		message = message .. "\nThis can not be undone!"
+		message = string.format("%s\n%s", message, dangerHint)
 	end
 
+	local yesText = T("?vgui.menu.danger_button.generic.dialog_box.yes", "Yes")
+	local noText = T("?vgui.menu.danger_button.generic.dialog_box.no", "No")
+
 	button.DoClick = function(this)
-		Derma_Query(message, label, "Yes", function()
+		Derma_Query(message, label, yesText, function()
 			RunConsoleCommand(data.cmd)
-		end, "No" )
+		end, noText)
 	end
 
 	button:SetImage(icon)
@@ -273,17 +310,25 @@ function LIB.GetWhitelistEnabledLabel(text)
 end
 
 function LIB.GetCreditsPanel()
-	local credits = LIB.GetLabel(StreamRadioLib.AddonPrefix .. "Made by Grocel")
+	local madeBy = F("?vgui.menu.credits.madeBy", "Made by Grocel")
+	local label = string.Trim((StreamRadioLib.AddonPrefix or "") .. "\n" .. madeBy)
+
+	local credits = LIB.GetLabel(label)
 	return credits
 end
 
 function LIB.GetVRInfoPanel()
-	local vrinfo = LIB.GetLabel("Powered by VRMod!\n  - VRMod is made by Catse\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
+	local vrmodInfo = F("?vgui.menu.vrmod.info", "Powered by VRMod!\n  - VRMod is made by Catse\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
+
+	local vrinfo = LIB.GetLabel(vrmodInfo)
 	return vrinfo
 end
 
 function LIB.GetVRErrorPanel()
-	local vrinfo = LIB.GetWarnLabel((StreamRadioLib.AddonPrefix or "") .. "\nVRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
+	local vrmodInfo = F("?vgui.menu.vrmod.error", "VRMod is not loaded.\n  - Install VRMod to enable VR support.\n  - VR Headset required!\n  - VR is optional, this addon works without VR.")
+	local err = string.Trim((StreamRadioLib.AddonPrefix or "") .. "\n" .. vrmodInfo)
+
+	local vrinfo = LIB.GetWarnLabel(err)
 	return vrinfo
 end
 
@@ -325,34 +370,54 @@ function LIB.GetSpacerLine()
 end
 
 function LIB.GetFAQButton()
-	local button = LIB.GetLinkButton("Show FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/368542844488661960/")
+	local button = LIB.GetLinkButton(
+		T("?vgui.menu.link_button.faq", "Show FAQ (Workshop)"),
+		"https://steamcommunity.com/workshop/filedetails/discussion/246756300/368542844488661960/"
+	)
+
 	return button
 end
 
 function LIB.GetWhitelistFAQButton()
-	local button = LIB.GetLinkButton("Show Whitelist Info (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668761564/")
+	local button = LIB.GetLinkButton(
+		T("?vgui.menu.link_button.whitelist_info", "Show Whitelist Info (Workshop)"),
+		"https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668761564/"
+	)
+
 	return button
 end
 
 function LIB.GetCFCWhitelistFAQButton()
-	local button = LIB.GetLinkButton("Show CFC HTTP Whitelist Info (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668766829/")
+	local button = LIB.GetLinkButton(
+		T("?vgui.menu.link_button.cfc_whitelist_info", "Show CFC HTTP Whitelist Info (Workshop)"),
+		"https://steamcommunity.com/workshop/filedetails/discussion/246756300/3884977551668766829/"
+	)
+
 	return button
 end
 
 function LIB.GetVRFAQButton()
-	local button = LIB.GetLinkButton("Show VR FAQ (Workshop)", "https://steamcommunity.com/workshop/filedetails/discussion/246756300/2247805152838837222/")
+	local button = LIB.GetLinkButton(
+		T("?vgui.menu.link_button.vrmod_faq", "Show VR FAQ (Workshop)"),
+		"https://steamcommunity.com/workshop/filedetails/discussion/246756300/2247805152838837222/"
+	)
+
 	return button
 end
 
 function LIB.GetVRAddonButton()
-	local button = LIB.GetLinkButton("Download VRMod (Workshop)", "https://steamcommunity.com/sharedfiles/filedetails/?id=1678408548")
+	local button = LIB.GetLinkButton(
+		T("?vgui.menu.button.vrmod_download", "Download VRMod (Workshop)"),
+		"https://steamcommunity.com/sharedfiles/filedetails/?id=1678408548"
+	)
+
 	return button
 end
 
 function LIB.GetVRAddonPanelButton()
 	local button = vgui.Create("DButton")
 
-	local maintext = "Show VRMod Panel"
+	local maintext = T("?vgui.menu.button.vrmod", "Show VRMod Panel")
 
 	button.DoClick = function(this)
 		RunConsoleCommand("vrmod")
@@ -365,7 +430,9 @@ function LIB.GetVRAddonPanelButton()
 end
 
 function LIB.GetPlaylistEditorButton()
-	local button = LIB.GetAdminButton("Show Playlist Editor")
+	local button = LIB.GetAdminButton(
+		T("?vgui.menu.admin_button.playlist_editor", "Show Playlist Editor")
+	)
 
 	button.DoClick = function(this)
 		RunConsoleCommand("cl_streamradio_playlisteditor")
@@ -377,7 +444,7 @@ end
 function LIB.GetOpenToolButton()
 	local button = vgui.Create("DButton")
 
-	local maintext = "Stream Radio Tool"
+	local maintext = T("?vgui.menu.button.tool", "Stream Radio Tool")
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("streamradio", false)
@@ -398,7 +465,7 @@ end
 function LIB.GetOpenSettingsButton()
 	local button = vgui.Create("DButton")
 
-	local maintext = "General Settings"
+	local maintext = T("?vgui.menu.button.general_settings", "General Settings")
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("StreamRadioSettingsPanel_general", true)
@@ -417,7 +484,10 @@ function LIB.GetOpenSettingsButton()
 end
 
 function LIB.GetOpenAdminSettingsButton()
-	local button = LIB.GetAdminButton("Admin Settings", true)
+	local button = LIB.GetAdminButton(
+		T("?vgui.menu.admin_button.admin_settings", "Admin Settings"),
+		true
+	)
 
 	button.DoClick = function(this)
 		spawnmenu.ActivateTool("StreamRadioSettingsPanel_admin", true)
@@ -440,9 +510,40 @@ function LIB.PatchComboBox(combobox, label)
 	end
 
 	local updateIcon = function()
-		local index = combobox:GetSelectedID()
+		if not IsValid(combobox) then
+			return
+		end
+
+		if not combobox.Choices then
+			return
+		end
 
 		if not combobox.ChoiceIcons then
+			return
+		end
+
+		local index = combobox:GetSelectedID()
+
+		if not index then
+			local value = combobox:GetValue()
+
+			for i, choice in ipairs(combobox.Choices) do
+				if choice ~= value then
+					continue
+				end
+
+				index = i
+				break
+			end
+
+			if index then
+				combobox:ChooseOptionID(index)
+				index = combobox:GetSelectedID()
+			end
+		end
+
+		if not index then
+			combobox:SetIcon(nil)
 			return
 		end
 

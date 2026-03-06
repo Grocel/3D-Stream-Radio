@@ -1,6 +1,6 @@
 local RADIOIFACE = RADIOIFACE
-if not istable( RADIOIFACE ) then
-	StreamRadioLib.Interface.Load()
+if not istable(RADIOIFACE) then
+	StreamRadioLib.ReloadAddon()
 	return
 end
 

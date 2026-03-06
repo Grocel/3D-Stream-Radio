@@ -150,10 +150,10 @@ end)
 
 function StreamRadioLib.IsCursorEnabled()
 	if StreamRadioLib.VR.IsActive() then
-		return StreamRadioLib.Settings.GetConVarValue("vr_enable_cursor")
+		return StreamRadioLib.Settings.GetConVarValue("vr.gui_cursor_enable")
 	end
 
-	return StreamRadioLib.Settings.GetConVarValue("enable_cursor")
+	return StreamRadioLib.Settings.GetConVarValue("general.gui_cursor_enable")
 end
 
 function StreamRadioLib.GetCameraViewPos(ply)

@@ -5,6 +5,9 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBUtil = nil
+local LIBLocale = nil
+
 local BASE = CLASS:GetBaseClass()
 
 local g_types = {
@@ -118,6 +121,139 @@ local g_types = {
 			return ctrlNumPad
 		end,
 	},
+
+	["locale"] = {
+		get = function(this, cv)
+			return cv:GetString()
+		end,
+
+		set = function(this, cv, val)
+			cv:SetString(tostring(val or ""))
+		end,
+
+		panel_function = function(this, mainpanel, ...)
+			local localeCombobox, localeLabel = mainpanel:ComboBox(
+				this:GetPanellabel(),
+				this:GetCMD()
+			)
+
+			StreamRadioLib.Menu.PatchComboBox(localeCombobox, localeLabel)
+
+			if not LIBLocale then
+				LIBLocale = StreamRadioLib.Locale
+			end
+
+			if not LIBUtil then
+				LIBUtil = StreamRadioLib.Util
+			end
+
+			local locales = LIBLocale.GetLocales()
+			local autoLocale = LIBLocale.GetAutoLocale()
+			local debugLocale = LIBLocale.GetDebugLocale()
+
+			local currentLocaleName = mainpanel.g_locale_currentLocaleName or ""
+			mainpanel.g_locale_currentLocaleName = currentLocaleName
+
+			local oldOnSelect = localeCombobox.OnSelect
+			localeCombobox.OnSelect = function(this, index, ...)
+				if oldOnSelect then
+					oldOnSelect(this, index, ...)
+				end
+
+				local value = localeCombobox:GetOptionData(index)
+
+				if currentLocaleName ~= "" and value ~= currentLocaleName then
+					LIBLocale.Refresh()
+				end
+
+				currentLocaleName = value
+				mainpanel.g_locale_currentLocaleName = currentLocaleName
+			end
+
+			localeCombobox:SetSortItems(false)
+
+			if autoLocale then
+				localeCombobox:AddChoice(
+					autoLocale.titleTranslated,
+					autoLocale.locale,
+					false,
+					autoLocale.icon ~= "" and autoLocale.icon
+				)
+			end
+
+			if debugLocale and (LIBUtil.IsDebug() or currentLocaleName == debugLocale.locale) then
+				localeCombobox:AddChoice(
+					debugLocale.titleTranslated,
+					debugLocale.locale,
+					false,
+					debugLocale.icon ~= "" and debugLocale.icon
+				)
+			end
+
+			localeCombobox:AddSpacer()
+
+			for _, locale in SortedPairs(locales) do
+				if locale == autoLocale then
+					continue
+				end
+
+				if locale == debugLocale then
+					continue
+				end
+
+				local titleTranslatedInThatLocale = locale.titleTranslated or ""
+				local titleTranslatedInCurrentLocale = LIBLocale.TranslateLocaleTitle(locale) or ""
+				local author = locale.author or ""
+				local localeName = locale.locale or ""
+				local icon = locale.icon or ""
+
+				if titleTranslatedInCurrentLocale == "" then
+					titleTranslatedInCurrentLocale = localeName
+				end
+
+				if titleTranslatedInThatLocale == titleTranslatedInCurrentLocale then
+					titleTranslatedInThatLocale = ""
+				end
+
+				local label = {}
+
+				if titleTranslatedInThatLocale ~= "" then
+					table.insert(label, titleTranslatedInThatLocale)
+					table.insert(label, " / ")
+				end
+
+				table.insert(label, titleTranslatedInCurrentLocale)
+
+				if author ~= "" then
+					table.insert(label, " - ")
+					table.insert(
+						label,
+						LIBLocale.Format(
+							"?vgui.clientconvar.locale.by_author",
+							"by %s",
+							author
+						)
+					)
+				end
+
+				label = table.concat(label)
+				label = string.Trim(label)
+
+				if label == "" then
+					continue
+				end
+
+				localeCombobox:AddChoice(
+					label,
+					localeName,
+					false,
+					icon ~= "" and icon
+				)
+			end
+
+			return localeCombobox
+		end,
+	},
 }
 
 function CLASS:Create()
@@ -183,11 +319,11 @@ end
 
 function CLASS:SetHelptext(var)
 	if self._convar then return end
-	self.helptext = tostring(var or "")
+	self.helptext = var or ""
 end
 
 function CLASS:GetHelptext()
-	return self.helptext or ""
+	return tostring(self.helptext or "")
 end
 
 function CLASS:SetOptions(var)
@@ -216,11 +352,11 @@ function CLASS:GetDisabled()
 end
 
 function CLASS:SetPanellabel(var)
-	self.panellabel = tostring(var or "")
+	self.panellabel = var or ""
 end
 
 function CLASS:GetPanellabel()
-	return self.panellabel or ""
+	return tostring(self.panellabel or "")
 end
 
 function CLASS:GetConvar()

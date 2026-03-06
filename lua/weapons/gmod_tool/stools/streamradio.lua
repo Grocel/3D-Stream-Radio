@@ -205,6 +205,18 @@ function TOOL:BuildToolPanel(CPanel)
 	end
 
 	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacerLine())
+
+	local cvLocale = StreamRadioLib.Settings.TryGetConVar("locale")
+
+	if cvLocale then
+		local pLocale = cvLocale:BuildPanel(CPanel)
+		if IsValid(pLocale) then
+			pLocale:SetTooltip(cvLocale:GetPanellabel())
+		end
+	end
+
+	CPanel:AddPanel(StreamRadioLib.Menu.GetSpacer(5))
 	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenSettingsButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetOpenAdminSettingsButton())
 	CPanel:AddPanel(StreamRadioLib.Menu.GetPlaylistEditorButton())

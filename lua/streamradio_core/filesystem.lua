@@ -1,12 +1,10 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Filesystem = StreamRadioLib.Filesystem or {}
-
-local LIB = StreamRadioLib.Filesystem
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Filesystem")
 
 local LIBString = StreamRadioLib.String
 local LIBUtil = StreamRadioLib.Util
+
+local T = StreamRadioLib.Locale.Translate
 
 local g_playlistdir = LIBUtil.GetMainDirectory("playlists")
 local g_luaFilesystemDirectory = "streamradio_core/filesystem"
@@ -449,7 +447,7 @@ function LIB.GetTypeName(filetype)
 	end
 
 	if filetype == g_VirtualFolderID then
-		return "Virtual Folder"
+		return T("?filesystem.virtual-folder.name", "Virtual Folder")
 	end
 
 	local fs = getFS(filetype)
@@ -462,7 +460,12 @@ function LIB.GetTypeName(filetype)
 		return LIB.GetTypeName(g_GenericID)
 	end
 
-	return fs.name
+	local typeExt = fs.type
+	local typeName = fs.name
+
+	typeExt = string.lower(typeExt)
+
+	return T("?filesystem." .. typeExt .. ".name", typeName)
 end
 
 function LIB.GetTypeExt(filetype)
@@ -748,6 +751,7 @@ function LIB.Write(vpath, filetype, data, callback)
 	return fs:Write(globalpath, vpath, data, function(success, ...)
 		if SERVER and success then
 			local urls = table.MemberValuesFromKey(data, "url")
+
 			StreamRadioLib.Whitelist.UpdateFromPlaylist(vpath, urls)
 			StreamRadioLib.Whitelist.InvalidateCache()
 		end

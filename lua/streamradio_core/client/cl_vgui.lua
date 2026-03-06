@@ -2,6 +2,10 @@ local StreamRadioLib = StreamRadioLib
 
 local LIBError = StreamRadioLib.Error
 local LIBUrl = StreamRadioLib.Url
+local LIBLocale = StreamRadioLib.Locale
+
+local T = LIBLocale.Translate
+local F = LIBLocale.Format
 
 local PANEL = {}
 AccessorFunc( PANEL, "m_showLimit", "ShowLimit" )
@@ -154,10 +158,15 @@ function PANEL:Init( )
 		-- Some client have addon conflicts
 		-- This causes them to not have the panel:SetPlaceholderText() function
 
-		self.URLText:SetPlaceholderText("Enter file path or online URL")
+		self.URLText:SetPlaceholderText(
+			T("?vgui.url_text_entry.placeholder", "Enter file path or online URL")
+		)
 	end
 
-	self.URLTooltip = StreamRadioLib.STREAM_URL_INFO
+	self.URLTooltip = T(
+		"?vgui.url_text_entry.tooltip.url_hint", StreamRadioLib.STREAM_URL_INFO
+	)
+
 	self.URLText:SetTooltip(self.URLTooltip)
 
 	local function callChangeEvent(panel, value, enter)
@@ -389,9 +398,11 @@ end
 
 function PANEL:UpdateURLState(state)
 	if state == STATE_IDLE then
+		local stateTooltip = T("?vgui.url_text_entry.tooltip.state_idle", "Checking URL...")
+
 		self.URLIcon:SetImage("icon16/arrow_refresh.png")
-		self.URLIcon:SetTooltip("Checking URL...")
-		self.URLText:SetTooltip(self.URLTooltip .. "\n\nChecking URL...")
+		self.URLIcon:SetTooltip(stateTooltip)
+		self.URLText:SetTooltip(self.URLTooltip .. "\n\n" .. stateTooltip)
 
 		StreamRadioLib.VR.RenderMenu(self)
 		self:InvalidateLayout()
@@ -406,7 +417,8 @@ function PANEL:UpdateURLState(state)
 	end
 
 	if state == STATE_ERROR then
-		local tooltipbase = "The URL is not valid!"
+		local stateTooltip = T("?vgui.url_text_entry.tooltip.state_error", "The URL is not valid!")
+
 		local tooltip = ""
 		local tooltipurl = ""
 
@@ -416,21 +428,33 @@ function PANEL:UpdateURLState(state)
 			local errorInfo = LIBError.GetStreamErrorInfo(err)
 
 			local errorName = errorInfo.name
-			local errorDescription = errorInfo.description
-			local errorHasHelpmenu = errorInfo.helpmenu
+			local errorDescription = errorInfo.translation.description
+			local errorHashelp = errorInfo.hashelp
 
-			local errorString = string.format("Error %i (%s): %s", err, errorName, errorDescription)
+			local errorString = F(
+				"?vgui.url_text_entry.tooltip.state_error.error_template",
+				"Error %i (%s): %s",
+				err, errorName, errorDescription
+			)
 
-			tooltip = tooltipbase .. "\n" .. errorString
-			tooltipurl = tooltipbase .. "\n" .. errorString
+			tooltip = stateTooltip .. "\n" .. errorString
+			tooltipurl = stateTooltip .. "\n" .. errorString
 
-			if errorHasHelpmenu then
-				tooltip = tooltip .. "\n\nRight click for more details."
-				tooltipurl = tooltip .. "\n\nRight click on the red cross button for more details."
+			if errorHashelp then
+				local stateTooltip = T(
+					"?vgui.url_text_entry.tooltip.state_error.right_click_hint", "Right click for more details."
+				)
+
+				local stateTooltip = T(
+					"?vgui.url_text_entry.tooltip.state_error.right_click_hint_icon", "Right click on the left icon for more details."
+				)
+
+				tooltip = tooltip .. "\n\n" .. stateTooltip
+				tooltipurl = tooltip .. "\n\n" .. stateTooltip
 			end
 		else
 			self.URLIcon:SetImage("icon16/information.png")
-			tooltip = "The URL is empty!"
+			tooltip = T("?vgui.url_text_entry.tooltip.state_empty", "The URL is empty!")
 		end
 
 		tooltip = string.Trim(tooltip)
@@ -448,8 +472,10 @@ function PANEL:UpdateURLState(state)
 	end
 
 	if state == STATE_FOUND then
+		local stateTooltip = T("?vgui.url_text_entry.tooltip.state_found", "The URL is valid!")
+
 		self.URLIcon:SetImage("icon16/accept.png")
-		self.URLIcon:SetTooltip("The URL is valid!")
+		self.URLIcon:SetTooltip(stateTooltip)
 		self.URLText:SetTooltip(self.URLTooltip)
 
 		self:OnURLCheck(true, err, url)

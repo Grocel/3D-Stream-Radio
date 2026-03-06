@@ -24,6 +24,10 @@ end
 
 do
 	local function Rebuild_Playlists( ply, cmd, args )
+		if not SERVER then
+			return
+		end
+
 		if not StreamRadioLib then return end
 		if not StreamRadioLib.Loaded then return end
 
@@ -41,6 +45,10 @@ do
 	end
 
 	local function Rebuild_CommunityPlaylists( ply, cmd, args )
+		if not SERVER then
+			return
+		end
+
 		if not StreamRadioLib then return end
 		if not StreamRadioLib.Loaded then return end
 
@@ -61,6 +69,10 @@ do
 	concommand.Add( "sv_streamradio_rebuildplaylists_community", Rebuild_CommunityPlaylists )
 
 	local function Reset_Playlists( ply, cmd, args )
+		if not SERVER then
+			return
+		end
+
 		if not StreamRadioLib then return end
 		if not StreamRadioLib.Loaded then return end
 		if not StreamRadioLib.DataDirectory then return end
@@ -81,6 +93,10 @@ do
 	end
 
 	local function Reset_CommunityPlaylists( ply, cmd, args )
+		if not SERVER then
+			return
+		end
+
 		if not StreamRadioLib then return end
 		if not StreamRadioLib.Loaded then return end
 		if not StreamRadioLib.DataDirectory then return end

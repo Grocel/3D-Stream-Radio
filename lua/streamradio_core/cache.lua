@@ -1,34 +1,155 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Cache = StreamRadioLib.Cache or {}
-
-local LIB = StreamRadioLib.Cache
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Cache")
 
 local LIBUtil = StreamRadioLib.Util
+local LIBBass = StreamRadioLib.Bass
+local LIBTimer = StreamRadioLib.Timer
+local LIBPrint = StreamRadioLib.Print
 
 local g_emptyFunction = function() end
 local g_forbidden = LIBUtil.CreateCacheArray(256)
 
 local g_nextCacheCleanup = 0
 
-StreamRadioLib.Hook.Add("PostCleanupMap", "reset_cache_download_cache", function()
-	g_forbidden:Empty()
-	g_nextCacheCleanup = 0
-end)
-
 local g_mainDir = nil
 local g_mainDirLegacy = nil
 
-local g_minFileSize = 2 ^ 16 -- 64 KB
-local g_maxFileSize = 2 ^ 29 -- 28 -- 256 MB
-local g_maxFileAge = 7 * 24 * 3600 -- 7 days
-local g_maxCacheSize = 2 ^ 34 -- 16 GB
-local g_maxCacheCount = 1024
+local g_minFileSize = 65535 -- 64 KB
+local g_minCacheCleanupInterval = 60
 
-local g_minCacheCleanupInterval = 60 -- 1 Minute
+local g_maxFileSize = nil
+local g_maxFileAge = nil
+local g_maxFileLength = nil
+local g_maxCacheSize = nil
+local g_maxCacheCount = nil
 
-g_maxFileSize = math.min(g_maxCacheSize, g_maxFileSize)
+local g_cacheRealm = SERVER and "sv" or "cl"
+local g_cacheRealmFlag = SERVER and FCVAR_GAMEDLL or FCVAR_CLIENTDLL
+
+local g_cvCacheMaxFileSize = CreateConVar(
+	g_cacheRealm .. "_streamradio_cache_max_file_size",
+	"256",
+	bit.bor(FCVAR_ARCHIVE, g_cacheRealmFlag ),
+	"Maximum size of cached files in MB. Default: 256, Min: 0 (no cache), Max: 256",
+	0,
+	256
+)
+
+local g_cvCacheMaxFileAge = CreateConVar(
+	g_cacheRealm .. "_streamradio_cache_max_file_age",
+	"10080",
+	bit.bor( FCVAR_ARCHIVE, g_cacheRealmFlag ),
+	"Maximum age of cached files in minutes. Default: 10080 (1 week), Min: 0 (no cache), Max: 40320 (4 weeks)",
+	0,
+	40320
+)
+
+local g_cvCacheMaxFileLength = CreateConVar(
+	g_cacheRealm .. "_streamradio_cache_max_file_length",
+	"90",
+	bit.bor( FCVAR_ARCHIVE, g_cacheRealmFlag ),
+	"Maximum length of cached files in minutes. Default: 90, Min: 0 (no cache), Max: 120",
+	0,
+	120
+)
+
+local g_cvCacheMaxSize = CreateConVar(
+	g_cacheRealm .. "_streamradio_cache_max_size",
+	"16384",
+	bit.bor( FCVAR_ARCHIVE, g_cacheRealmFlag ),
+	"Maximum total size of all cached files in MB. Default: 16384, Min: 0 (no cache), Max: 16384",
+	0,
+	16384
+)
+
+local g_cvCacheMaxCount = CreateConVar(
+	g_cacheRealm .. "_streamradio_cache_max_count",
+	"1024",
+	bit.bor( FCVAR_ARCHIVE, g_cacheRealmFlag ),
+	"Maximum total count of all cached files. Default: 1024, Min: 0 (no cache), Max: 8192 (4 weeks)",
+	0,
+	8192
+)
+
+local MB = 1024 ^ 2
+local MINUTES = 60
+
+
+local function UpdateLimitsInternal()
+	g_maxFileSize = math.Clamp(g_cvCacheMaxFileSize:GetInt(), 0, 256) * MB
+	g_maxFileAge = math.Clamp(g_cvCacheMaxFileAge:GetFloat(), 0, 40320) * MINUTES
+	g_maxFileLength = math.Clamp(g_cvCacheMaxFileLength:GetFloat(), 0, 120) * MINUTES
+	g_maxCacheSize = math.Clamp(g_cvCacheMaxSize:GetInt(), 0, 65536) * MB
+	g_maxCacheCount = math.Clamp(g_cvCacheMaxCount:GetInt(), 0, 8192)
+
+	g_maxFileSize = math.min(g_maxCacheSize, g_maxFileSize)
+
+	g_forbidden:Empty()
+	g_nextCacheCleanup = 0
+end
+
+local function UpdateLimits()
+	LIBTimer.NextFrame("Cache_UpdateLimits", UpdateLimitsInternal)
+end
+
+if SERVER then
+	cvars.AddChangeCallback("sv_streamradio_cache_max_file_size", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("sv_streamradio_cache_max_file_age", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("sv_streamradio_cache_max_file_length", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("sv_streamradio_cache_max_size", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("sv_streamradio_cache_max_count", UpdateLimits, "streamradio_cache_update_limits_callback")
+end
+
+if CLIENT then
+	cvars.AddChangeCallback("cl_streamradio_cache_max_file_size", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("cl_streamradio_cache_max_file_age", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("cl_streamradio_cache_max_file_length", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("cl_streamradio_cache_max_size", UpdateLimits, "streamradio_cache_update_limits_callback")
+	cvars.AddChangeCallback("cl_streamradio_cache_max_count", UpdateLimits, "streamradio_cache_update_limits_callback")
+end
+
+StreamRadioLib.Hook.Add("PostCleanupMap", "reset_cache_update_limits", function()
+	g_oldIsActive = nil
+	UpdateLimits()
+end)
+
+function LIB.IsActive()
+	if SERVER and not LIBBass.CanLoadDLL() then
+		-- Server side cache is only active/needed if GM_BASS3 is installed.
+		-- Otherwise the server will never download or stream content.
+		return false
+	end
+
+	if not g_mainDir then
+		return false
+	end
+
+	if not g_maxCacheSize or g_maxCacheSize <= 0 then
+		return false
+	end
+
+	if not g_maxCacheCount or g_maxCacheCount <= 0 then
+		return false
+	end
+
+	if not g_maxFileAge or g_maxFileAge <= 0 then
+		return false
+	end
+
+	if not g_maxFileLength or g_maxFileLength <= 0 then
+		return false
+	end
+
+	if not g_minFileSize or g_minFileSize <= 0 then
+		return false
+	end
+
+	if not g_maxFileSize or g_maxFileSize <= 0 then
+		return false
+	end
+
+	return true
+end
 
 local function CreateBaseFolder(dir)
 	if file.IsDir(dir, "DATA") then
@@ -122,7 +243,11 @@ local function Cache_GetCacheMap()
 	return map
 end
 
-local function Cache_Cleanup(force)
+function LIB.Cleanup(force)
+	if not LIB.IsActive() then
+		return
+	end
+
 	local now = RealTime()
 
 	if not force and g_nextCacheCleanup > now then
@@ -205,8 +330,8 @@ local function Cache_Cleanup(force)
 end
 
 local function Cache_Save(url, data)
-	if not g_mainDir then
-		return nil
+	if not LIB.IsActive() then
+		return false
 	end
 
 	if not url then
@@ -234,7 +359,7 @@ local function Cache_Save(url, data)
 	f:Write(data)
 	f:Close()
 
-	Cache_Cleanup(false)
+	LIB.Cleanup(false)
 
 	return true
 end
@@ -302,7 +427,11 @@ local function GetContentType( headers )
 	return contenttype, maintype, subtype
 end
 
-function LIB.CanDownload(filesize)
+function LIB.CanDownloadBySize(filesize)
+	if not LIB.IsActive() then
+		return false
+	end
+
 	filesize = tonumber(filesize or 0) or 0
 
 	if filesize == -1 then
@@ -316,12 +445,33 @@ function LIB.CanDownload(filesize)
 	end
 
 	if filesize < g_minFileSize then
-		-- too small, likly broken or not a real sound file
+		-- too small, likely broken or not a real sound file
 		return false
 	end
 
 	return true
 end
+
+function LIB.CanDownloadByLength(filelength)
+	if not LIB.IsActive() then
+		return false
+	end
+
+	filelength = tonumber(filelength or 0) or 0
+
+	if filelength <= 0 then
+		-- endless stream
+		return false
+	end
+
+	if filelength > g_maxFileLength then
+		-- too long, likely to big to download
+		return false
+	end
+
+	return true
+end
+
 
 function LIB.Download(url, callback, saveAsUrl)
 	url = tostring(url or "")
@@ -338,6 +488,11 @@ function LIB.Download(url, callback, saveAsUrl)
 	end
 
 	if saveAsUrl == "" then
+		callback(false, false, saveAsUrl)
+		return
+	end
+
+	if not LIB.IsActive() then
 		callback(false, false, saveAsUrl)
 		return
 	end
@@ -391,7 +546,7 @@ function LIB.Download(url, callback, saveAsUrl)
 			return
 		end
 
-		if not LIB.CanDownload(len) then
+		if not LIB.CanDownloadBySize(len) then
 			g_forbidden:Set(cacheid, true)
 
 			callback(false, false, saveAsUrl)
@@ -401,7 +556,6 @@ function LIB.Download(url, callback, saveAsUrl)
 		g_forbidden:Remove(cacheid)
 
 		local saved = Cache_Save(saveAsUrl, data.body)
-
 		callback(true, saved, saveAsUrl)
 	end
 
@@ -409,49 +563,64 @@ function LIB.Download(url, callback, saveAsUrl)
 end
 
 function LIB.Load()
-	local cacheRealm = SERVER and "sv" or "cl"
+	LIBUtil = StreamRadioLib.Util
+	LIBBass = StreamRadioLib.Bass
+	LIBTimer = StreamRadioLib.Timer
+	LIBPrint = StreamRadioLib.Print
 
-	g_mainDir = LIBUtil.GetMainDirectory(string.format("cache-%s", cacheRealm))
+	g_mainDir = LIBUtil.GetMainDirectory(string.format("cache-%s", g_cacheRealm))
 	g_mainDirLegacy = LIBUtil.GetMainDirectory("cache")
 
 	LIBUtil.DeleteFolder(g_mainDirLegacy)
-	Cache_Cleanup(true)
+	UpdateLimitsInternal()
+
+	LIB.Cleanup(true)
+end
+
+function LIB.Clear()
+	LIBUtil.DeleteFolder(g_mainDirLegacy)
+
+	if not LIBUtil.DeleteFolder(g_mainDir) then
+		return false
+	end
+
+	UpdateLimitsInternal()
+
+	return true
 end
 
 do
 	local function Cache_Clear(ply, cmd, args)
+		if not SERVER then
+			return
+		end
+
 		if not LIBUtil.IsAdminForCMD(ply) then
-			StreamRadioLib.Print.Msg(ply, "You need to be an admin clear the server stream cache.")
+			LIBPrint.Msg(ply, "You need to be an admin clear the server stream cache.")
 			return
 		end
 
-		LIBUtil.DeleteFolder(g_mainDirLegacy)
-
-		if not LIBUtil.DeleteFolder(g_mainDir) then
-			StreamRadioLib.Print.Msg(ply, "Server stream cache could not be cleared!")
+		if not LIB.Clear() then
+			LIBPrint.Msg(ply, "Server stream cache could not be cleared!")
 			return
 		end
 
-		g_forbidden:Empty()
-		StreamRadioLib.Print.Msg(ply, "Server stream cache cleared!")
+		LIBPrint.Msg(ply, "Server stream cache cleared!")
 	end
 
-	concommand.Add( "sv_streamradio_cacheclear", Cache_Clear )
+	concommand.Add( "sv_streamradio_cache_clear", Cache_Clear)
 
 	if CLIENT then
 		local function Cache_Clear(ply, cmd, args)
-			LIBUtil.DeleteFolder(g_mainDirLegacy)
-
-			if not LIBUtil.DeleteFolder(g_mainDir) then
-				StreamRadioLib.Print.Msg(ply, "Client stream cache could not be cleared!")
+			if not LIB.Clear() then
+				LIBPrint.Msg(ply, "Client stream cache could not be cleared!")
 				return
 			end
 
-			g_forbidden:Empty()
-			StreamRadioLib.Print.Msg(ply, "Client stream cache cleared!")
+			LIBPrint.Msg(ply, "Client stream cache cleared!")
 		end
 
-		concommand.Add("cl_streamradio_cacheclear", Cache_Clear)
+		concommand.Add("cl_streamradio_cache_clear", Cache_Clear)
 	end
 end
 

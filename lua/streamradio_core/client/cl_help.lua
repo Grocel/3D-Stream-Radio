@@ -1,4 +1,10 @@
 local LIBError = StreamRadioLib.Error
+local LIBLocale = StreamRadioLib.Locale
+local LIBHook = StreamRadioLib.Hook
+local LIBTimer = StreamRadioLib.Timer
+
+local T = LIBLocale.Translate
+local F = LIBLocale.Format
 
 local g_helpPanel = StreamRadioLib.g_HelpPanel
 
@@ -26,7 +32,7 @@ local function CreateErrorHelpPanel()
 	HelpPanel:SetSizable( true )
 	HelpPanel:SetDeleteOnClose( false )
 	HelpPanel:SetVisible( false )
-	HelpPanel:SetTitle( "Stream Radio Error Information" )
+	HelpPanel:SetTitle( "" )
 	HelpPanel:SetZPos(150)
 	HelpPanel:GetParent():SetWorldClicker( true )
 
@@ -34,6 +40,7 @@ local function CreateErrorHelpPanel()
 	HelpPanel.HelpTextPanel:SetDrawBorder( true )
 	HelpPanel.HelpTextPanel:SetPaintBackground( true )
 	HelpPanel.HelpTextPanel:SetVerticalScrollbarEnabled( true )
+	HelpPanel.HelpTextPanel:SetHistoryEnabled( false )
 	HelpPanel.HelpTextPanel:SetFont( ErrorHelpFont )
 	HelpPanel.HelpTextPanel:SetZPos(100)
 	HelpPanel.HelpTextPanel:SetCursor( "beam" )
@@ -46,37 +53,32 @@ local function CreateErrorHelpPanel()
 	ControlPanel:SetZPos(200)
 	ControlPanel:Dock( BOTTOM )
 
-	local OkButton = vgui.Create( "DButton", ControlPanel )
-	OkButton:SetWide( 100 )
-	OkButton:SetText( "OK" )
-	OkButton:DockMargin( 5, 0, 0, 0 )
-	OkButton:SetZPos(300)
-	OkButton:Dock( RIGHT )
+	local CloseButton = vgui.Create( "DButton", ControlPanel )
+	CloseButton:SetWide( 100 )
+	CloseButton:SetText( T("?vgui.error_help_panel.close", "Close") )
+	CloseButton:DockMargin( 5, 0, 0, 0 )
+	CloseButton:SetZPos(300)
+	CloseButton:Dock( RIGHT )
 
-	OkButton.DoClick = function( self )
+	CloseButton.DoClick = function( self )
 		StreamRadioLib.VR.CloseMenu(HelpPanel)
 	end
 
 	HelpPanel.CopyButton = vgui.Create( "DButton", ControlPanel )
-	HelpPanel.CopyButton:SetWide( 100 )
-	HelpPanel.CopyButton:SetText( "Copy to clipboard" )
+	HelpPanel.CopyButton:SetWide( 150 )
+	HelpPanel.CopyButton:SetText( T("?vgui.error_help_panel.clipboard", "Copy to clipboard") )
 	HelpPanel.CopyButton:DockMargin( 5, 0, 0, 0 )
 	HelpPanel.CopyButton:SetZPos(400)
 	HelpPanel.CopyButton:Dock( RIGHT )
 
-	HelpPanel.OnlineHelpButton = StreamRadioLib.Menu.GetLinkButton("View online help")
+	local viewOnline = T("?vgui.error_help_panel.view_online", "View online help")
+
+	HelpPanel.OnlineHelpButton = StreamRadioLib.Menu.GetLinkButton(viewOnline)
 	HelpPanel.OnlineHelpButton:SetParent(ControlPanel)
-	HelpPanel.OnlineHelpButton:SetWide( 175 )
+	HelpPanel.OnlineHelpButton:SetWide( 200 )
 	HelpPanel.OnlineHelpButton:DockMargin( 5, 0, 20, 0 )
 	HelpPanel.OnlineHelpButton:SetZPos(500)
 	HelpPanel.OnlineHelpButton:Dock( RIGHT )
-
-	HelpPanel.OptionToggleTick = vgui.Create( "DCheckBoxLabel", ControlPanel )
-	HelpPanel.OptionToggleTick:SetWide( 125 )
-	HelpPanel.OptionToggleTick:SetText( "" )
-	HelpPanel.OptionToggleTick:DockMargin( 10, 0, 0, 0 )
-	HelpPanel.OptionToggleTick:SetZPos(600)
-	HelpPanel.OptionToggleTick:Dock( LEFT )
 
 	g_helpPanel = HelpPanel
 	return HelpPanel
@@ -89,18 +91,20 @@ local function OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
 	helpurl = helpurl or ""
 	userdata = userdata or {}
 
-	local tickboxdata = userdata.userdata or {}
-	tickboxdata = tickboxdata.tickbox
-
 	local HelpPanel = CreateErrorHelpPanel()
 
 	if not IsValid( HelpPanel ) then return end
 	if not IsValid( HelpPanel.HelpTextPanel ) then return end
 	if not IsValid( HelpPanel.CopyButton ) then return end
 	if not IsValid( HelpPanel.OnlineHelpButton ) then return end
-	if not IsValid( HelpPanel.OptionToggleTick ) then return end
 
-	HelpPanel:SetTitle( "Stream Radio Error Information | " .. header )
+	local title = F(
+		"?vgui.error_help_panel.header",
+		"Stream Radio Error Information | %s",
+		header
+	)
+
+	HelpPanel:SetTitle(title)
 
 	if not StreamRadioLib.VR.IsActive() then
 		local X, Y = HelpPanel:GetPos()
@@ -142,6 +146,8 @@ local function OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
 		helptext = string.format("%s\n\n%s", header, helptext)
 	end
 
+	helptext = string.Replace(helptext, "\t", "    ")
+
 	HelpPanel.HelpTextPanel:SetText( helptext )
 
 	local CopyText = string.gsub( helptext or "", "\n", "\r\n" )
@@ -158,13 +164,6 @@ local function OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
 	HelpPanel.OnlineHelpButton:SetVisible( helpurl ~= "" )
 	HelpPanel.OnlineHelpButton:SetURL( helpurl )
 
-	HelpPanel.OptionToggleTick:SetVisible(tickboxdata ~= nil)
-
-	if tickboxdata then
-		HelpPanel.OptionToggleTick:SetText(tickboxdata.text or "???")
-		HelpPanel.OptionToggleTick:SetConVar(tickboxdata.cmd or "")
-	end
-
 	HelpPanel:InvalidateLayout( true )
 
 	StreamRadioLib.g_HelpPanel = HelpPanel
@@ -174,27 +173,48 @@ end
 function StreamRadioLib.ShowErrorHelp( errorcode, url )
 	local errorInfo = LIBError.GetStreamErrorInfo(errorcode)
 
-	local hasHelpmenu = errorInfo.helpmenu
-	if not hasHelpmenu then
+	local hashelp = errorInfo.hashelp
+	if not hashelp then
 		return
 	end
 
-	local code = errorInfo.id
+	local id = errorInfo.id
 	local name = errorInfo.name
-	local description = errorInfo.description or ""
+	local description = errorInfo.translation.description or ""
 	local userdata = errorInfo.userdata
 
-	local header = string.format("Error %i (%s): %s", code, name, description)
+	local header = F(
+		"?vgui.error_help_panel.header_error_info",
+		"Error %i (%s): %s",
+		id, name, description
+	)
 
-	local helptext = errorInfo.helptext or ""
+	local helptext = errorInfo.translation.helptext or ""
 	local helpurl = errorInfo.helpurl or ""
 
 	OpenErrorHelpPanel( header, helptext, url, helpurl, userdata )
 end
 
-function StreamRadioLib.ShowPlaylistErrorHelp( )
-	StreamRadioLib.ShowErrorHelp(LIBError.PLAYLIST_ERROR_INVALID_FILE)
-end
+LIBTimer.Simple(0.5, function()
+	local function recreatePanel()
+		if IsValid(g_helpPanel) then
+			StreamRadioLib.VR.CloseMenu(g_helpPanel)
+			g_helpPanel:Remove()
+
+			g_helpPanel = nil
+			StreamRadioLib.g_HelpPanel = nil
+		end
+
+		StreamRadioLib.ShowErrorHelp(-1, "")
+
+		if IsValid(g_helpPanel) then
+			StreamRadioLib.VR.CloseMenu(g_helpPanel)
+		end
+	end
+
+	LIBHook.AddCustom("OnLocaleChanged", "ErrorHelp.recreatePanel", recreatePanel)
+	LIBHook.AddCustom("OnLocaleGenerate", "ErrorHelp.recreatePanel", recreatePanel)
+end)
 
 return true
 

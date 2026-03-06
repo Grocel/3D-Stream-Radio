@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.VR = StreamRadioLib.VR or {}
-
-local LIB = StreamRadioLib.VR
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("VR")
 
 function LIB.IsInstalled()
 	return vrmod ~= nil
@@ -227,7 +223,7 @@ function LIB.GetVREnableTouch(ply)
 	end
 
 	if not LIB.IsActive(ply) then return false end
-	return tobool(ply:GetInfo("cl_streamradio_vr_enable_touch"))
+	return tobool(ply:GetInfo("cl_streamradio_vr_touch_enable"))
 end
 
 function LIB.GetVREnableTrigger(ply)
@@ -236,7 +232,7 @@ function LIB.GetVREnableTrigger(ply)
 	end
 
 	if not LIB.IsActive(ply) then return false end
-	return tobool(ply:GetInfo("cl_streamradio_vr_enable_trigger"))
+	return tobool(ply:GetInfo("cl_streamradio_vr_trigger_enable"))
 end
 
 function LIB.GetMenuUid(panel)

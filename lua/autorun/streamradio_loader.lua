@@ -2,6 +2,7 @@
 AddCSLuaFile()
 
 local g_addonBrokenError = nil
+local g_reloadAddonTimerName = "3DStreamRadio_ReloadAddon"
 
 if SERVER then
 	g_addonBrokenError = "Addon loadup is broken on SERVER! To many addons?"
@@ -9,14 +10,123 @@ else
 	g_addonBrokenError = "Addon loadup is broken on CLIENT! To many addons?"
 end
 
-local function initStreamRadioLibGlobal()
-	_G.StreamRadioLib = _G.StreamRadioLib or {}
-	local lib = _G.StreamRadioLib
+local init = nil
 
-	table.Empty(lib)
+local function unloadSublib(sublib)
+	if not istable(sublib) then
+		return
+	end
+
+	if not sublib.__isLib then
+		return
+	end
+
+	local func = sublib.Unload
+	if not isfunction(func) then
+		return
+	end
+
+	func()
+
+	sublib.Unload = nil
+end
+
+local function emptySublib(sublib)
+	if not istable(sublib) then
+		return
+	end
+
+	if not sublib.__isLib then
+		return
+	end
+
+	unloadSublib(sublib)
+
+	-- Sublib, e.g. StreamRadioLib.File
+	for sublibKey, sublibValue in pairs(sublib) do
+		-- Sublib values, e.g. StreamRadioLib.File.Write
+
+		if istable(sublibValue) then
+			-- keep tables in case we want to pass them on
+			continue
+		end
+
+		if sublibKey == "__isLib" then
+			continue
+		end
+
+		sublib[sublibKey] = nil
+	end
+end
+
+local function emptyLib(lib)
+	-- Mainlib, e.g. StreamRadioLib
+
+	for key, sublib in pairs(lib) do
+		unloadSublib(sublib)
+	end
+
+	for key, sublib in pairs(lib) do
+		if istable(sublib) then
+			emptySublib(sublib)
+			continue
+		end
+
+		lib[key] = nil
+	end
+end
+
+local function initStreamRadioLibGlobal()
+	timer.Remove(g_reloadAddonTimerName)
+
+	local lib = _G.StreamRadioLib or {}
+	_G.StreamRadioLib = lib
+
+	emptyLib(lib)
 
 	lib.Loaded = nil
 	lib.Errors = {g_addonBrokenError}
+
+	lib.NewLib = function(thislib, name)
+		name = tostring(name or "")
+
+		local sublib = thislib[name] or {}
+		thislib[name] = sublib
+
+		sublib.__isLib = true
+
+		emptySublib(sublib)
+
+		lib.ReloadAddon()
+
+		return sublib
+	end
+
+	lib.ReloadAddon = function(force)
+		if lib.Loading and not force then
+			-- already loading, this prevents recursive reloads
+			return false
+		end
+
+		-- debounce rapid reload calls
+		timer.Remove(g_reloadAddonTimerName)
+		timer.Create(g_reloadAddonTimerName, 0.25, 1, function()
+			timer.Remove(g_reloadAddonTimerName)
+
+			if lib.Loading and not force then
+				return
+			end
+
+			if not init then
+				return
+			end
+
+			init()
+		end)
+
+		-- we are reloading, if we return true here, the caller should return immediately
+		return true
+	end
 
 	-- this is the failback content for tools and menus
 	lib.Loader_CreateErrorPanel = function(CPanel, message)
@@ -30,7 +140,6 @@ local function initStreamRadioLibGlobal()
 		end
 
 		local addonPrefix = tostring(lib.AddonPrefix or "")
-		addonPrefix = string.Trim(addonPrefix)
 
 		if addonPrefix ~= "" then
 			local prefixlabel = vgui.Create("DLabel")
@@ -97,7 +206,6 @@ local function initStreamRadioLibGlobal()
 		end
 
 		local addonPrefix = tostring(lib.AddonPrefix or "")
-		addonPrefix = string.Trim(addonPrefix)
 
 		local errors = lib.Errors or {}
 
@@ -113,7 +221,7 @@ local function initStreamRadioLibGlobal()
 	end
 end
 
-do
+init = function()
 	initStreamRadioLibGlobal()
 
 	local status, loaded = xpcall(function()
@@ -149,3 +257,5 @@ do
 		return
 	end
 end
+
+init()

@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Url = StreamRadioLib.Url or {}
-
-local LIB = StreamRadioLib.Url
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Url")
 
 local LIBUtil = StreamRadioLib.Util
 local LIBNetURL = StreamRadioLib.NetURL
@@ -30,7 +26,7 @@ local function SplittProtocolAndPath(url)
 		return "", url
 	end
 
-	local path = string.match(url, ":[//\\][//\\]([ -~]+)$")
+	local path = string.match(url, ":[//\\][//\\]([ -~]+)$") or ""
 	return protocol, path
 end
 

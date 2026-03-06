@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Whitelist = StreamRadioLib.Whitelist or {}
-
-local LIB = StreamRadioLib.Whitelist
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Whitelist")
 
 local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url

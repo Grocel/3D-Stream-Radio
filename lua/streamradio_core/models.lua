@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Model = StreamRadioLib.Model or {}
-
-local LIB = StreamRadioLib.Model
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Model")
 
 local Models = {}
 
@@ -104,7 +100,7 @@ local function AddMultiModels(script, modellist)
 
 	local scriptfile = LuaModelDirectory .. "/" .. script
 
-	StreamRadioLib.SaveCSLuaFile(scriptfile, true)
+	StreamRadioLib.SaveAddCSLuaFile(scriptfile, true)
 
 	RADIOMDL = nil
 	for _, modelname in ipairs( modellist ) do

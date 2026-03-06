@@ -1,7 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.String = StreamRadioLib.String or {}
-local LIB = StreamRadioLib.String
+local LIB = StreamRadioLib:NewLib("String")
 
 local table = table
 local table_insert = table.insert
@@ -53,15 +51,28 @@ function LIB.IndentTextBlock(text, count, tab)
 	local lines = string.Explode("\n", text, false)
 	local tmp = {}
 
-	for i, v in ipairs(lines) do
+	for _, line in ipairs(lines) do
 		table_insert(tmp, tab)
-		table_insert(tmp, v)
+		table_insert(tmp, line)
 		table_insert(tmp, "\n")
 	end
+
+	-- don't add leading newline
+	tmp[#tmp] = nil
 
 	text = table.concat(tmp)
 
 	return text
+end
+
+function LIB.IsMultiline(text)
+	local match = string.match(text, "[\r\n]")
+
+	if not match then
+		return false
+	end
+
+	return true
 end
 
 function LIB.IsVirtualPath(vpath)
@@ -227,6 +238,68 @@ function LIB.StreamMetaStringToTable(meta)
 	end
 
 	return result
+end
+
+function LIB.EscapeSlashes(str)
+	str = string.gsub(str, "(['\"\\])", "\\%1")
+	return str
+end
+
+local g_newLinesReplacemap = {
+	["\r\n"] = "\\r\\n",
+	["\r"] = "\\r",
+	["\n"] = "\\n",
+}
+
+function LIB.EscapeNewlines(str)
+	str = string.gsub(str, "([\r]?[\n]?)", g_newLinesReplacemap)
+	return str
+end
+
+function LIB.UnescapeSlashes(str)
+	str = string.gsub(str, "\\\\", "\x01")
+	str = string.gsub(str, "(\\(['\"\\]))", "%2")
+	str = string.gsub(str, "%\x01", "\\\\")
+
+	return str
+end
+
+local g_newLinesReverseReplacemap = {
+	["\\r\\n"] = "\r\n",
+	["\\r"] = "\r",
+	["\\n"] = "\n",
+}
+
+function LIB.UnescapeNewlines(str)
+	str = string.gsub(str, "([\\r]?[\\n]?)", g_newLinesReverseReplacemap)
+	return str
+end
+
+local g_lazyStringMeta = {
+	ToString = function(self)
+		local callback = self.callback
+
+		if not isfunction(callback) then
+			return ""
+		end
+
+		return callback(self, self.data)
+	end,
+}
+
+g_lazyStringMeta.__index = g_lazyStringMeta
+g_lazyStringMeta.__tostring = g_lazyStringMeta.ToString
+
+function LIB.CreateLazyString(callback, data)
+	local lazyString = {}
+
+	lazyString.isLazy = true
+	lazyString.callback = callback
+	lazyString.data = data
+
+	setmetatable(lazyString, g_lazyStringMeta)
+
+	return lazyString
 end
 
 return true

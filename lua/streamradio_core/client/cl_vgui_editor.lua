@@ -1,5 +1,10 @@
 local StreamRadioLib = StreamRadioLib
+
 local LIBNet = StreamRadioLib.Net
+local LIBLocale = StreamRadioLib.Locale
+
+local T = LIBLocale.Translate
+local F = LIBLocale.Format
 
 local string = string
 local math = math
@@ -72,7 +77,9 @@ local function ShowError( errorheader, errortext, this, func, ... )
 	if not this:IsVisible() then return false end
 	local args = {...}
 
-	Derma_Query( errortext, errorheader, "OK", function( )
+	local okText = T("?vgui.playlist_editor.dialog_box.ok", "OK")
+
+	Derma_Query( errortext, errorheader, okText, function( )
 		if not IsValid(this) then return end
 		if this:IsLoading() then return end
 		if not func then return end
@@ -96,16 +103,21 @@ local function AsForSave( this, func, ... )
 
 	local args = {...}
 
-	Derma_Query("Are you sure to discard the changes?", "Unsaved playlist!", "Yes", function()
-		-- Discard the changes.
+	local yesText = T("?vgui.playlist_editor.dialog_box.yes", "Yes")
+	local noText = T("?vgui.playlist_editor.dialog_box.no", "No")
+
+	local unsavedPlaylistTitleText = T("?vgui.playlist_editor.dialog_box.unsaved_playlist.title", "Unsaved playlist!")
+	local unsavedPlaylistDialogText = T("?vgui.playlist_editor.dialog_box.unsaved_playlist.dialog", "Are you sure to discard the changes?")
+
+	-- Discard the changes.
+	Derma_Query(unsavedPlaylistDialogText, unsavedPlaylistTitleText, yesText, function()
 		if not IsValid(this) then return end
 		if this:IsLoading() then return end
 
 		this:RemoveNewFile()
 		func( this, unpack( args ) )
-	end, "No")
+	end, noText)
 
-	-- Don't discard the changes.
 	return true
 end
 
@@ -123,15 +135,21 @@ local function CreateDir( self, defaultString, func, ... )
 		defaultString = name
 	end
 
-	local helpText = [[
+	local createDirDialogText = [[
 Create a new folder
 - All invalid characters are fitered out
 - Case insensitive, converted to lowercase
-]];
+]]
 
-	helpText = string.Trim(helpText)
+	createDirDialogText = T("?vgui.playlist_editor.dialog_box.create_dir.dialog", createDirDialogText)
+	createDirDialogText = string.Trim(createDirDialogText)
 
-	Derma_StringRequest("New folder", helpText, defaultString, function( strTextOut )
+	local createDirTitleText = T("?vgui.playlist_editor.dialog_box.create_dir.title", "New folder")
+
+	local cancelText = T("?vgui.playlist_editor.dialog_box.cancel", "Cancel")
+	local createText = T("?vgui.playlist_editor.dialog_box.create_dir.create", "Create folder")
+
+	Derma_StringRequest(createDirTitleText, createDirDialogText, defaultString, function( strTextOut )
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
@@ -164,7 +182,7 @@ Create a new folder
 		if created and func then
 			func( self, unpack( args ) )
 		end
-	end, nil, "Create folder", "Cancel")
+	end, nil, createText, cancelText)
 
 	return true
 end
@@ -185,8 +203,14 @@ local function AsForDelete( self, func, ... )
 	if path == "" then return false end
 	if not format then return false end
 
-	Derma_Query( "Are you sure to delete this file/folder?", "Delete file!", "Yes", function( )
-		-- Delete.
+	local yesText = T("?vgui.playlist_editor.dialog_box.yes", "Yes")
+	local noText = T("?vgui.playlist_editor.dialog_box.no", "No")
+
+	local deleteTitleText = T("?vgui.playlist_editor.dialog_box.delete.title", "Delete file!")
+	local deleteDialogText = T("?vgui.playlist_editor.dialog_box.delete.dialog", "Are you sure to delete this file/folder?")
+
+	-- Delete.
+	Derma_Query( deleteDialogText, deleteTitleText, yesText, function( )
 		if not IsValid(self) then return end
 		if not IsValid(line) then return end
 		if self:IsLoading() then return end
@@ -199,9 +223,8 @@ local function AsForDelete( self, func, ... )
 		if removed and func then
 			func( self, unpack( args ) )
 		end
-	end, "No" )
+	end, noText )
 
-	-- Don't delete.
 	return true
 end
 
@@ -222,17 +245,23 @@ local function CreateFile( self, defaultString, func, ... )
 	local args = {...}
 	local path = self.m_strPath or ""
 
-	local helpText = [[
+	local createFileDialogText = [[
 Create a new playlist
 - All invalid characters are fitered out
 - Case insensitive, converted to lowercase
 - Valid formats are: %s
 ]]
-	helpText = string.format(helpText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST or "")
-	helpText = string.Trim(helpText)
+
+	createFileDialogText = F("?vgui.playlist_editor.dialog_box.create_file.dialog", createFileDialogText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST or "")
+	createFileDialogText = string.Trim(createFileDialogText)
+
+	local createFileTitleText = T("?vgui.playlist_editor.dialog_box.create_file.title", "New playlist..")
+
+	local cancelText = T("?vgui.playlist_editor.dialog_box.cancel", "Cancel")
+	local createText = T("?vgui.playlist_editor.dialog_box.create_file.create", "Create new file")
 
 	AsForSave(self, function( self, func, args )
-		Derma_StringRequest( "New playlist..", helpText, defaultString, function( strTextOut )
+		Derma_StringRequest( createFileTitleText, createFileDialogText, defaultString, function( strTextOut )
 			if not IsValid(self) then return end
 			if self:IsLoading() then return end
 
@@ -278,7 +307,7 @@ Create a new playlist
 			if func then
 				func(self, strTextOut, format, unpack(args))
 			end
-		end, nil, "Create new file", "Cancel")
+		end, nil, createText, cancelText)
 	end, func, args)
 
 	return true
@@ -298,12 +327,18 @@ local function AsForOverride( self, func, filename, ... )
 		return true
 	end
 
-	Derma_Query( "Overwrite this file?", "Save to..", "Overwrite", function( )
+	local saveToOverwriteTitleText = T("?vgui.playlist_editor.dialog_box.save_to_overwrite.title", "Save to..")
+	local saveToOverwriteDialogText = T("?vgui.playlist_editor.dialog_box.save_to_overwrite.dialog", "Overwrite this file?")
+
+	local cancelText = T("?vgui.playlist_editor.dialog_box.cancel", "Cancel")
+	local overwriteText = T("?vgui.playlist_editor.dialog_box.save_to_overwrite.overwrite", "Overwrite")
+
+	Derma_Query( saveToOverwriteDialogText, saveToOverwriteTitleText, overwriteText, function( )
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
 		func( self, filename, unpack( args ) )
-	end, "Cancel" )
+	end, cancelText )
 
 	return true
 end
@@ -332,16 +367,23 @@ local function SaveTo(self, defaultString, func, ...)
 		defaultString = name
 	end
 
-	local helpText = [[
+	local saveToDialogText = [[
 Save a file
 - All invalid characters are fitered out
 - Case insensitive, converted to lowercase
 - Valid formats are: %s
 ]]
-	helpText = string.format(helpText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST or "")
-	helpText = string.Trim(helpText)
 
-	Derma_StringRequest("Save to..", helpText, defaultString, function(strTextOut)
+	saveToDialogText = F("?vgui.playlist_editor.dialog_box.save_to.dialog", saveToDialogText, StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST or "")
+	saveToDialogText = string.Trim(saveToDialogText)
+
+	local saveToTitleText = T("?vgui.playlist_editor.dialog_box.save_to.title", "Save to..")
+
+	local cancelText = T("?vgui.playlist_editor.dialog_box.cancel", "Cancel")
+	local saveText = T("?vgui.playlist_editor.dialog_box.save_to.save", "Save to file")
+
+
+	Derma_StringRequest(saveToTitleText, saveToDialogText, defaultString, function(strTextOut)
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
@@ -372,7 +414,7 @@ Save a file
 				return
 			end
 
-			local ErrorText = StreamRadioLib.DecodeEditorErrorCode(StreamRadioLib.EDITOR_ERROR_WFORMAT)
+			local ErrorText = StreamRadioLib.DecodeEditorErrorCode( StreamRadioLib.EDITOR_ERROR_WFORMAT )
 			ShowError("Save error!", ErrorText, self, SaveTo, strTextOut, func, unpack(args))
 
 			return
@@ -397,7 +439,7 @@ Save a file
 		AsForOverride(self, function(self, fullpath, strTextOut, format, func, args)
 			func(self, fullpath, strTextOut, format, unpack(args))
 		end, fullpath, strTextOut, format, func, args)
-	end, nil, "Save to file", "Cancel")
+	end, nil, saveText, cancelText)
 
 	return true
 end
@@ -412,7 +454,13 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 	local Menu = DermaMenu()
 	local MenuItem = nil
 
-	MenuItem = Menu:AddOption("Open", function()
+	local openLabel = T("?vgui.playlist_editor.files_menu.open.label", "Open")
+	local refreshLabel = T("?vgui.playlist_editor.files_menu.refresh.label", "Refresh")
+	local newLabel = T("?vgui.playlist_editor.files_menu.new_list.label", "New")
+	local newFolderLabel = T("?vgui.playlist_editor.files_menu.new_folder.label", "New folder")
+	local deleteLabel = T("?vgui.playlist_editor.files_menu.delete.label", "Delete")
+
+	MenuItem = Menu:AddOption(openLabel, function()
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
@@ -422,7 +470,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 	MenuItem:SetImage("icon16/table_add.png")
 	Menu:AddSpacer( )
 
-	MenuItem = Menu:AddOption("Refresh", function()
+	MenuItem = Menu:AddOption(refreshLabel, function()
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
@@ -435,7 +483,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 		Menu:AddSpacer( )
 
 		--New
-		MenuItem = Menu:AddOption("New", function()
+		MenuItem = Menu:AddOption(newLabel, function()
 			if not IsValid(self) then return end
 			if self:IsLoading() then return end
 
@@ -444,7 +492,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 
 		MenuItem:SetImage("icon16/table_add.png")
 
-		MenuItem = Menu:AddOption("New folder", function()
+		MenuItem = Menu:AddOption(newFolderLabel, function()
 			if not IsValid(self) then return end
 			if self:IsLoading() then return end
 
@@ -456,7 +504,7 @@ local function FileMenu(self, item, path, name, filetype, parentpath)
 		--Delete
 		if StreamRadioLib.Filesystem.CanDeleteFormat(filetype) and not StreamRadioLib.String.IsVirtualPath(path) then
 			Menu:AddSpacer( )
-			MenuItem = Menu:AddOption("Delete", function()
+			MenuItem = Menu:AddOption(deleteLabel, function()
 				if not IsValid(self) then return end
 				if self:IsLoading() then return end
 
@@ -485,7 +533,12 @@ local function PlaylistMenu( self, item, url, name, parentpath )
 	local Menu = DermaMenu()
 	local MenuItem = nil
 
-	MenuItem = Menu:AddOption( "Copy Entry", function( )
+	local copyLabel = T("?vgui.playlist_editor.playlist_menu.copy.label", "Copy Entry")
+	local removeLabel = T("?vgui.playlist_editor.playlist_menu.remove.label", "Remove Entry")
+	local moveUpLabel = T("?vgui.playlist_editor.playlist_menu.move_up.label", "Move up")
+	local moveDownLabel = T("?vgui.playlist_editor.playlist_menu.move_down.label", "Move Down")
+
+	MenuItem = Menu:AddOption( copyLabel, function( )
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
@@ -496,7 +549,7 @@ local function PlaylistMenu( self, item, url, name, parentpath )
 
 	MenuItem:SetImage( "icon16/add.png" )
 
-	MenuItem = Menu:AddOption( "Remove Entry", function( )
+	MenuItem = Menu:AddOption( removeLabel, function( )
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
@@ -508,7 +561,7 @@ local function PlaylistMenu( self, item, url, name, parentpath )
 	MenuItem:SetImage( "icon16/delete.png" )
 	Menu:AddSpacer( )
 
-	MenuItem = Menu:AddOption( "Move Up", function( )
+	MenuItem = Menu:AddOption( moveUpLabel, function( )
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 		self:PlaylistCheckValid()
@@ -520,7 +573,7 @@ local function PlaylistMenu( self, item, url, name, parentpath )
 
 	MenuItem:SetImage( "icon16/arrow_up.png" )
 
-	MenuItem = Menu:AddOption( "Move Down", function( )
+	MenuItem = Menu:AddOption( moveDownLabel, function( )
 		if not IsValid(self) then return end
 		if self:IsLoading() then return end
 
@@ -552,8 +605,8 @@ function PANEL:Init( )
 	self.Files = self.FilesPanel:Add( "DListView" )
 	self.Files:SetMultiSelect( false )
 	self.Files:Dock( FILL )
-	self.Files:AddColumn( "Name" )
-	local Column = self.Files:AddColumn( "Type" )
+	self.Files:AddColumn( T("?vgui.playlist_editor.files.column.name.label", "Name") )
+	local Column = self.Files:AddColumn( T("?vgui.playlist_editor.files.column.type.label", "Type") )
 	Column:SetFixedWidth( 70 )
 	Column:SetWide( 70 )
 
@@ -599,20 +652,20 @@ function PANEL:Init( )
 	local playlistTextSheet = self.PlaylistTabPanel:AddSheet( "text", self.PlaylistTextPanel, "icon16/page_white.png" )
 	self.PlaylistTextPanel:SetPaintBackground( false )
 
-	playlistEditorSheet.Tab:SetText("List mode")
-	playlistEditorSheet.Tab:SetTooltip("Edit the playlist in a list view")
-	playlistTextSheet.Tab:SetText("Text mode")
-	playlistTextSheet.Tab:SetTooltip("Edit the playlist in a text field (for advanced users)")
+	playlistEditorSheet.Tab:SetText(T("?vgui.playlist_editor.list_tab.label", "List mode"))
+	playlistEditorSheet.Tab:SetTooltip(T("?vgui.playlist_editor.list_tab.tooltip", "Edit the playlist in a list view"))
+	playlistTextSheet.Tab:SetText(T("?vgui.playlist_editor.text_tab.label", "Text mode"))
+	playlistTextSheet.Tab:SetTooltip(T("?vgui.playlist_editor.text_tab.tooltip", "Edit the playlist in a text field (for advanced users)"))
 
 	self.Playlist = self.PlaylistEditorPanel:Add( "DListView" )
 	self.Playlist:SetMultiSelect( false )
 	self.Playlist:Dock( FILL )
-	local Column = self.Playlist:AddColumn( "No." )
+	local Column = self.Playlist:AddColumn( T("?vgui.playlist_editor.playlist.column.number.label", "No.") )
 	Column:SetFixedWidth( 30 )
 	Column:SetWide( 30 )
-	local Column = self.Playlist:AddColumn( "Name" )
+	local Column = self.Playlist:AddColumn( T("?vgui.playlist_editor.playlist.column.name.label", "Name") )
 	Column:SetWide( 50 )
-	self.Playlist:AddColumn( "URL" )
+	self.Playlist:AddColumn( T("?vgui.playlist_editor.playlist.column.url.label", "URL") )
 
 	self.Playlist.OnRowSelected = function( parent, id, line )
 		if self:IsLoading( ) then return end
@@ -665,7 +718,9 @@ function PANEL:Init( )
 		-- Some client have some addon conflicts
 		-- This causes them to not have the panel:SetPlaceholderText() function
 
-		self.EditNameText:SetPlaceholderText("Enter a name for this Entry")
+		self.EditNameText:SetPlaceholderText(
+			T("?vgui.playlist_editor.name_edit.placeholder", "Enter a name for this Entry")
+		)
 	end
 
 	self.EditNameText.OnEnter = function( panel )
@@ -679,7 +734,7 @@ function PANEL:Init( )
 	end
 
 	self.EditNameLabel = self.EditNamePanel:Add( "DLabel" )
-	self.EditNameLabel:SetText( "Name:" )
+	self.EditNameLabel:SetText( T("?vgui.playlist_editor.name_edit.label", "Name:") )
 	self.EditNameLabel:SetWide( 40 )
 	self.EditNameLabel:SetDark( true )
 	self.EditNameLabel:DockMargin( 6, 0, 0, 0 )
@@ -700,7 +755,7 @@ function PANEL:Init( )
 	end
 
 	self.EditURLLabel = self.EditURLPanel:Add( "DLabel" )
-	self.EditURLLabel:SetText( "URL:" )
+	self.EditURLLabel:SetText( T("?vgui.playlist_editor.url_edit.label", "URL:") )
 	self.EditURLLabel:SetWide( 40 )
 	self.EditURLLabel:SetDark( true )
 	self.EditURLLabel:DockMargin( 6, 0, 0, 0 )
@@ -710,7 +765,7 @@ function PANEL:Init( )
 	self.EditChangeButton:SetWide( 100 )
 	self.EditChangeButton:DockMargin( 6, 0, 0, 0 )
 	self.EditChangeButton:Dock( RIGHT )
-	self.EditChangeButton:SetText( "Apply" )
+	self.EditChangeButton:SetText( T("?vgui.playlist_editor.apply.label", "Apply") )
 	self.EditChangeButton:SetImage( "icon16/pencil.png" )
 
 	self.EditChangeButton.DoClick = function( panel )
@@ -726,7 +781,7 @@ function PANEL:Init( )
 	self.EditAddButton:SetWide( 100 )
 	self.EditAddButton:DockMargin( 6, 0, 0, 0 )
 	self.EditAddButton:Dock( RIGHT )
-	self.EditAddButton:SetText( "Add" )
+	self.EditAddButton:SetText( T("?vgui.playlist_editor.add.label", "Add") )
 	self.EditAddButton:SetImage( "icon16/add.png" )
 
 	self.EditAddButton.DoClick = function( panel )
@@ -746,7 +801,7 @@ function PANEL:Init( )
 	self.EditMoveDownButton:DockMargin( 6, 0, 0, 0 )
 	self.EditMoveDownButton:Dock( RIGHT )
 	self.EditMoveDownButton:SetText( "" )
-	self.EditMoveDownButton:SetTooltip( "Move item down" )
+	self.EditMoveDownButton:SetTooltip( T("?vgui.playlist_editor.move_down.tooltip", "Move item down") )
 
 	self.EditMoveDownButtonImage = vgui.Create( "DImage", self.EditMoveDownButton )
 	if ( IsValid( self.EditMoveDownButtonImage ) ) then
@@ -764,7 +819,7 @@ function PANEL:Init( )
 	self.EditMoveUpButton:DockMargin( 6, 0, 0, 0 )
 	self.EditMoveUpButton:Dock( RIGHT )
 	self.EditMoveUpButton:SetText( "" )
-	self.EditMoveUpButton:SetTooltip( "Move item up" )
+	self.EditMoveUpButton:SetTooltip( T("?vgui.playlist_editor.move_up.tooltip", "Move item up") )
 
 	self.EditMoveUpButtonImage = vgui.Create( "DImage", self.EditMoveUpButton )
 	if ( IsValid( self.EditMoveUpButtonImage ) ) then
@@ -833,7 +888,7 @@ function PANEL:Init( )
 	self.EditRemoveButton:SetWide( 100 )
 	self.EditRemoveButton:DockMargin( 0, 0, 0, 0 )
 	self.EditRemoveButton:Dock( LEFT )
-	self.EditRemoveButton:SetText( "Remove" )
+	self.EditRemoveButton:SetText( T("?vgui.playlist_editor.remove.label", "Remove") )
 	self.EditRemoveButton:SetImage( "icon16/delete.png" )
 
 	self.EditRemoveButton.DoClick = function( panel )
@@ -894,6 +949,9 @@ http://185.33.21.112:80/x_128 [newline]
 ...
 ]]
 
+	helpTextGeneral = T("?vgui.playlist_editor.text_tab.help.general", helpTextGeneral)
+	helpTextSyntax = T("?vgui.playlist_editor.text_tab.help.syntax", helpTextSyntax)
+
 	helpTextGeneral = string.Trim(helpTextGeneral)
 	helpTextSyntax = string.Trim(helpTextSyntax)
 
@@ -922,7 +980,7 @@ http://185.33.21.112:80/x_128 [newline]
 	self.SaveIcon:SetImage( "icon16/table_save.png" )
 	self.SaveIcon:SetWide( 20 )
 	self.SaveIcon:Dock( LEFT )
-	self.SaveIcon:SetTooltip( "Save list" )
+	self.SaveIcon:SetTooltip( T("?vgui.playlist_editor.save.tooltip", "Save list") )
 	self.SaveIcon:SetStretchToFit( false )
 	self.SaveIcon:DockMargin( 0, 0, 0, 0 )
 
@@ -942,7 +1000,7 @@ http://185.33.21.112:80/x_128 [newline]
 	self.SaveToIcon:SetImage( "icon16/disk.png" )
 	self.SaveToIcon:SetWide( 20 )
 	self.SaveToIcon:Dock( LEFT )
-	self.SaveToIcon:SetTooltip( "Save to.." )
+	self.SaveToIcon:SetTooltip( T("?vgui.playlist_editor.save_to.tooltip", "Save to..") )
 	self.SaveToIcon:SetStretchToFit( false )
 	self.SaveToIcon:DockMargin( 0, 0, 0, 0 )
 
@@ -955,7 +1013,7 @@ http://185.33.21.112:80/x_128 [newline]
 	self.NewIcon:SetImage( "icon16/table_add.png" )
 	self.NewIcon:SetWide( 20 )
 	self.NewIcon:Dock( LEFT )
-	self.NewIcon:SetTooltip( "New list" )
+	self.NewIcon:SetTooltip( T("?vgui.playlist_editor.new_list.tooltip", "New list") )
 	self.NewIcon:SetStretchToFit( false )
 	self.NewIcon:DockMargin( 10, 0, 0, 0 )
 
@@ -968,7 +1026,7 @@ http://185.33.21.112:80/x_128 [newline]
 	self.NewFolder:SetImage( "icon16/folder_add.png" )
 	self.NewFolder:SetWide( 20 )
 	self.NewFolder:Dock( LEFT )
-	self.NewFolder:SetTooltip( "New folder" )
+	self.NewFolder:SetTooltip( T("?vgui.playlist_editor.new_folder.tooltip", "New folder") )
 	self.NewFolder:SetStretchToFit( false )
 	self.NewFolder:DockMargin( 0, 0, 0, 0 )
 
@@ -981,7 +1039,7 @@ http://185.33.21.112:80/x_128 [newline]
 	self.RefreshIcon:SetImage( "icon16/arrow_refresh.png" )
 	self.RefreshIcon:SetWide( 20 )
 	self.RefreshIcon:Dock( LEFT )
-	self.RefreshIcon:SetTooltip( "Refresh and reload" )
+	self.RefreshIcon:SetTooltip( T("?vgui.playlist_editor.reload.tooltip", "Refresh and reload") )
 	self.RefreshIcon:SetStretchToFit( false )
 	self.RefreshIcon:DockMargin( 10, 0, 0, 0 )
 
@@ -994,7 +1052,7 @@ http://185.33.21.112:80/x_128 [newline]
 	self.ApplySortIcon:SetImage( "icon16/lightning.png" )
 	self.ApplySortIcon:SetWide( 20 )
 	self.ApplySortIcon:Dock( LEFT )
-	self.ApplySortIcon:SetTooltip( "Apply current sort to playlist" )
+	self.ApplySortIcon:SetTooltip( T("?vgui.playlist_editor.apply_order.tooltip", "Apply current order to playlist") )
 	self.ApplySortIcon:SetStretchToFit( false )
 	self.ApplySortIcon:DockMargin( 10, 0, 0, 0 )
 

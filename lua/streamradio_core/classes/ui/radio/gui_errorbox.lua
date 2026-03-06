@@ -6,6 +6,10 @@ if not istable(CLASS) then
 end
 
 local LIBError = StreamRadioLib.Error
+local LIBLocale = StreamRadioLib.Locale
+
+local T = LIBLocale.Translate
+local F = LIBLocale.Format
 
 local BASE = CLASS:GetBaseClass()
 
@@ -30,7 +34,7 @@ function CLASS:Create()
 	self.HelpButton:SetSize(40, 40)
 	self.HelpButton:SetIcon(g_mat_help)
 	self.HelpButton:SetDrawAlpha(0.5)
-	self.HelpButton:SetTooltip("Help")
+	self.HelpButton:SetTooltip(T("?radiogui.gui_errorbox.help.tooltip", "Help"))
 	self.HelpButton:SetName("help")
 	self.HelpButton:SetNWName("hlp")
 	self.HelpButton:SetSkinIdentifyer("button")
@@ -45,7 +49,7 @@ function CLASS:Create()
 	self.CloseButton:SetSize(40, 40)
 	self.CloseButton:SetIcon(g_mat_cross)
 	self.CloseButton:SetDrawAlpha(0.5)
-	self.CloseButton:SetTooltip("Close")
+	self.CloseButton:SetTooltip(T("?radiogui.gui_errorbox.close.tooltip", "Close"))
 	self.CloseButton:SetName("close")
 	self.CloseButton:SetNWName("cls")
 	self.CloseButton:SetSkinIdentifyer("button")
@@ -58,7 +62,7 @@ function CLASS:Create()
 	self.RetryButton:SetSize(40, 40)
 	self.RetryButton:SetIcon(g_mat_arrow_refresh)
 	self.RetryButton:SetDrawAlpha(0.5)
-	self.RetryButton:SetTooltip("Retry")
+	self.RetryButton:SetTooltip(T("?radiogui.gui_errorbox.retry.tooltip", "Retry"))
 	self.RetryButton:SetName("retry")
 	self.RetryButton:SetNWName("rty")
 	self.RetryButton:SetSkinIdentifyer("button")
@@ -70,7 +74,7 @@ function CLASS:Create()
 	self.AdminWhitelistButton:SetSize(40, 40)
 	self.AdminWhitelistButton:SetIcon(g_mat_shield_add)
 	self.AdminWhitelistButton:SetDrawAlpha(0.5)
-	self.AdminWhitelistButton:SetTooltip("Add to quick whitelist (admin only)")
+	self.AdminWhitelistButton:SetTooltip(T("?radiogui.gui_errorbox.whitelist.tooltip", "Add to quick whitelist (admin only)"))
 	self.AdminWhitelistButton:SetName("whitelist")
 	self.AdminWhitelistButton:SetNWName("wl")
 	self.AdminWhitelistButton:SetSkinIdentifyer("button")
@@ -135,14 +139,22 @@ function CLASS:SetPlaylistError(url)
 
 	local code = errorInfo.id
 	local name = errorInfo.name
-	local hasHelpmenu = errorInfo.helpmenu
+	local hashelp = errorInfo.hashelp
 
-	local text
+	local text = ""
 
 	if url ~= "" then
-		text = string.format("Error: %i (%s)\n\nCould not open playlist:\n%s\n\nMake sure the file is valid and not Empty\n\nClick the '?' button for more details.", code, name, url)
+		text = F(
+			"?radiogui.gui_errorbox.error.playlist.with_url",
+			"Error: %i (%s)\n\nCould not open playlist:\n%s\n\nMake sure the file is valid and not Empty\n\nClick the '?' button for more details.",
+			code, name,	url
+		)
 	else
-		text = string.format("Error: %i (%s)\n\nCould not open playlist!\n\nMake sure the file is valid and not Empty\n\nClick the '?' button for more details.", code, name)
+		text = F(
+			"?radiogui.gui_errorbox.error.playlist.without_url",
+			"Error: %i (%s)\n\nCould not open playlist!\n\nMake sure the file is valid and not Empty\n\nClick the '?' button for more details.",
+			code, name
+		)
 	end
 
 	if IsValid(self.BodyPanelText) then
@@ -150,7 +162,7 @@ function CLASS:SetPlaylistError(url)
 	end
 
 	if IsValid(self.HelpButton) then
-		self.HelpButton:SetVisible(hasHelpmenu)
+		self.HelpButton:SetVisible(hashelp)
 	end
 
 	self:Open()
@@ -197,15 +209,23 @@ function CLASS:SetErrorCode(err, url)
 
 	local code = errorInfo.id
 	local name = errorInfo.name
-	local description = errorInfo.description or ""
-	local hasHelpmenu = errorInfo.helpmenu
+	local description = errorInfo.translation.description or ""
+	local hashelp = errorInfo.hashelp
 
-	local text
+	local text = ""
 
 	if url ~= "" then
-		text = string.format("Error: %i (%s)\n\nCould not play stream:\n%s\n\n%s\n\nClick the '?' button for more details.", code, name, url, description)
+		text = F(
+			"?radiogui.gui_errorbox.error.stream.with_url",
+			"Error: %i (%s)\n\nCould not play stream:\n%s\n\n%s\n\nClick the '?' button for more details.",
+			code, name, url, description
+		)
 	else
-		text = string.format("Error: %i (%s)\n\nCould not play stream!\n\n%s\n\nClick the '?' button for more details.", code, name, description)
+		text = F(
+			"?radiogui.gui_errorbox.error.stream.without_url",
+			"Error: %i (%s)\n\nCould not play stream!\n\n%s\n\nClick the '?' button for more details.",
+			code, name, description
+		)
 	end
 
 	if IsValid(self.BodyPanelText) then
@@ -213,7 +233,7 @@ function CLASS:SetErrorCode(err, url)
 	end
 
 	if IsValid(self.HelpButton) then
-		self.HelpButton:SetVisible(hasHelpmenu)
+		self.HelpButton:SetVisible(hashelp)
 	end
 
 	if err ~= LIBError.STREAM_OK then

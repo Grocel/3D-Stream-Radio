@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Hook = StreamRadioLib.Hook or {}
-
-local LIB = StreamRadioLib.Hook
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Hook")
 
 local g_namePrefixMain = "3DStreamRadio_mainHook_"
 local g_namePrefixCustom = "3DStreamRadio_"
@@ -28,6 +24,8 @@ local function CallHooks(hookData, ...)
 	-- Prevent error spams when the addon is not completely loaded
 	if not StreamRadioLib then return nil end
 	if not StreamRadioLib.Loaded then return nil end
+
+	if not hookData.hasHook then return nil end
 
 	local byOrder = hookData.byOrder
 	if not byOrder then
@@ -209,6 +207,19 @@ function LIB.GetBenchmark(eventName)
 	local benchmarkAvg = hookData.benchmarkAvg or 0
 
 	return benchmark, benchmarkAvg
+end
+
+function LIB.Unload()
+	for eventName, hookData in pairs(g_hooks) do
+		local hookIdentifier = getMainHookIdentifier(eventName)
+
+		hook.Remove(eventName, hookIdentifier)
+		hookData.hasHook = nil
+
+		table.Empty(hookData)
+	end
+
+	table.Empty(g_hooks)
 end
 
 return true

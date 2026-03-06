@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Bass = StreamRadioLib.Bass or {}
-
-local LIB = StreamRadioLib.Bass
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Bass")
 
 LIB.g_IsInstalledOnServer = false
 
@@ -24,7 +20,7 @@ local g_dllSupportedBranches = {
 }
 
 local g_bass_loaded = nil
-local g_bass_dll_required = nil
+local g_bass_dll_load_attempt = nil
 local g_bass_can_loaded = nil
 local g_bass_info_shown = nil
 
@@ -99,19 +95,20 @@ local function onLoadBASS3()
 	StreamRadioLib.Error.AddStreamErrorCode({
 		id = 102,
 		name = "STREAM_ERROR_BASS3_FILESYSTEM",
-		description = "Valve Filesystem is missing in " .. g_dllName,
+		description = "Valve Filesystem is missing in %s",
+		description_formatdata = {g_dllName}
 	})
 
 	printBass3Info()
 end
 
 local function loadBASS3()
-	if g_bass_dll_required ~= nil then
+	if g_bass_dll_load_attempt ~= nil then
 		-- only attempt to load gm_bass3 once
 		return
 	end
 
-	g_bass_dll_required = false
+	g_bass_dll_load_attempt = false
 	require(g_dll)
 
 	if not BASS3 then
@@ -141,12 +138,12 @@ local function loadBASS3()
 		return false
 	end
 
-	g_bass_dll_required = true
+	g_bass_dll_load_attempt = true
 	return true
 end
 
 function LIB.HasLoadedDLL()
-	if not g_bass_dll_required then
+	if not g_bass_dll_load_attempt then
 		return false
 	end
 
@@ -176,7 +173,7 @@ function LIB.HasLoadedDLL()
 end
 
 function LIB.IsInstalled()
-	if g_bass_dll_required == false then
+	if g_bass_dll_load_attempt == false then
 		-- already attempted to load, but failed
 		return false
 	end

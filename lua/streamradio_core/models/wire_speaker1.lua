@@ -1,6 +1,6 @@
 local RADIOMDL = RADIOMDL
-if not istable( RADIOMDL ) then
-	StreamRadioLib.Model.LoadModelSettings()
+if not istable(RADIOMDL) then
+	StreamRadioLib.ReloadAddon()
 	return
 end
 

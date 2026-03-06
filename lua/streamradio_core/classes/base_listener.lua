@@ -371,7 +371,7 @@ function CLASS:TimerOnce(identifier, delay, func)
 	end)
 end
 
-function CLASS:TimerUntil(identifier, delay, func)
+function CLASS:TimerUntil(identifier, delay, func, maxRepeats, maxTime)
 	local name = self:TimerGetName(identifier)
 
 	StreamRadioLib.Timer.Remove(name)
@@ -387,7 +387,7 @@ function CLASS:TimerUntil(identifier, delay, func)
 		end
 
 		return func(self)
-	end)
+	end, maxRepeats, maxTime)
 end
 
 function CLASS:TimerRemove(identifier)

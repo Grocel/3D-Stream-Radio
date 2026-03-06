@@ -1,6 +1,6 @@
 local RADIOFS = RADIOFS
-if not istable( RADIOFS ) then
-	StreamRadioLib.Filesystem.Load()
+if not istable(RADIOFS) then
+	StreamRadioLib.ReloadAddon()
 	return
 end
 

@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Net = StreamRadioLib.Net or {}
-
-local LIB = StreamRadioLib.Net
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Net")
 
 local LIBNetwork = StreamRadioLib.Network
 

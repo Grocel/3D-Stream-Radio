@@ -1,12 +1,10 @@
 local StreamRadioLib = StreamRadioLib
+local LIB = StreamRadioLib:NewLib("Tool")
 
-StreamRadioLib.Tool = StreamRadioLib.Tool or {}
-
-local LIB = StreamRadioLib.Tool
-table.Empty(LIB)
-
-local LIBNetwork = StreamRadioLib.Network
-local LIBNet = StreamRadioLib.Net
+local LIBHook = nil
+local LIBLocale = nil
+local LIBNetwork = nil
+local LIBNet = nil
 
 function LIB.GetTool(ply, toolmode)
 	if not IsValid(ply) then
@@ -33,11 +31,11 @@ function LIB.GetTool(ply, toolmode)
 	return toolobj
 end
 
-local g_locale_specialcases = {
-	["Undone_"] = true,
-	["SBoxLimit_"] = true,
-	["Cleanup_"] = true,
-	["Cleaned_"] = true,
+local g_locale_actionnames = {
+	["Undone_"] = "undone",
+	["SBoxLimit_"] = "limit",
+	["Cleanup_"] = "cleanup",
+	["Cleaned_"] = "cleaned",
 }
 
 function LIB.AddLocale(toolobj, name, translation)
@@ -51,13 +49,23 @@ function LIB.AddLocale(toolobj, name, translation)
 	assert(translation ~= "", "translation needed #3")
 
 	local toolmode = toolobj.Mode
+	local actionname = g_locale_actionnames[name]
 
-	if g_locale_specialcases[name] then
-		language.Add(name .. toolmode, translation)
+	if actionname then
+		LIBLocale.AddNativeTranslation(
+			name .. toolmode,
+			"tool." .. toolmode .. ".action." .. actionname,
+			translation
+		)
+
 		return
 	end
 
-	language.Add("Tool." .. toolmode .. "." .. name, translation)
+	LIBLocale.AddNativeTranslation(
+		"Tool." .. toolmode .. "." .. name,
+		"tool." .. toolmode .. "." .. name,
+		translation
+	)
 end
 
 function LIB.GetLocale(toolobj, name)
@@ -79,7 +87,7 @@ function LIB.GetLocaleTranslation(toolobj, name)
 	assert(name ~= "", "name needed #2")
 
 	local toolmode = toolobj.Mode
-	return language.GetPhrase("#Tool." .. toolmode .. "." .. name)
+	return LIBLocale.TranslateNative("#Tool." .. toolmode .. "." .. name)
 end
 
 function LIB.AdvWeld( ent, traceEntity, tracePhysicsBone, DOR, collision, AllowWorldWeld, freeze )
@@ -120,13 +128,25 @@ function LIB.AdvWeld( ent, traceEntity, tracePhysicsBone, DOR, collision, AllowW
 	end
 end
 
-LIB.g_reloadpanels = LIB.g_reloadpanels or {}
-local g_reloadpanels = LIB.g_reloadpanels
+local g_reloadtools = LIB.g_reloadtools or {}
+LIB.g_reloadtools = g_reloadtools
 
 function LIB.Setup(toolobj)
 	local _toolmode = toolobj.Mode
 
 	toolobj.ToolLibLoaded = true
+
+	do
+		local reloadtool = g_reloadtools[_toolmode] or {}
+		g_reloadtools[_toolmode] = reloadtool
+
+		reloadtool.toolobj = toolobj
+	end
+
+	function toolobj:ReloadToolSetup()
+		self.ToolLibLoaded = nil
+		LIB.Setup(self)
+	end
 
 	function toolobj:IsValidTrace(trace)
 		if not trace then return false end
@@ -226,13 +246,13 @@ function LIB.Setup(toolobj)
 
 		label:SetDark(true)
 		label:SetWrap(true)
-		label:SetText(StreamRadioLib.Tool.GetLocale(self, name))
+		label:SetText(LIB.GetLocale(self, name))
 
 		label:SetAutoStretchVertical(true)
 		label:SizeToContents()
 
 		if descbool then
-			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
+			label:SetTooltip(LIB.GetLocale(self, name .. ".desc"))
 		end
 
 		return label
@@ -241,7 +261,7 @@ function LIB.Setup(toolobj)
 	function toolobj:AddReadOnlyTextBox( panel, name )
 		local boxPanel = vgui.Create("DForm")
 
-		boxPanel:SetName(StreamRadioLib.Tool.GetLocale(self, name))
+		boxPanel:SetName(LIB.GetLocale(self, name))
 
 		panel:AddPanel(boxPanel)
 		boxPanel:SetCookieName(name)
@@ -249,7 +269,7 @@ function LIB.Setup(toolobj)
 		local label = vgui.Create( "Streamradio_VGUI_ReadOnlyTextEntry" )
 		boxPanel:AddItem( label )
 
-		local desc = StreamRadioLib.Tool.GetLocale(self, name .. ".desc")
+		local desc = LIB.GetLocale(self, name .. ".desc")
 		label:SetText(desc)
 
 		label:DockMargin(0, 0, 0, 0)
@@ -259,22 +279,22 @@ function LIB.Setup(toolobj)
 	end
 
 	function toolobj:AddWhitelistEnabledLabel( panel, name, descbool )
-		local label = StreamRadioLib.Menu.GetWhitelistEnabledLabel(StreamRadioLib.Tool.GetLocale(self, name))
+		local label = StreamRadioLib.Menu.GetWhitelistEnabledLabel(LIB.GetLocale(self, name))
 		panel:AddPanel( label )
 
 		if descbool then
-			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
+			label:SetTooltip(LIB.GetLocale(self, name .. ".desc"))
 		end
 
 		return label
 	end
 
 	function toolobj:AddImportantLabel( panel, name, descbool )
-		local label = StreamRadioLib.Menu.GetImportantLabel(StreamRadioLib.Tool.GetLocale(self, name))
+		local label = StreamRadioLib.Menu.GetImportantLabel(LIB.GetLocale(self, name))
 		panel:AddPanel( label )
 
 		if descbool then
-			label:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
+			label:SetTooltip(LIB.GetLocale(self, name .. ".desc"))
 		end
 
 		return label
@@ -283,12 +303,12 @@ function LIB.Setup(toolobj)
 	function toolobj:AddButton( panel, name, descbool )
 		local button = vgui.Create( "DButton" )
 		panel:AddPanel( button )
-		button:SetText(StreamRadioLib.Tool.GetLocale(self, name))
+		button:SetText(LIB.GetLocale(self, name))
 		button:SetDark( true )
 		button:SizeToContents( )
 
 		if descbool then
-			button:SetTooltip(StreamRadioLib.Tool.GetLocale(self, name .. ".desc"))
+			button:SetTooltip(LIB.GetLocale(self, name .. ".desc"))
 		end
 
 		return button
@@ -310,44 +330,44 @@ function LIB.Setup(toolobj)
 		local numslider = vgui.Create( "DNumSlider" )
 		panel:AddPanel( numslider )
 
-		numslider:SetText(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
+		numslider:SetText(LIB.GetLocale(self, command), self.Mode .. "_" .. command)
 		numslider:SetDark(true)
 		numslider:SetConVar(self.Mode .. "_" .. command)
 
 		if descbool then
-			numslider:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
+			numslider:SetTooltip(LIB.GetLocale(self, command .. ".desc"))
 		end
 
 		return numslider
 	end
 
 	function toolobj:AddCheckbox( panel, command, descbool )
-		local checkbox = panel:CheckBox(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
+		local checkbox = panel:CheckBox(LIB.GetLocale(self, command), self.Mode .. "_" .. command)
 
 		if descbool then
-			checkbox:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
+			checkbox:SetTooltip(LIB.GetLocale(self, command .. ".desc"))
 		end
 
 		return checkbox
 	end
 
 	function toolobj:AddComboBox( panel, command, descbool )
-		local combobox, label = panel:ComboBox(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
+		local combobox, label = panel:ComboBox(LIB.GetLocale(self, command), self.Mode .. "_" .. command)
 
 		StreamRadioLib.Menu.PatchComboBox(combobox, label)
 
 		if descbool then
-			combobox:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
+			combobox:SetTooltip(LIB.GetLocale(self, command .. ".desc"))
 		end
 
 		return combobox
 	end
 
 	function toolobj:AddTextEntry( panel, command, descbool )
-		local textentry = panel:TextEntry(StreamRadioLib.Tool.GetLocale(self, command), self.Mode .. "_" .. command)
+		local textentry = panel:TextEntry(LIB.GetLocale(self, command), self.Mode .. "_" .. command)
 
 		if descbool then
-			textentry:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
+			textentry:SetTooltip(LIB.GetLocale(self, command .. ".desc"))
 		end
 
 		return textentry
@@ -358,13 +378,13 @@ function LIB.Setup(toolobj)
 		bgpanel:SetPaintBackground( false )
 
 		if descbool then
-			bgpanel:SetTooltip(StreamRadioLib.Tool.GetLocale(self, command .. ".desc"))
+			bgpanel:SetTooltip(LIB.GetLocale(self, command .. ".desc"))
 		end
 
 		panel:AddPanel( bgpanel )
 
 		local label = vgui.Create( "DLabel", bgpanel )
-		label:SetText(StreamRadioLib.Tool.GetLocale(self, command))
+		label:SetText(LIB.GetLocale(self, command))
 		label:SetDark( true )
 		label:SizeToContents( )
 		label:Dock( TOP )
@@ -384,7 +404,15 @@ function LIB.Setup(toolobj)
 	end
 
 	function toolobj.BuildCPanel(CPanel)
-		g_reloadpanels[_toolmode] = CPanel
+		local reloadtool = g_reloadtools[_toolmode] or {}
+		g_reloadtools[_toolmode] = reloadtool
+
+		if IsValid(reloadtool.panel) and reloadtool.panel ~= CPanel then
+			reloadtool.panel:Remove()
+			reloadtool.panel = nil
+		end
+
+		reloadtool.panel = CPanel
 
 		local toplabel = vgui.Create("DLabel")
 		toplabel:SetText("#Tool." .. _toolmode .. ".desc")
@@ -407,7 +435,10 @@ function LIB.Setup(toolobj)
 			local this = LIB.GetTool(ply, _toolmode)
 			if not this then return end
 
-			local CPanel = g_reloadpanels[_toolmode]
+			local reloadtool = g_reloadtools[_toolmode] or {}
+			g_reloadtools[_toolmode] = reloadtool
+
+			local CPanel = reloadtool.panel
 			if not IsValid(CPanel) then return end
 
 			if not this.BuildToolPanel then return end
@@ -456,22 +487,62 @@ function LIB.Setup(toolobj)
 		return self.ToolPanel
 	end
 
-	function toolobj:ReloadPanel()
-		local reloadpanel = g_reloadpanels[_toolmode]
+	function toolobj:RebuildPanel()
+		local reloadtool = g_reloadtools[_toolmode]
 
-		if not IsValid(reloadpanel) then
-			reloadpanel = self:GetPanel()
+		local panel = nil
+
+		if reloadtool then
+			panel = reloadtool.panel
 		end
 
-		if not IsValid(reloadpanel) then
-			return
+		if not IsValid(panel) then
+			panel = self:GetPanel()
+
+			if not IsValid(panel) then
+				return
+			end
 		end
 
-		reloadpanel:Clear()
-		self.BuildCPanel(reloadpanel)
+		panel:Clear()
+		self.BuildCPanel(panel)
 	end
 
-	toolobj:ReloadPanel()
+	toolobj:RebuildPanel()
+end
+
+function LIB.RebuildToolPanels()
+	if SERVER then return end
+
+	for toolmode, reloadtool in pairs(g_reloadtools) do
+		local toolobj = reloadtool.toolobj
+
+		if not toolobj then
+			continue
+		end
+
+		if not toolobj.RebuildPanel then
+			continue
+		end
+
+		toolobj:RebuildPanel()
+	end
+end
+
+function LIB.ReloadToolSetups()
+	for toolmode, reloadtool in pairs(g_reloadtools) do
+		local toolobj = reloadtool.toolobj
+
+		if not toolobj then
+			continue
+		end
+
+		if not toolobj.ReloadToolSetup then
+			continue
+		end
+
+		toolobj:ReloadToolSetup()
+	end
 end
 
 local callback = nil
@@ -512,6 +583,22 @@ function LIB.CallClientToolHook(tool, toolhook)
 		net.WriteString(toolname)
 		net.WriteString(toolhook)
 	net.Send(owner)
+end
+
+function LIB.Load()
+	LIBHook = StreamRadioLib.Hook
+	LIBLocale = StreamRadioLib.Locale
+	LIBNetwork = StreamRadioLib.Network
+	LIBNet = StreamRadioLib.Net
+
+	LIB.ReloadToolSetups()
+
+	local function callRebuildToolPanels()
+		LIB.RebuildToolPanels()
+	end
+
+	LIBHook.AddCustom("OnLocaleChanged", "Tool.RebuildToolPanels", callRebuildToolPanels)
+	LIBHook.AddCustom("OnLocaleGenerate", "Tool.RebuildToolPanels", callRebuildToolPanels)
 end
 
 return true

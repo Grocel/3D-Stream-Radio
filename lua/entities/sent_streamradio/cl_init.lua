@@ -314,7 +314,7 @@ function ENT:GetWallVolumeFactor()
 		return 0
 	end
 
-	local coveredvol = StreamRadioLib.GetCoveredVolume()
+	local coveredvol = StreamRadioLib.GetOccludedVolume()
 
 	if coveredvol >= 1 then
 		self.wallvolcache = nil

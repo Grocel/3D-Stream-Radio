@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Http = StreamRadioLib.Http or {}
-
-local LIB = StreamRadioLib.Http
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Http")
 
 local g_emptyFunction = function() end
 local g_request_quene = {}

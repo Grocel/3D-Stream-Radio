@@ -1,13 +1,6 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Network = StreamRadioLib.Network or {}
-StreamRadioLib.Network_Debug = StreamRadioLib.Network_Debug or {}
-
-local LIB = StreamRadioLib.Network
-table.Empty(LIB)
-
-local LIBDebug = StreamRadioLib.Network_Debug
-table.Empty(LIBDebug)
+local LIB = StreamRadioLib:NewLib("Network")
+local LIBDebug = StreamRadioLib:NewLib("Network_Debug")
 
 local LIBUtil = StreamRadioLib.Util
 

@@ -1,9 +1,8 @@
 local StreamRadioLib = StreamRadioLib
+local LIB = StreamRadioLib:NewLib("Error")
 
-StreamRadioLib.Error = StreamRadioLib.Error or {}
-
-local LIB = StreamRadioLib.Error
-table.Empty(LIB)
+local LIBHook = nil
+local LIBLocale = nil
 
 local g_errorListById = {}
 local g_errorListByName = {}
@@ -101,25 +100,100 @@ local function cleanNewLines(str)
 	return str
 end
 
-local function processErrorInfo(info)
+local function processErrorInfo(info, ignoreCache)
 	local id = info.id
 	local name = info.name
-	local description = info.description or ""
-	local helptext = info.helptext or ""
 	local helpurl = info.helpurl or ""
 
-	description = replacePlaceholder(description, "{{ERROR_CODE}}", id)
-	description = replacePlaceholder(description, "{{ERROR_NAME}}", name)
+	local raw = info.raw or {}
+	info.raw = raw
 
-	helptext = replacePlaceholder(helptext, "{{ERROR_CODE}}", id)
-	helptext = replacePlaceholder(helptext, "{{ERROR_NAME}}", name)
-	helptext = replacePlaceholder(helptext, "{{ERROR_DESCRIPTION}}", description)
-	helptext = replacePlaceholder(helptext, "{{ERROR_HELPURL}}", helpurl)
+	local translation = info.translation or {}
+	info.translation = translation
 
-	helptext = cleanNewLines(helptext)
+	local rawDescription = raw.description or ""
+	local rawHelptext = raw.helptext or ""
 
-	info.description = description
-	info.helptext = helptext
+	local rawDescriptionFormatData = raw.description_formatdata
+	local rawHelptextFormatData = raw.helptext_formatdata
+
+	if ignoreCache then
+		info.description = nil
+		info.helptext = nil
+
+		translation.description = nil
+		translation.helptext = nil
+	end
+
+	if not info.description then
+		local description = rawDescription
+
+		description = replacePlaceholder(description, "{{ERROR_CODE}}", id)
+		description = replacePlaceholder(description, "{{ERROR_NAME}}", name)
+
+		info.description = description
+		translation.description = nil
+	end
+
+	if not info.helptext then
+		local helptext = rawHelptext
+
+		helptext = replacePlaceholder(helptext, "{{ERROR_CODE}}", id)
+		helptext = replacePlaceholder(helptext, "{{ERROR_NAME}}", name)
+		helptext = replacePlaceholder(helptext, "{{ERROR_DESCRIPTION}}", info.description)
+		helptext = replacePlaceholder(helptext, "{{ERROR_HELPURL}}", helpurl)
+
+		helptext = cleanNewLines(helptext)
+
+		info.helptext = helptext
+		translation.helptext = nil
+	end
+
+	if not LIBLocale then
+		LIBLocale = StreamRadioLib.Locale
+
+		if not LIBLocale then
+			return info
+		end
+	end
+
+	if not translation.description then
+		local description = rawDescription
+		local translateId = string.format("?error.%s_%i.description", string.lower(name), id)
+
+		if rawDescriptionFormatData then
+			description = LIBLocale.Format(translateId, description, unpack(rawDescriptionFormatData))
+		else
+			description = LIBLocale.Translate(translateId, description)
+		end
+
+		description = replacePlaceholder(description, "{{ERROR_CODE}}", id)
+		description = replacePlaceholder(description, "{{ERROR_NAME}}", name)
+
+		translation.description = description
+	end
+
+	if not translation.helptext then
+		local helptext = rawHelptext
+		local translateId = string.format("?error.%s_%i.helptext", string.lower(name), id)
+
+		if rawHelptextFormatData then
+			helptext = LIBLocale.Format(translateId, helptext, unpack(rawHelptextFormatData))
+		else
+			helptext = LIBLocale.Translate(translateId, helptext)
+		end
+
+		helptext = replacePlaceholder(helptext, "{{ERROR_CODE}}", id)
+		helptext = replacePlaceholder(helptext, "{{ERROR_NAME}}", name)
+		helptext = replacePlaceholder(helptext, "{{ERROR_DESCRIPTION}}", translation.description)
+		helptext = replacePlaceholder(helptext, "{{ERROR_HELPURL}}", helpurl)
+
+		helptext = cleanNewLines(helptext)
+
+		translation.helptext = helptext
+	end
+
+	return info
 end
 
 local function createUnknownErrorInfo(idOrName)
@@ -133,22 +207,35 @@ local function createUnknownErrorInfo(idOrName)
 		info.name = "STREAM_ERROR_UNKNOWN"
 	end
 
-	info.description = g_emptyDescription
-	info.helptext = g_emptyHelpText
-	info.helpmenu = true
+	local raw = info.raw or {}
+	info.raw = raw
 
-	processErrorInfo(info)
+	local translation = info.translation or {}
+	info.translation = translation
+
+	raw.description = g_emptyDescription
+	raw.helptext = g_emptyHelpText
+
+	info.description = nil
+	info.helptext = nil
+
+	translation.description = nil
+	translation.helptext = nil
+
+	info.hashelp = true
+
 	return info
 end
-
 
 function LIB.AddStreamErrorCode(data)
 	local id = data.id
 	local name = data.name
 	local description = data.description
+	local descriptionFormatData = data.description_formatdata
 	local helptext = data.helptext
+	local helptextFormatData = data.helptext_formatdata
 	local helpurl = data.helpurl
-	local helpmenu = data.helpmenu
+	local hashelp = data.hashelp
 	local userdata = data.userdata
 
 	if not id then
@@ -159,8 +246,8 @@ function LIB.AddStreamErrorCode(data)
 		error("name is missing or empty")
 	end
 
-	if helpmenu == nil then
-		helpmenu = true
+	if hashelp == nil then
+		hashelp = true
 	end
 
 	id = tonumber(id) or -1
@@ -170,7 +257,9 @@ function LIB.AddStreamErrorCode(data)
 	local info = {
 		id = id,
 		name = name,
-		helpmenu = helpmenu,
+		hashelp = hashelp,
+		raw = {},
+		translation = {},
 	}
 
 	if userdata then
@@ -182,18 +271,15 @@ function LIB.AddStreamErrorCode(data)
 	g_errorListById[id] = info
 	g_errorListByName[name] = info
 
-	LIB.AddStreamDescription(id, description)
-	LIB.AddStreamErrorHelp(id, helptext, helpurl)
+	LIB.AddStreamDescription(id, description, descriptionFormatData)
+	LIB.AddStreamErrorHelp(id, helptext, helpurl, helptextFormatData)
 end
 
-function LIB.AddStreamDescription(idOrName, description)
+function LIB.AddStreamDescription(idOrName, description, descriptionFormatData)
 	local info = LIB.GetStreamErrorInfo(idOrName)
 	if not info then
 		return
 	end
-
-	local id = info.id
-	local name = info.name
 
 	description = tostring(description or "")
 
@@ -201,21 +287,24 @@ function LIB.AddStreamDescription(idOrName, description)
 		description = g_emptyDescription
 	end
 
-	description = replacePlaceholder(description, "{{ERROR_CODE}}", id)
-	description = replacePlaceholder(description, "{{ERROR_NAME}}", name)
+	local translation = info.translation or {}
+	info.translation = translation
 
-	info.description = description
+	local raw = info.raw or {}
+	info.raw = raw
+
+	raw.description = description
+	raw.description_formatdata = descriptionFormatData
+
+	info.description = nil
+	translation.description = nil
 end
 
-function LIB.AddStreamErrorHelp(idOrName, helptext, helpurl)
+function LIB.AddStreamErrorHelp(idOrName, helptext, helpurl, helptextFormatData)
 	local info = LIB.GetStreamErrorInfo(idOrName)
 	if not info then
 		return
 	end
-
-	local id = info.id
-	local name = info.name
-	local description = info.description
 
 	helptext = tostring(helptext or "")
 	helpurl = tostring(helpurl or "")
@@ -224,15 +313,19 @@ function LIB.AddStreamErrorHelp(idOrName, helptext, helpurl)
 		helptext = g_emptyHelpText
 	end
 
-	helptext = replacePlaceholder(helptext, "{{ERROR_CODE}}", id)
-	helptext = replacePlaceholder(helptext, "{{ERROR_NAME}}", name)
-	helptext = replacePlaceholder(helptext, "{{ERROR_DESCRIPTION}}", description)
-	helptext = replacePlaceholder(helptext, "{{ERROR_HELPURL}}", helpurl)
+	local raw = info.raw or {}
+	info.raw = raw
 
-	helptext = cleanNewLines(helptext)
+	local translation = info.translation or {}
+	info.translation = translation
 
-	info.helptext = helptext
 	info.helpurl = helpurl
+
+	raw.helptext = helptext
+	raw.helptext_formatdata = helptextFormatData
+
+	info.helptext = nil
+	translation.helptext = nil
 end
 
 function LIB.GetStreamErrorInfo(idOrName)
@@ -253,34 +346,9 @@ function LIB.GetStreamErrorInfo(idOrName)
 		info = createUnknownErrorInfo(idOrName)
 	end
 
+	info = processErrorInfo(info)
+
 	return info
-end
-
-function LIB.GetStreamErrorId(idOrName)
-	local info = LIB.GetStreamErrorInfo(idOrName)
-	if not info then
-		return nil
-	end
-
-	return info.id
-end
-
-function LIB.GetStreamErrorName(idOrName)
-	local info = LIB.GetStreamErrorInfo(idOrName)
-	if not info then
-		return nil
-	end
-
-	return info.name
-end
-
-function LIB.GetStreamErrorDescription(idOrName)
-	local info = LIB.GetStreamErrorInfo(idOrName)
-	if not info then
-		return nil
-	end
-
-	return info.description
 end
 
 LIB.AddStreamErrorCode({
@@ -300,7 +368,7 @@ LIB.AddStreamErrorCode({
 	id = 0,
 	name = "STREAM_OK",
 	description = "OK",
-	helpmenu = false,
+	hashelp = false,
 	helptext = [[
 Everything should be fine. You should not see this.
 ]],
@@ -734,10 +802,9 @@ LIB.AddStreamErrorCode({
 	id = 1200,
 	name = "STREAM_SOUND_STOPPED", -- triggered by "stopsound" concommand
 	description = "The sound has been stopped",
-	helpmenu = false,
+	hashelp = false,
 	helptext = "",
 })
-
 
 if CLIENT then
 	local function ShowErrorInfo( ply, cmd, args )
@@ -786,11 +853,25 @@ Help URL: %s
 			helpurl
 		)
 
-		local message = StreamRadioLib.AddonPrefix .. errstr
+		local message = StreamRadioLib.AddonPrefix .. "\n" .. errstr
 		MsgN(message)
 	end
 
 	concommand.Add( "info_streamradio_errorcode", ShowErrorInfo )
+end
+
+function LIB.Load()
+	LIBHook = StreamRadioLib.Hook
+	LIBLocale = StreamRadioLib.Locale
+
+	local function callProcessErrorInfo()
+		for _, errorInfo in pairs(g_errorListById) do
+			processErrorInfo(errorInfo, true)
+		end
+	end
+
+	LIBHook.AddCustom("OnLocaleChanged", "Error.ProcessErrorInfo", callProcessErrorInfo)
+	LIBHook.AddCustom("OnLocaleGenerate", "Error.ProcessErrorInfo", callProcessErrorInfo)
 end
 
 return true

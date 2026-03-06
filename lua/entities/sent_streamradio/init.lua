@@ -367,7 +367,7 @@ function ENT:WiremodThink()
 	end
 
 	self:TriggerWireOutput("Error", err)
-	self:TriggerWireOutput("Error Text", LIBError.GetStreamErrorDescription(err))
+	self:TriggerWireOutput("Error Text", LIBError.GetStreamErrorInfo(err).description)
 end
 
 function ENT:InternalThink( )

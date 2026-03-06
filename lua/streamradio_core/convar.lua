@@ -6,7 +6,7 @@ local g_enableUrlWhitelist = true
 local g_enableUrlWhitelistOnCFCWhitelist = true
 local g_enableUrlWhitelistTrustAdminRadios = true
 
-local g_lastThink = 0
+local g_nextThink = 0
 
 local g_cvMaxServerSpectrum = CreateConVar(
 	"sv_streamradio_max_spectrums",
@@ -62,7 +62,7 @@ CreateConVar(
 CreateConVar(
 	"sv_streamradio_bass3_enable",
 	"1",
-	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL ),
+	bit.bor( FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_GAMEDLL, FCVAR_REPLICATED ),
 	"Use GM_BASS3 on the server if installed and when the ConVar is set to 1. Default: 1",
 	0,
 	1
@@ -156,7 +156,7 @@ end
 StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
 	local now = RealTime()
 
-	if g_lastThink < now then
+	if g_nextThink < now then
 		g_allowSpectrum = calcAllowSpectrum()
 		g_streamUrlLogMode = calcStreamUrlLogMode()
 
@@ -171,7 +171,7 @@ StreamRadioLib.Hook.Add("Think", "ConvarsUpdate", function()
 			updateUrlWhitelistEnabled()
 		end
 
-		g_lastThink = now + 1 + math.random()
+		g_nextThink = now + 1 + math.random()
 	end
 end)
 

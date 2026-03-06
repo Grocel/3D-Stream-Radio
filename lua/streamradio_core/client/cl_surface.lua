@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Surface = StreamRadioLib.Surface or {}
-
-local LIB = StreamRadioLib.Surface
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Surface")
 
 local g_font_template = {
 	font = "Arial",

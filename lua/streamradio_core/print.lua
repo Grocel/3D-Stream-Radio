@@ -1,18 +1,20 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Print = StreamRadioLib.Print or {}
-
-local LIB = StreamRadioLib.Print
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Print")
 
 local LIBString = StreamRadioLib.String
 
 function LIB.Format(format, ...)
 	format = tostring(format or "")
-	if format == "" then return "" end
 
-	local empty = table.IsEmpty({...})
-	if empty then
+	if format == "" then
+		return ""
+	end
+
+	if select("#", ...) <= 0 then
+		return format
+	end
+
+	if not string.find(format, "%%%w") then
 		return format
 	end
 
@@ -31,7 +33,7 @@ function LIB.Debug(format, ...)
 	msgstring = LIBString.NormalizeNewlines(msgstring, "\n")
 	msgstring = LIBString.IndentTextBlock(msgstring, 1, "  ")
 
-	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
+	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. "\n" .. msgstring) .. "\n"
 
 	local hasVr = StreamRadioLib.VR.IsActive()
 
@@ -45,6 +47,39 @@ function LIB.Debug(format, ...)
 	end
 end
 
+local g_buffer = nil
+local g_bufferLastPlayer = nil
+
+local function printMessageInternal(ply, ...)
+	if ply then
+		ply:PrintMessage(HUD_PRINTTALK, ...)
+	else
+		MsgN(...)
+	end
+end
+
+function LIB.MsgStartBuffer()
+	LIB.MsgDumpBuffer()
+	g_buffer = {}
+end
+
+function LIB.MsgDumpBuffer()
+	if not g_buffer then
+		return
+	end
+
+	local ply = IsValid(ply) and g_bufferLastPlayer or nil
+
+	printMessageInternal(ply, StreamRadioLib.AddonPrefix)
+
+	for i, line in ipairs(g_buffer) do
+		printMessageInternal(ply, line)
+	end
+
+	g_buffer = nil
+	g_bufferLastPlayer = nil
+end
+
 function LIB.Msg(ply, format, ...)
 	local msgstring = LIB.Format(format, ...)
 	msgstring = string.Trim(msgstring)
@@ -54,16 +89,21 @@ function LIB.Msg(ply, format, ...)
 	msgstring = LIBString.NormalizeNewlines(msgstring, "\n")
 	msgstring = LIBString.IndentTextBlock(msgstring, 1, "  ")
 
-	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
+	ply = IsValid(ply) and ply or nil
 
-	local hasPly = IsValid(ply)
+	if g_buffer then
+		g_bufferLastPlayer = ply
+	else
+		g_bufferLastPlayer = nil
+		printMessageInternal(ply, StreamRadioLib.AddonPrefix)
+	end
 
 	local lines = string.Explode("\n", msgstring, false)
 	for i, line in ipairs(lines) do
-		if hasPly then
-			ply:PrintMessage(HUD_PRINTTALK, line)
+		if g_buffer then
+			table.insert(g_buffer, line)
 		else
-			MsgN(line)
+			printMessageInternal(ply, line)
 		end
 	end
 end

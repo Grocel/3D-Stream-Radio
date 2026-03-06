@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Whitelist = StreamRadioLib.Whitelist or {}
-
-local LIB = StreamRadioLib.Whitelist
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Whitelist")
 
 local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url
@@ -647,6 +643,10 @@ local function BuildWhitelistInternal()
 	local recursiveLookup = nil
 
 	recursiveLookup = function(success, files)
+		if not success then
+			return
+		end
+
 		if g_taskId ~= currentTaskId then
 			-- don't run this async process when it is restarted
 			return
@@ -677,7 +677,7 @@ local function BuildWhitelistInternal()
 	LIBFilesystem.Find("", recursiveLookup)
 end
 
-function LIB.Load()
+function LIB.PostLoad()
 	BuildWhitelistInternal()
 end
 
@@ -688,6 +688,10 @@ end
 
 do
 	local function ReloadWhitelist(ply, cmd, args)
+		if not SERVER then
+			return
+		end
+
 		if not StreamRadioLib then return end
 		if not StreamRadioLib.Loaded then return end
 

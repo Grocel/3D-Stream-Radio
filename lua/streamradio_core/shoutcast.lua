@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Shoutcast = StreamRadioLib.Shoutcast or {}
-
-local LIB = StreamRadioLib.Shoutcast
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Shoutcast")
 
 local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url

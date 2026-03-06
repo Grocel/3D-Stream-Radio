@@ -9,6 +9,9 @@ local LIBNetwork = StreamRadioLib.Network
 local LIBError = StreamRadioLib.Error
 local LIBUtil = StreamRadioLib.Util
 local LIBError = StreamRadioLib.Error
+local LIBLocale = StreamRadioLib.Locale
+
+local T = LIBLocale.Translate
 
 local emptyTableSafe = LIBUtil.EmptyTableSafe
 
@@ -134,7 +137,7 @@ function CLASS:Create()
 	self.CloseButton:SetTextAlign(TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
 	self.CloseButton:SetSize(200, 60)
-	self.CloseButton:SetText("Back")
+	self.CloseButton:SetText(T("?radiogui.gui_player.back.label", "Back"))
 	self.CloseButton.DoClick = function()
 		if CLIENT then
 			return

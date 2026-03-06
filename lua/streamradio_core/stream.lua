@@ -1,7 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Stream = StreamRadioLib.Stream or {}
-local LIB = StreamRadioLib.Stream
+local LIB = StreamRadioLib:NewLib("Stream")
 
 local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url

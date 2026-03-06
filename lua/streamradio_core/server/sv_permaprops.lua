@@ -10,6 +10,8 @@ local function GenericLoad(ent, data)
 			ent:RestoreNetworkVars(DupeData.DT)
 		end
 
+		hook.Run("OnDuplicated", ent, DupeData)
+
 		if ent.OnDuplicated then
 			ent:OnDuplicated(DupeData)
 		end

@@ -5,6 +5,11 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBLocale = StreamRadioLib.Locale
+
+local T = LIBLocale.Translate
+local F = LIBLocale.Format
+
 local BASE = CLASS:GetBaseClass()
 
 local g_mat_play = StreamRadioLib.GetPNGIcon("control_play")
@@ -22,12 +27,6 @@ local g_mat_playback_modes = {
 	[StreamRadioLib.PLAYBACK_LOOP_MODE_NONE] = StreamRadioLib.GetPNGIcon("arrow_not_refresh", true),
 	[StreamRadioLib.PLAYBACK_LOOP_MODE_SONG] = StreamRadioLib.GetPNGIcon("arrow_refresh"),
 	[StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST] = StreamRadioLib.GetPNGIcon("table_refresh"),
-}
-
-local g_tooltip_playback_modes = {
-	[StreamRadioLib.PLAYBACK_LOOP_MODE_NONE] = "Change loop mode\n(currently: No loop)",
-	[StreamRadioLib.PLAYBACK_LOOP_MODE_SONG] = "Change loop mode\n(currently: Song loop)",
-	[StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST] = "Change loop mode\n(currently: Playlist loop)",
 }
 
 local g_next_playback_modes = {
@@ -129,7 +128,7 @@ function CLASS:Create()
 	self.BackButton:SetName("back")
 	self.BackButton:SetNWName("bk")
 	self.BackButton:SetSkinIdentifyer("button")
-	self.BackButton:SetTooltip("Previous track")
+	self.BackButton:SetTooltip(T("?radiogui.gui_player_controls.track_previous.tooltip", "Previous track"))
 	self.BackButton.DoClick = function()
 		self:CallHook("OnPlaylistBack")
 	end
@@ -139,7 +138,7 @@ function CLASS:Create()
 	self.ForwardButton:SetName("forward")
 	self.ForwardButton:SetNWName("fw")
 	self.ForwardButton:SetSkinIdentifyer("button")
-	self.ForwardButton:SetTooltip("Next track")
+	self.ForwardButton:SetTooltip(T("?radiogui.gui_player_controls.track_next.tooltip", "Next track"))
 	self.ForwardButton.DoClick = function()
 		self:CallHook("OnPlaylistForward")
 	end
@@ -149,7 +148,7 @@ function CLASS:Create()
 	self.StopButton:SetName("stop")
 	self.StopButton:SetNWName("sp")
 	self.StopButton:SetSkinIdentifyer("button")
-	self.StopButton:SetTooltip("Stop playback")
+	self.StopButton:SetTooltip(T("?radiogui.gui_player_controls.stop.tooltip", "Stop playback"))
 	self.StopButton.DoClick = function()
 		if not IsValid(self.StreamOBJ) then return end
 		self:CallHook("OnStop")
@@ -161,7 +160,7 @@ function CLASS:Create()
 	self.VolumeDownButton:SetName("volumedown")
 	self.VolumeDownButton:SetNWName("vdn")
 	self.VolumeDownButton:SetSkinIdentifyer("button")
-	self.VolumeDownButton:SetTooltip("Decrease volume")
+	self.VolumeDownButton:SetTooltip(T("?radiogui.gui_player_controls.volume_decrease.tooltip", "Decrease volume"))
 	self.VolumeDownButton.OnMousePressed = function()
 		if CLIENT then return end
 		if not IsValid(self.StreamOBJ) then return end
@@ -179,7 +178,7 @@ function CLASS:Create()
 	self.VolumeUpButton:SetName("volumeup")
 	self.VolumeUpButton:SetNWName("vup")
 	self.VolumeUpButton:SetSkinIdentifyer("button")
-	self.VolumeUpButton:SetTooltip("Increase volume")
+	self.VolumeUpButton:SetTooltip(T("?radiogui.gui_player_controls.volume_increase.tooltip", "Increase volume"))
 	self.VolumeUpButton.OnMousePressed = function()
 		if CLIENT then return end
 		if not IsValid(self.StreamOBJ) then return end
@@ -223,6 +222,12 @@ function CLASS:Create()
 	self.VolumeDownButton.OnMouseReleased = self.VolumeUpButton.OnMouseReleased
 	self.VolumeDownButton.Think = self.VolumeUpButton.Think
 
+	self.PlaybackModesMap = {
+		[StreamRadioLib.PLAYBACK_LOOP_MODE_NONE] = T("?radiogui.gui_player_controls.playback_loop.mode.none", "No loop"),
+		[StreamRadioLib.PLAYBACK_LOOP_MODE_SONG] = T("?radiogui.gui_player_controls.playback_loop.mode.song", "Song loop"),
+		[StreamRadioLib.PLAYBACK_LOOP_MODE_PLAYLIST] = T("?radiogui.gui_player_controls.playback_loop.mode.playlist", "Playlist loop"),
+	}
+
 	self.PlaybackLoopModeButton = self:AddPanelByClassname("button", true)
 	self.PlaybackLoopModeButton:SetName("playback-mode")
 	self.PlaybackLoopModeButton:SetNWName("pm")
@@ -244,6 +249,17 @@ function CLASS:Create()
 	table.insert(self.Buttons, self.VolumeUpButton)
 	table.insert(self.Buttons, self.PlaybackLoopModeButton)
 
+	local playbarMap = {
+		muted = T("?radiogui.gui_player_controls.playbar.muted", "Muted"),
+		killed = T("?radiogui.gui_player_controls.playbar.killed", "Sound stopped!"),
+		checkingurl = T("?radiogui.gui_player_controls.playbar.checkingurl", "Checking URL..."),
+		downloading = T("?radiogui.gui_player_controls.playbar.downloading", "Downloading..."),
+		loading = T("?radiogui.gui_player_controls.playbar.loading", "Loading..."),
+		buffering = T("?radiogui.gui_player_controls.playbar.buffering", "Buffering..."),
+		error = T("?radiogui.gui_player_controls.playbar.error", "Error!"),
+		stopped = T("?radiogui.gui_player_controls.playbar.stopped", "Stopped"),
+	}
+
 	self.PlayBar = self:AddPanelByClassname("progressbar", true)
 	self.PlayBar:SetName("progressbar")
 	self.PlayBar:SetNWName("pbar")
@@ -253,35 +269,35 @@ function CLASS:Create()
 		if not IsValid(stream) then return end
 
 		if stream:GetMuted() then
-			return "Muted"
+			return playbarMap.muted
 		end
 
 		if stream:IsKilled() then
-			return "Sound stopped!"
+			return playbarMap.killed
 		end
 
 		if stream:IsCheckingUrl() then
-			return "Checking URL..."
+			return playbarMap.checkingurl
 		end
 
 		if stream:IsDownloading() then
-			return "Downloading..."
+			return playbarMap.downloading
 		end
 
 		if stream:IsLoading() then
-			return "Loading..."
+			return playbarMap.loading
 		end
 
 		if stream:IsBuffering() then
-			return "Buffering..."
+			return playbarMap.buffering
 		end
 
 		if stream:HasError() then
-			return "Error!"
+			return playbarMap.error
 		end
 
 		if stream:IsStopMode() then
-			return "Stopped"
+			return playbarMap.stopped
 		end
 
 		local len = stream:GetLength()
@@ -290,7 +306,7 @@ function CLASS:Create()
 		return FormatTimeleft(time, len)
 	end
 
-	-- @TODO: Fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT
+	-- @TODO: Fix that seaking is CLIENT -> SERVER instead of SERVER -> CLIENT
 	self.PlayBar.OnFractionChangeEdit = function(this, v)
 		local stream = self.StreamOBJ
 		if not IsValid(stream) then return end
@@ -441,8 +457,11 @@ function CLASS:UpdateButtons()
 	local syncMode = self:GetSyncMode()
 
 	if IsValid(self.PlayPauseButton) then
+		local pauseTooltip = T("?radiogui.gui_player_controls.pause.tooltip", "Pause playback")
+		local playTooltip = T("?radiogui.gui_player_controls.play.tooltip", "Start playback")
+
 		self.PlayPauseButton:SetIcon(isPlayMode and g_mat_pause or g_mat_play)
-		self.PlayPauseButton:SetTooltip(isPlayMode and "Pause playback" or "Start playback")
+		self.PlayPauseButton:SetTooltip(isPlayMode and pauseTooltip or playTooltip)
 		self.PlayPauseButton:SetDisabled(syncMode)
 	end
 
@@ -508,8 +527,11 @@ function CLASS:SetStream(stream)
 		local isStopMode = stream:IsStopMode()
 
 		if IsValid(self.PlayPauseButton) then
+			local pauseTooltip = T("?radiogui.gui_player_controls.pause.tooltip", "Pause playback")
+			local playTooltip = T("?radiogui.gui_player_controls.play.tooltip", "Start playback")
+
 			self.PlayPauseButton:SetIcon(isPlayMode and g_mat_pause or g_mat_play)
-			self.PlayPauseButton:SetTooltip(isPlayMode and "Pause playback" or "Start playback")
+			self.PlayPauseButton:SetTooltip(isPlayMode and pauseTooltip or playTooltip)
 		end
 
 		if IsValid(self.StopButton) then
@@ -567,7 +589,7 @@ function CLASS:UpdateFromStream()
 
 	local isEndlessOrNoStream = StreamOBJ:IsEndless() or StreamOBJ:IsLoading() or StreamOBJ:HasError() or StreamOBJ:GetMuted() or StreamOBJ:IsKilled()
 
-	-- @TODO: Fix that seaking is CLIENT -> SERVER instead if SERVER -> CLIENT.
+	-- @TODO: Fix that seaking is CLIENT -> SERVER instead of SERVER -> CLIENT.
 	--        That's because self.PlayBar is disabled on the server as BASS streams don't exist on servers.
 	--        Thus these checks below are buggy and will be fixed some day. It is difficult to fix right now.
 
@@ -685,7 +707,14 @@ function CLASS:UpdatePlaybackLoopMode(loopMode)
 
 	if IsValid(self.PlaybackLoopModeButton) then
 		self.PlaybackLoopModeButton:SetIcon(g_mat_playback_modes[loopMode])
-		self.PlaybackLoopModeButton:SetTooltip(g_tooltip_playback_modes[loopMode])
+
+		local loopModeTooltip = F(
+			"?radiogui.gui_player_controls.playback_loop.tooltip",
+			"Change loop mode\n(Currently: %s)",
+			self.PlaybackModesMap[loopMode]
+		)
+
+		self.PlaybackLoopModeButton:SetTooltip(loopModeTooltip)
 
 		local antiSpamTime = 1
 

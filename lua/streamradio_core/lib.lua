@@ -22,7 +22,7 @@ function StreamRadioLib.IsGUIHidden(ply)
 	if not ply:IsPlayer() then return true end
 	if ply:IsBot() then return true end
 
-	return tobool(ply:GetInfo("cl_streamradio_hidegui"))
+	return tobool(ply:GetInfo("cl_streamradio_gui_hide"))
 end
 
 function StreamRadioLib.IsMuted(ply, owner)
@@ -34,12 +34,12 @@ function StreamRadioLib.IsMuted(ply, owner)
 	if not ply:IsPlayer() then return true end
 	if ply:IsBot() then return true end
 
-	local muted = tobool(ply:GetInfo("cl_streamradio_mute"))
+	local muted = tobool(ply:GetInfo("cl_streamradio_mute_global"))
 	if muted then
 		return true
 	end
 
-	local volume = tonumber(ply:GetInfo("cl_streamradio_volume") or 0) or 0
+	local volume = tonumber(ply:GetInfo("cl_streamradio_volume_global") or 0) or 0
 	if volume <= 0 then
 		return true
 	end
@@ -55,7 +55,7 @@ function StreamRadioLib.IsMuted(ply, owner)
 		return false
 	end
 
-	local muteunfocused = tobool(ply:GetInfo("cl_streamradio_muteunfocused"))
+	local muteunfocused = tobool(ply:GetInfo("cl_streamradio_mute_unfocused"))
 	if not muteunfocused then
 		return false
 	end
@@ -76,7 +76,7 @@ function StreamRadioLib.GetMuteDistance( ply )
 	if not ply:IsPlayer() then return 0 end
 	if ply:IsBot() then return 0 end
 
-	return math.Clamp(tonumber(ply:GetInfo("cl_streamradio_mutedistance")) or 500, 500, 5000)
+	return math.Clamp(tonumber(ply:GetInfo("cl_streamradio_mute_distance")) or 500, 500, 5000)
 end
 
 function StreamRadioLib.GetCameraEnt(ply)

@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Util = StreamRadioLib.Util or {}
-
-local LIB = StreamRadioLib.Util
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Util")
 
 local LIBString = StreamRadioLib.String
 
@@ -50,7 +46,7 @@ end
 
 local catchAndNohalt = function(err)
 	local msgstring = tostring(err or "")
-	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. msgstring) .. "\n"
+	msgstring = string.Trim(StreamRadioLib.AddonPrefix .. "\n" .. msgstring) .. "\n"
 
 	LIB.ErrorNoHaltWithStack(err)
 
@@ -80,6 +76,19 @@ local g_uid = 0
 function LIB.Uid()
 	g_uid = (g_uid + 1) % (2 ^ 30)
 	return g_uid
+end
+
+function LIB.UniqueString(prefix)
+	prefix = tostring(prefix or "")
+
+	if prefix == "" then
+		prefix = "UniqueString"
+	end
+
+	local timeHash = tonumber(util.CRC(tostring(SysTime())))
+	local uniqueString = string.format("%s-%d-%08X", prefix, LIB.Uid(), timeHash)
+
+	return uniqueString
 end
 
 local g_createCacheArrayMeta = {

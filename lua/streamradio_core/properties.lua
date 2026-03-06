@@ -1,15 +1,15 @@
-
 local StreamRadioLib = StreamRadioLib
+local LIB = StreamRadioLib:NewLib("Properties")
 
-StreamRadioLib.properties = StreamRadioLib.properties or {}
-
-local LIB = StreamRadioLib.properties
-table.Empty(LIB)
-
+local LIBLocale = StreamRadioLib.Locale
 local LIBNet = StreamRadioLib.Net
 local LIBError = StreamRadioLib.Error
 local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url
+local LIBHook = StreamRadioLib.Hook
+
+local T = LIBLocale.Translate
+local F = LIBLocale.Format
 
 local g_mainOptionAdded = false
 local g_subOptions = {}
@@ -27,6 +27,8 @@ local g_mode_mute = 0
 local g_mode_unmute = 1
 local g_mode_volume_up = 2
 local g_mode_volume_down = 3
+
+local g_seektime = 10
 
 if SERVER then
 	LIBNet.Receive("properties", function(len, client)
@@ -123,7 +125,7 @@ local function addMainOption()
 	end
 
 	LIB.Add("radio_options", {
-		MenuLabel = "Radio Options",
+		MenuLabel = T("?properties.radio_options.title", "Radio Options"),
 		Order = 10000,
 		MenuIcon = "3dstreamradio/icon16/format_radio.png",
 
@@ -175,21 +177,30 @@ local function addMainOption()
 					subOption:MenuOpen(optionPanel, ent, tr)
 				end
 
-				optionPanel._oldThink = optionPanel.Think
+				local thinkDelay = math.max(subOption.ThinkDelay or 0, 0)
+
+				optionPanel._streamRadioOldThink = optionPanel.Think or function() end
 				optionPanel.Think = function(panel, ...)
 					if not subOption.Think then
-						return
+						return panel:_streamRadioOldThink(...)
+					end
+
+					if thinkDelay > 0 then
+						local now = CurTime()
+
+						if panel._streamRadioNextThink and panel._streamRadioNextThink > now then
+							return panel:_streamRadioOldThink(...)
+						end
+
+						panel._streamRadioLastThink = now + thinkDelay
 					end
 
 					if not subOption:Filter(ent, ply) then
-						return
+						return panel:_streamRadioOldThink(...)
 					end
 
 					subOption:Think(panel, ent)
-
-					if panel._oldThink then
-						return panel:_oldThink(...)
-					end
+					return panel:_streamRadioOldThink(...)
 				end
 			end
 		end,
@@ -247,7 +258,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	upButton:SetImage(StreamRadioLib.GetPNGIconPath("sound_add"))
 	upButton:SetText("")
 	upButton:DockMargin(5, 0, 0, 0)
-	upButton:SetTooltip("Increase volume")
+	upButton:SetTooltip(T("?properties.radio_options.generic.volume.increase", "Increase volume"))
 
 	upButton.DoClick = function(panel)
 		if not self.VolumeUp then
@@ -269,7 +280,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	downButton:SetImage(StreamRadioLib.GetPNGIconPath("sound_delete"))
 	downButton:SetText("")
 	downButton:DockMargin(5, 0, 0, 0)
-	downButton:SetTooltip("Decrease volume")
+	downButton:SetTooltip(T("?properties.radio_options.generic.volume.decrease", "Decrease volume"))
 
 	downButton.DoClick = function(panel)
 		if not self.VolumeDown then
@@ -291,7 +302,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	muteButton:SetImage(StreamRadioLib.GetPNGIconPath("sound_mute"))
 	muteButton:SetText("")
 	muteButton:DockMargin(0, 0, 0, 0)
-	muteButton:SetTooltip("Mute")
+	muteButton:SetTooltip(T("?properties.radio_options.generic.volume.mute", "Mute"))
 
 	muteButton.DoClick = function(panel)
 		if not self.Mute then
@@ -313,7 +324,7 @@ local g_VolumeMenuOpen = function( self, optionPanel, ent )
 	unmuteButton:SetImage(StreamRadioLib.GetPNGIconPath("sound"))
 	unmuteButton:SetText("")
 	unmuteButton:DockMargin(0, 0, 0, 0)
-	unmuteButton:SetTooltip("Unmute")
+	unmuteButton:SetTooltip(T("?properties.radio_options.generic.volume.unmute", "Unmute"))
 
 	unmuteButton.DoClick = function(panel)
 		if not self.Unmute then
@@ -361,7 +372,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	playButton:SetImage(StreamRadioLib.GetPNGIconPath("control_play"))
 	playButton:SetText("")
 	playButton:DockMargin(0, 0, 0, 0)
-	playButton:SetTooltip("Play")
+	playButton:SetTooltip(T("?properties.radio_options.generic.playlist.play", "Play"))
 
 	playButton.DoClick = function(panel)
 		if not self.Play then
@@ -383,7 +394,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	pauseButton:SetImage(StreamRadioLib.GetPNGIconPath("control_pause"))
 	pauseButton:SetText("")
 	pauseButton:DockMargin(0, 0, 0, 0)
-	pauseButton:SetTooltip("Pause")
+	pauseButton:SetTooltip(T("?properties.radio_options.generic.playlist.play", "Pause"))
 
 	pauseButton.DoClick = function(panel)
 		if not self.Pause then
@@ -405,7 +416,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	stopButton:SetImage(StreamRadioLib.GetPNGIconPath("control_stop"))
 	stopButton:SetText("")
 	stopButton:DockMargin(5, 0, 0, 0)
-	stopButton:SetTooltip("Stop")
+	stopButton:SetTooltip(T("?properties.radio_options.generic.playlist.stop", "Stop"))
 
 	stopButton.DoClick = function(panel)
 		if not self.Stop then
@@ -427,7 +438,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	previousTrackButton:SetImage(StreamRadioLib.GetPNGIconPath("control_start"))
 	previousTrackButton:SetText("")
 	previousTrackButton:DockMargin(5, 0, 0, 0)
-	previousTrackButton:SetTooltip("Previous track")
+	previousTrackButton:SetTooltip(T("?properties.radio_options.generic.playlist.previous", "Previous track"))
 
 	previousTrackButton.DoClick = function(panel)
 		if not self.PreviousTrack then
@@ -449,7 +460,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	nextTrackButton:SetImage(StreamRadioLib.GetPNGIconPath("control_end"))
 	nextTrackButton:SetText("")
 	nextTrackButton:DockMargin(5, 0, 0, 0)
-	nextTrackButton:SetTooltip("Next track")
+	nextTrackButton:SetTooltip(T("?properties.radio_options.generic.playlist.next", "Next track"))
 
 	nextTrackButton.DoClick = function(panel)
 		if not self.NextTrack then
@@ -471,7 +482,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	rewindButton:SetImage(StreamRadioLib.GetPNGIconPath("control_rewind"))
 	rewindButton:SetText("")
 	rewindButton:DockMargin(5, 0, 0, 0)
-	rewindButton:SetTooltip("Rewind 10 seconds")
+	rewindButton:SetTooltip(F("?properties.radio_options.generic.playlist.rewind", "Rewind %i seconds", g_seektime))
 
 	rewindButton.DoClick = function(panel)
 		if not self.Rewind then
@@ -493,7 +504,7 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	fastForwardButton:SetImage(StreamRadioLib.GetPNGIconPath("control_fastforward"))
 	fastForwardButton:SetText("")
 	fastForwardButton:DockMargin(5, 0, 0, 0)
-	fastForwardButton:SetTooltip("Fast forward 10 seconds")
+	fastForwardButton:SetTooltip(F("?properties.radio_options.generic.playlist.forward", "Fast forward %i seconds", g_seektime))
 
 	fastForwardButton.DoClick = function(panel)
 		if not self.FastForward then
@@ -527,607 +538,645 @@ local g_PlaylistControlsMenuOpen = function( self, optionPanel, ent )
 	end
 end
 
-LIB.AddSubOption("clientside_title", {
-	MenuLabel = "Clientside Options",
-	Order = 100,
-	PrependSpacer = true,
+function LIB.BuildPropertyOptions()
+	LIB.AddSubOption("clientside_title", {
+		MenuLabel = T("?properties.radio_options.clientside.title", "Clientside Options"),
+		Order = 100,
+		PrependSpacer = true,
 
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
 
-		local allowed = LIB.CheckFilters(
-			{
-				"copy_url",
-				"error_info",
-				"clientside_mute",
-				"clientside_unmute",
-				"clientside_volume",
-			},
-			ent,
-			ply
-		)
+			local allowed = LIB.CheckFilters(
+				{
+					"copy_url",
+					"error_info",
+					"clientside_unmute",
+					"clientside_volume",
+				},
+				ent,
+				ply
+			)
 
-		return allowed
-	end,
+			return allowed
+		end,
 
-	Action = function( self, ent )
-	end,
+		Action = function( self, ent )
+		end,
 
-	OnCreate = g_titleOnCreate,
-})
+		OnCreate = g_titleOnCreate,
+	})
 
-LIB.AddSubOption("copy_url", {
-	MenuLabel = "Copy Stream URL to clipboard",
-	Order = 110,
-	MenuIcon = StreamRadioLib.GetPNGIconPath("page_copy"),
-	PrependSpacer = true,
+	LIB.AddSubOption("copy_url", {
+		MenuLabel = T("?properties.radio_options.clientside.copy_url.title", "Copy Stream URL to clipboard"),
+		Order = 110,
+		MenuIcon = StreamRadioLib.GetPNGIconPath("page_copy"),
+		PrependSpacer = true,
 
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
 
-		local url = ent:GetStreamURL()
-		if url == "" then return false end
+			local url = ent:GetStreamURL()
+			if url == "" then return false end
 
-		return true
-	end,
+			return true
+		end,
 
-	Action = function( self, ent )
-		local url = ent:GetStreamURL()
-		SetClipboardText(url)
-	end,
-})
+		Action = function( self, ent )
+			local url = ent:GetStreamURL()
+			SetClipboardText(url)
+		end,
+	})
 
-LIB.AddSubOption("error_info", {
-	MenuLabel = "Error",
-	Order = 111,
-	MenuIcon = StreamRadioLib.GetPNGIconPath("error"),
+	LIB.AddSubOption("error_info", {
+		MenuLabel = T("?properties.radio_options.clientside.error_info.title", "Error"),
+		Order = 111,
+		MenuIcon = StreamRadioLib.GetPNGIconPath("error"),
+		ThinkDelay = 0.25,
 
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
 
-		local stream = ent:GetStreamObject()
-		if not stream then return false end
-		if not stream:HasError() then return false end
+			local stream = ent:GetStreamObject()
+			if not stream then return false end
+			if not stream:HasError() then return false end
 
-		return true
-	end,
+			return true
+		end,
 
-	Action = function( self, ent )
-		local stream = ent:GetStreamObject()
+		Action = function( self, ent )
+			local stream = ent:GetStreamObject()
 
-		if stream:IsKilled() then
-			stream:ReviveStream()
-			return
-		end
+			if stream:IsKilled() then
+				stream:ReviveStream()
+				return
+			end
 
-		local err = stream:GetError()
-		local url = stream:GetURL()
+			local err = stream:GetError()
+			local url = stream:GetURL()
 
-		StreamRadioLib.ShowErrorHelp(err, url)
-	end,
+			StreamRadioLib.ShowErrorHelp(err, url)
+		end,
 
-	Think = function( self, optionPanel, ent )
-		local stream = ent:GetStreamObject()
+		Think = function( self, optionPanel, ent )
+			local stream = ent:GetStreamObject()
 
-		if stream:IsKilled() then
-			local label = string.format("%s: %s", self.MenuLabel, "Sound stopped!")
-			local tooltip = "The sound has been stopped. Click here to restart."
+			if stream:IsKilled() then
+				local label = T(
+					"?properties.radio_options.clientside.error_info.stream_killed.label",
+					"Sound stopped!"
+				)
+
+				label = string.format("%s: %s", self.MenuLabel, label)
+
+				local tooltip = T(
+					"?properties.radio_options.clientside.error_info.stream_killed.tooltip",
+					"The sound has been stopped. Click here to restart."
+				)
+
+				optionPanel:SetText(label)
+				optionPanel:SetTooltip(tooltip)
+				return
+			end
+
+			local errorId = stream:GetError()
+			local url = stream:GetURL()
+
+			local errorInfo = LIBError.GetStreamErrorInfo(errorId)
+			local errorName = errorInfo.name
+			local errorDescription = errorInfo.translation.description
+			local hashelp = errorInfo.hashelp
+
+			local label = string.format("%s: %i (%s)", self.MenuLabel, errorId, errorName)
+
+			local clickHint = ""
+
+			if hashelp then
+				clickHint = T(
+					"?properties.radio_options.clientside.error_info.tooltip.clickhint",
+					"Click for more details."
+				)
+			end
+
+			local tooltip = F(
+				"?properties.radio_options.clientside.error_info.tooltip",
+				"Error %i (%s): %s\n\nCan not play this URL:\n%s\n\n%s",
+				errorId, errorName, errorDescription, url, clickHint
+			)
+
+			tooltip = string.Trim(tooltip)
 
 			optionPanel:SetText(label)
 			optionPanel:SetTooltip(tooltip)
-			return
-		end
-
-		local err = stream:GetError()
-		local url = stream:GetURL()
-
-		local errorInfo = LIBError.GetStreamErrorInfo(err)
-		local errorName = errorInfo.name
-		local errorDescription = errorInfo.description
-		local hasHelpmenu = errorInfo.helpmenu
-
-		local label = string.format("%s: %i (%s)", self.MenuLabel, err, errorName)
-
-		local tooltip = ""
-
-		if hasHelpmenu then
-			tooltip = string.format("Error %i (%s): %s\n\nCan not play this URL:\n%s\n\nClick for more details.", err, errorName, errorDescription, url)
-		else
-			tooltip = string.format("Error %i (%s): %s\n\nCan not play this URL:\n%s", err, errorName, errorDescription, url)
-		end
-
-		optionPanel:SetText(label)
-		optionPanel:SetTooltip(tooltip)
-	end,
-})
-
-LIB.AddSubOption("reset_gui", {
-	MenuLabel = "Reset GUI",
-	Order = 112,
-	MenuIcon = StreamRadioLib.GetPNGIconPath("lightning"),
-
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
-		if ent.DisplayLess then return false end
-
-		return true
-	end,
-
-	Action = function( self, ent )
-		ent:RemoveGui()
-	end,
-})
-
-LIB.AddSubOption("clientside_volume", {
-	MenuLabel = "Volume",
-	Order = 120,
-
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
-		return true
-	end,
-
-	Action = function( self, ent )
-	end,
-
-	Mute = function( self, ent )
-		ent:SetCLMute(true)
-	end,
-
-	Unmute = function( self, ent )
-		ent:SetCLMute(false)
-	end,
-
-	VolumeUp = function( self, ent )
-		local volume = ent:GetCLVolume()
-
-		volume = math.Clamp(volume + 0.2, 0, 1)
-		volume = math.Round(volume, 2)
-
-		ent:SetCLVolume(volume)
-	end,
-
-	VolumeDown = function( self, ent )
-		local volume = ent:GetCLVolume()
-
-		volume = math.Clamp(volume - 0.2, 0, 1)
-		volume = math.Round(volume, 2)
-
-		ent:SetCLVolume(volume)
-	end,
-
-	Think = function( self, optionPanel, ent )
-		local volume = ent:GetCLVolume()
-		local isMuted = ent:GetCLMute()
-
-		local label = string.format("%s: %3i%%", self.MenuLabel, volume * 100)
-
-		optionPanel:SetText(label)
-
-		local upButton = optionPanel._upButton
-		local downButton = optionPanel._downButton
-		local muteButton = optionPanel._muteButton
-		local unmuteButton = optionPanel._unmuteButton
-
-		if IsValid(upButton) then
-			upButton:SetEnabled(volume < 1)
-		end
-
-		if IsValid(downButton) then
-			downButton:SetEnabled(volume > 0)
-		end
-
-		if IsValid(muteButton) then
-			muteButton:SetVisible(not isMuted)
-		end
-
-		if IsValid(unmuteButton) then
-			unmuteButton:SetVisible(isMuted)
-		end
-	end,
-
-	MenuOpen = g_VolumeMenuOpen,
-})
-
-LIB.AddSubOption("serverside_title", {
-	MenuLabel = "Entity Options",
-	Order = 200,
-	PrependSpacer = true,
-
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
-
-		local allowed = LIB.CheckFilters(
-			{
-				"serverside_volume",
-			},
-			ent,
-			ply
-		)
-
-		return allowed
-	end,
-
-	Action = function( self, ent )
-	end,
-
-	OnCreate = g_titleOnCreate,
-})
-
-LIB.AddSubOption("playlist_controls", {
-	MenuLabel = "",
-	Order = 210,
-
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
-		if not LIB.CanProperty("playlist_controls", ent, ply ) then return false end
-
-		local stream = ent:GetStreamObject()
-		if not IsValid(stream) then
-			return false
-		end
-
-		local hasPlaylist = ent:GetHasPlaylist()
-		local url = ent:GetStreamURL()
-
-		if not hasPlaylist and url == "" then
-			return false
-		end
-
-		return true
-	end,
-
-	Action = function( self, ent )
-	end,
-
-	DoControl = function( self, ent, mode )
-		self:MsgStart()
-			net.WriteEntity( ent )
-			net.WriteUInt( mode, 4 )
-		self:MsgEnd()
-	end,
-
-	Play = function( self, ent )
-		local stream = ent:GetStreamObject()
-
-		if stream:IsKilled() then
-			stream:ReviveStream()
-		end
-
-		self:DoControl(ent, g_mode_play)
-	end,
-
-	Pause = function( self, ent )
-		self:DoControl(ent, g_mode_pause)
-	end,
-
-	Stop = function( self, ent )
-		self:DoControl(ent, g_mode_stop)
-	end,
-
-	PreviousTrack = function( self, ent )
-		self:DoControl(ent, g_mode_previous_track)
-	end,
-
-	NextTrack = function( self, ent )
-		self:DoControl(ent, g_mode_next_track)
-	end,
-
-	Rewind = function( self, ent )
-		self:DoControl(ent, g_mode_rewind)
-	end,
-
-	FastForward = function( self, ent )
-		self:DoControl(ent, g_mode_fastforward)
-	end,
-
-	Think = function( self, optionPanel, ent )
-		local stream = ent:GetStreamObject()
-		if not IsValid(stream) then return end
-
-		local isPlayMode = stream:IsPlayMode()
-		local isStopMode = stream:IsStopMode()
-
-		if stream:IsKilled() then
-			isPlayMode = false
-			isStopMode = true
-		end
-
-		local isEndless = stream:IsEndless()
-
-		local hasPlaylist = ent:GetHasPlaylist()
-
-		local playButton = optionPanel._playButton
-		local pauseButton = optionPanel._pauseButton
-		local stopButton = optionPanel._stopButton
-		local previousTrackButton = optionPanel._previousTrackButton
-		local nextTrackButton = optionPanel._nextTrackButton
-		local rewindButton = optionPanel._rewindButton
-		local fastForwardButton = optionPanel._fastForwardButton
-
-		if IsValid(stopButton) then
-			stopButton:SetEnabled(not isStopMode)
-		end
-
-		if IsValid(playButton) then
-			playButton:SetVisible(not isPlayMode)
-		end
-
-		if IsValid(pauseButton) then
-			pauseButton:SetVisible(isPlayMode)
-		end
-
-		if IsValid(previousTrackButton) then
-			previousTrackButton:SetEnabled(hasPlaylist)
-		end
-
-		if IsValid(nextTrackButton) then
-			nextTrackButton:SetEnabled(hasPlaylist)
-		end
-
-		if IsValid(rewindButton) then
-			rewindButton:SetEnabled(not isEndless)
-		end
-
-		if IsValid(fastForwardButton) then
-			fastForwardButton:SetEnabled(not isEndless)
-		end
-	end,
-
-	MenuOpen = g_PlaylistControlsMenuOpen,
-
-	Receive = function( self, length, ply )
-		local ent = net.ReadEntity()
-		local mode = net.ReadUInt(4)
-
-		if not self:Filter( ent, ply ) then return end
-
-		local stream = ent:GetStreamObject()
-
-		if mode == g_mode_play then
-			local hasEnded = stream:HasEnded()
-			local isPauseMode = stream:IsPauseMode()
-
-			if isPauseMode and not hasEnded then
-				stream:Play(hasEnded)
-			else
-				ent:PlayFromCurrentPlaylistItem()
-			end
-		elseif mode == g_mode_pause then
-			stream:Pause()
-		elseif mode == g_mode_stop then
-			stream:Stop()
-		elseif mode == g_mode_previous_track then
-			ent:PlayPreviousPlaylistItem()
-		elseif mode == g_mode_next_track then
-			ent:PlayNextPlaylistItem()
-		elseif mode == g_mode_rewind then
-			local length = stream:GetMasterLength()
-
-			if length > 0 then
-				local time = stream:GetMasterTime()
-				local newtime = math.Clamp(time - 10, 0, length - 0.1)
-
-				stream:SetTime(newtime, true)
-			end
-		elseif mode == g_mode_fastforward then
-			local length = stream:GetMasterLength()
-
-			if length > 0 then
-				local time = stream:GetMasterTime()
-				local newtime = math.Clamp(time + 10, 0, length - 0.1)
-
-				stream:SetTime(newtime, true)
-			end
-		end
-	end
-})
-
-LIB.AddSubOption("serverside_volume", {
-	MenuLabel = "Volume",
-	Order = 220,
-
-	Filter = function( self, ent, ply )
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
-		if not LIB.CanProperty("serverside_volume", ent, ply ) then return false end
-
-		return true
-	end,
-
-	Action = function( self, ent )
-	end,
-
-	DoControl = function( self, ent, mode )
-		self:MsgStart()
-			net.WriteEntity( ent )
-			net.WriteUInt( mode, 4 )
-		self:MsgEnd()
-	end,
-
-	Mute = function( self, ent )
-		self:DoControl(ent, g_mode_mute)
-	end,
-
-	Unmute = function( self, ent )
-		self:DoControl(ent, g_mode_unmute)
-	end,
-
-	VolumeUp = function( self, ent )
-		self:DoControl(ent, g_mode_volume_up)
-	end,
-
-	VolumeDown = function( self, ent )
-		self:DoControl(ent, g_mode_volume_down)
-	end,
-
-	Think = function( self, optionPanel, ent )
-		local volume = ent:GetVolume()
-		local isMuted = ent:GetSVMute()
-
-		local label = string.format("%s: %3i%%", self.MenuLabel, volume * 100)
-
-		optionPanel:SetText(label)
-
-		local upButton = optionPanel._upButton
-		local downButton = optionPanel._downButton
-		local muteButton = optionPanel._muteButton
-		local unmuteButton = optionPanel._unmuteButton
-
-		if IsValid(upButton) then
-			upButton:SetEnabled(volume < 1)
-		end
-
-		if IsValid(downButton) then
-			downButton:SetEnabled(volume > 0)
-		end
-
-		if IsValid(muteButton) then
-			muteButton:SetVisible(not isMuted)
-		end
-
-		if IsValid(unmuteButton) then
-			unmuteButton:SetVisible(isMuted)
-		end
-	end,
-
-	MenuOpen = g_VolumeMenuOpen,
-
-	Receive = function( self, length, ply )
-		local ent = net.ReadEntity()
-		local mode = net.ReadUInt(4)
-
-		if not self:Filter( ent, ply ) then return end
-
-		if mode == g_mode_mute then
-			ent:SetSVMute(true)
-		elseif mode == g_mode_unmute then
-			ent:SetSVMute(false)
-		elseif mode == g_mode_volume_up then
-			local volume = ent:GetVolume()
+		end,
+	})
+
+	LIB.AddSubOption("reset_gui", {
+		MenuLabel = T("?properties.radio_options.clientside.reset_gui.title", "Reset GUI"),
+		Order = 112,
+		MenuIcon = StreamRadioLib.GetPNGIconPath("lightning"),
+
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+			if ent.DisplayLess then return false end
+
+			return true
+		end,
+
+		Action = function( self, ent )
+			ent:RemoveGui()
+		end,
+	})
+
+	LIB.AddSubOption("clientside_volume", {
+		MenuLabel = T("?properties.radio_options.clientside.volume.title", "Volume"),
+		Order = 120,
+
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+			return true
+		end,
+
+		Action = function( self, ent )
+		end,
+
+		Mute = function( self, ent )
+			ent:SetCLMute(true)
+		end,
+
+		Unmute = function( self, ent )
+			ent:SetCLMute(false)
+		end,
+
+		VolumeUp = function( self, ent )
+			local volume = ent:GetCLVolume()
 
 			volume = math.Clamp(volume + 0.2, 0, 1)
 			volume = math.Round(volume, 2)
 
-			ent:SetVolume(volume)
-		elseif mode == g_mode_volume_down then
-			local volume = ent:GetVolume()
+			ent:SetCLVolume(volume)
+		end,
+
+		VolumeDown = function( self, ent )
+			local volume = ent:GetCLVolume()
 
 			volume = math.Clamp(volume - 0.2, 0, 1)
 			volume = math.Round(volume, 2)
 
-			ent:SetVolume(volume)
+			ent:SetCLVolume(volume)
+		end,
+
+		Think = function( self, optionPanel, ent )
+			local volume = ent:GetCLVolume()
+			local isMuted = ent:GetCLMute()
+
+			local label = string.format("%s: %3i%%", self.MenuLabel, volume * 100)
+
+			optionPanel:SetText(label)
+
+			local upButton = optionPanel._upButton
+			local downButton = optionPanel._downButton
+			local muteButton = optionPanel._muteButton
+			local unmuteButton = optionPanel._unmuteButton
+
+			if IsValid(upButton) then
+				upButton:SetEnabled(volume < 1)
+			end
+
+			if IsValid(downButton) then
+				downButton:SetEnabled(volume > 0)
+			end
+
+			if IsValid(muteButton) then
+				muteButton:SetVisible(not isMuted)
+			end
+
+			if IsValid(unmuteButton) then
+				unmuteButton:SetVisible(isMuted)
+			end
+		end,
+
+		MenuOpen = g_VolumeMenuOpen,
+	})
+
+	LIB.AddSubOption("serverside_title", {
+		MenuLabel = T("?properties.radio_options.serverside.title", "Entity Options"),
+		Order = 200,
+		PrependSpacer = true,
+
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+
+			local allowed = LIB.CheckFilters(
+				{
+					"serverside_volume",
+				},
+				ent,
+				ply
+			)
+
+			return allowed
+		end,
+
+		Action = function( self, ent )
+		end,
+
+		OnCreate = g_titleOnCreate,
+	})
+
+	LIB.AddSubOption("playlist_controls", {
+		MenuLabel = "",
+		Order = 210,
+
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+			if not LIB.CanProperty("playlist_controls", ent, ply ) then return false end
+
+			local stream = ent:GetStreamObject()
+			if not IsValid(stream) then
+				return false
+			end
+
+			local hasPlaylist = ent:GetHasPlaylist()
+			local url = ent:GetStreamURL()
+
+			if not hasPlaylist and url == "" then
+				return false
+			end
+
+			return true
+		end,
+
+		Action = function( self, ent )
+		end,
+
+		DoControl = function( self, ent, mode )
+			self:MsgStart()
+				net.WriteEntity( ent )
+				net.WriteUInt( mode, 4 )
+			self:MsgEnd()
+		end,
+
+		Play = function( self, ent )
+			local stream = ent:GetStreamObject()
+
+			if stream:IsKilled() then
+				stream:ReviveStream()
+			end
+
+			self:DoControl(ent, g_mode_play)
+		end,
+
+		Pause = function( self, ent )
+			self:DoControl(ent, g_mode_pause)
+		end,
+
+		Stop = function( self, ent )
+			self:DoControl(ent, g_mode_stop)
+		end,
+
+		PreviousTrack = function( self, ent )
+			self:DoControl(ent, g_mode_previous_track)
+		end,
+
+		NextTrack = function( self, ent )
+			self:DoControl(ent, g_mode_next_track)
+		end,
+
+		Rewind = function( self, ent )
+			self:DoControl(ent, g_mode_rewind)
+		end,
+
+		FastForward = function( self, ent )
+			self:DoControl(ent, g_mode_fastforward)
+		end,
+
+		Think = function( self, optionPanel, ent )
+			local stream = ent:GetStreamObject()
+			if not IsValid(stream) then return end
+
+			local isPlayMode = stream:IsPlayMode()
+			local isStopMode = stream:IsStopMode()
+
+			if stream:IsKilled() then
+				isPlayMode = false
+				isStopMode = true
+			end
+
+			local isEndless = stream:IsEndless()
+
+			local hasPlaylist = ent:GetHasPlaylist()
+
+			local playButton = optionPanel._playButton
+			local pauseButton = optionPanel._pauseButton
+			local stopButton = optionPanel._stopButton
+			local previousTrackButton = optionPanel._previousTrackButton
+			local nextTrackButton = optionPanel._nextTrackButton
+			local rewindButton = optionPanel._rewindButton
+			local fastForwardButton = optionPanel._fastForwardButton
+
+			if IsValid(stopButton) then
+				stopButton:SetEnabled(not isStopMode)
+			end
+
+			if IsValid(playButton) then
+				playButton:SetVisible(not isPlayMode)
+			end
+
+			if IsValid(pauseButton) then
+				pauseButton:SetVisible(isPlayMode)
+			end
+
+			if IsValid(previousTrackButton) then
+				previousTrackButton:SetEnabled(hasPlaylist)
+			end
+
+			if IsValid(nextTrackButton) then
+				nextTrackButton:SetEnabled(hasPlaylist)
+			end
+
+			if IsValid(rewindButton) then
+				rewindButton:SetEnabled(not isEndless)
+			end
+
+			if IsValid(fastForwardButton) then
+				fastForwardButton:SetEnabled(not isEndless)
+			end
+		end,
+
+		MenuOpen = g_PlaylistControlsMenuOpen,
+
+		Receive = function( self, length, ply )
+			local ent = net.ReadEntity()
+			local mode = net.ReadUInt(4)
+
+			if not self:Filter( ent, ply ) then return end
+
+			local stream = ent:GetStreamObject()
+
+			if mode == g_mode_play then
+				local hasEnded = stream:HasEnded()
+				local isPauseMode = stream:IsPauseMode()
+
+				if isPauseMode and not hasEnded then
+					stream:Play(hasEnded)
+				else
+					ent:PlayFromCurrentPlaylistItem()
+				end
+			elseif mode == g_mode_pause then
+				stream:Pause()
+			elseif mode == g_mode_stop then
+				stream:Stop()
+			elseif mode == g_mode_previous_track then
+				ent:PlayPreviousPlaylistItem()
+			elseif mode == g_mode_next_track then
+				ent:PlayNextPlaylistItem()
+			elseif mode == g_mode_rewind then
+				local length = stream:GetMasterLength()
+
+				if length > 0 then
+					local time = stream:GetMasterTime()
+					local newtime = math.Clamp(time - g_seektime, 0, length - 0.1)
+
+					stream:SetTime(newtime, true)
+				end
+			elseif mode == g_mode_fastforward then
+				local length = stream:GetMasterLength()
+
+				if length > 0 then
+					local time = stream:GetMasterTime()
+					local newtime = math.Clamp(time + g_seektime, 0, length - 0.1)
+
+					stream:SetTime(newtime, true)
+				end
+			end
 		end
-	end
-})
+	})
 
-LIB.AddSubOption("admin_title", {
-	MenuLabel = "Admin Options",
-	Order = 300,
-	PrependSpacer = true,
+	LIB.AddSubOption("serverside_volume", {
+		MenuLabel = T("?properties.radio_options.serverside.volume.title", "Volume"),
+		Order = 220,
 
-	Filter = function( self, ent, ply )
-		if not LIBUtil.IsAdmin( ply ) then return false end
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
+		Filter = function( self, ent, ply )
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+			if not LIB.CanProperty("serverside_volume", ent, ply ) then return false end
 
-		local url = ent:GetStreamURL()
-		if url ~= "" then
+			return true
+		end,
+
+		Action = function( self, ent )
+		end,
+
+		DoControl = function( self, ent, mode )
+			self:MsgStart()
+				net.WriteEntity( ent )
+				net.WriteUInt( mode, 4 )
+			self:MsgEnd()
+		end,
+
+		Mute = function( self, ent )
+			self:DoControl(ent, g_mode_mute)
+		end,
+
+		Unmute = function( self, ent )
+			self:DoControl(ent, g_mode_unmute)
+		end,
+
+		VolumeUp = function( self, ent )
+			self:DoControl(ent, g_mode_volume_up)
+		end,
+
+		VolumeDown = function( self, ent )
+			self:DoControl(ent, g_mode_volume_down)
+		end,
+
+		Think = function( self, optionPanel, ent )
+			local volume = ent:GetVolume()
+			local isMuted = ent:GetSVMute()
+
+			local label = string.format("%s: %3i%%", self.MenuLabel, volume * 100)
+
+			optionPanel:SetText(label)
+
+			local upButton = optionPanel._upButton
+			local downButton = optionPanel._downButton
+			local muteButton = optionPanel._muteButton
+			local unmuteButton = optionPanel._unmuteButton
+
+			if IsValid(upButton) then
+				upButton:SetEnabled(volume < 1)
+			end
+
+			if IsValid(downButton) then
+				downButton:SetEnabled(volume > 0)
+			end
+
+			if IsValid(muteButton) then
+				muteButton:SetVisible(not isMuted)
+			end
+
+			if IsValid(unmuteButton) then
+				unmuteButton:SetVisible(isMuted)
+			end
+		end,
+
+		MenuOpen = g_VolumeMenuOpen,
+
+		Receive = function( self, length, ply )
+			local ent = net.ReadEntity()
+			local mode = net.ReadUInt(4)
+
+			if not self:Filter( ent, ply ) then return end
+
+			if mode == g_mode_mute then
+				ent:SetSVMute(true)
+			elseif mode == g_mode_unmute then
+				ent:SetSVMute(false)
+			elseif mode == g_mode_volume_up then
+				local volume = ent:GetVolume()
+
+				volume = math.Clamp(volume + 0.2, 0, 1)
+				volume = math.Round(volume, 2)
+
+				ent:SetVolume(volume)
+			elseif mode == g_mode_volume_down then
+				local volume = ent:GetVolume()
+
+				volume = math.Clamp(volume - 0.2, 0, 1)
+				volume = math.Round(volume, 2)
+
+				ent:SetVolume(volume)
+			end
+		end
+	})
+
+	LIB.AddSubOption("admin_title", {
+		MenuLabel = T("?properties.radio_options.admin.title", "Admin Options"),
+		Order = 300,
+		PrependSpacer = true,
+
+		Filter = function( self, ent, ply )
+			if not LIBUtil.IsAdmin( ply ) then return false end
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+
+			local url = ent:GetStreamURL()
+			if url ~= "" then
+				local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
+
+				-- Trigger updating the cache in the background if needed
+				StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
+			end
+
+			local allowed = LIB.CheckFilters(
+				{
+					"admin_whitelist_add",
+					"admin_whitelist_remove",
+				},
+				ent,
+				ply
+			)
+
+			return allowed
+		end,
+
+		Action = function( self, ent )
+		end,
+
+		OnCreate = g_titleOnCreate,
+	})
+
+	LIB.AddSubOption("admin_whitelist_add", {
+		MenuLabel = T("?properties.radio_options.admin.whitelist_add.title", "Add to quick whitelist"),
+		Order = 310,
+		MenuIcon = StreamRadioLib.GetPNGIconPath("shield_add"),
+		PrependSpacer = true,
+
+		Filter = function( self, ent, ply )
+			if not LIBUtil.IsAdmin( ply ) then return false end
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+			if not StreamRadioLib.IsUrlWhitelistEnabled() then return false end
+
+			local url = ent:GetStreamURL()
+			if url == "" then return false end
+
+			if LIBUrl.IsOfflineURL(url) then
+				return false
+			end
+
 			local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
+			local result, blockedByHook = StreamRadioLib.Whitelist.IsAllowedSync(url, context)
+
+			if blockedByHook then return false end
+			if result then return false end
+
+			return true
+		end,
+
+		Action = function( self, ent )
+			local url = ent:GetStreamURL()
+			StreamRadioLib.Whitelist.QuickWhitelistAdd(url)
 
 			-- Trigger updating the cache in the background if needed
+			local context = StreamRadioLib.Whitelist.BuildContext(ent)
 			StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
-		end
+		end,
+	})
 
-		local allowed = LIB.CheckFilters(
-			{
-				"admin_whitelist_add",
-				"admin_whitelist_remove",
-			},
-			ent,
-			ply
-		)
+	LIB.AddSubOption("admin_whitelist_remove", {
+		MenuLabel = T("?properties.radio_options.admin.whitelist_remove.title", "Remove from quick whitelist"),
+		Order = 320,
+		MenuIcon = StreamRadioLib.GetPNGIconPath("shield_delete"),
+		PrependSpacer = true,
 
-		return allowed
-	end,
+		Filter = function( self, ent, ply )
+			if not LIBUtil.IsAdmin( ply ) then return false end
+			if not LIB.CanBeTargeted( ent, ply ) then return false end
+			if not StreamRadioLib.IsUrlWhitelistEnabled() then return false end
 
-	Action = function( self, ent )
-	end,
+			local url = ent:GetStreamURL()
+			if url == "" then return false end
 
-	OnCreate = g_titleOnCreate,
-})
+			if LIBUrl.IsOfflineURL(url) then
+				return false
+			end
 
-LIB.AddSubOption("admin_whitelist_add", {
-	MenuLabel = "Add to quick whitelist",
-	Order = 310,
-	MenuIcon = StreamRadioLib.GetPNGIconPath("shield_add"),
-	PrependSpacer = true,
+			local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
+			local result, blockedByHook = StreamRadioLib.Whitelist.IsAllowedSync(url, context)
 
-	Filter = function( self, ent, ply )
-		if not LIBUtil.IsAdmin( ply ) then return false end
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
-		if not StreamRadioLib.IsUrlWhitelistEnabled() then return false end
+			if blockedByHook then return false end
+			if not result then return false end
 
-		local url = ent:GetStreamURL()
-		if url == "" then return false end
+			return true
+		end,
 
-		if LIBUrl.IsOfflineURL(url) then
-			return false
-		end
+		Action = function( self, ent )
+			local url = ent:GetStreamURL()
+			StreamRadioLib.Whitelist.QuickWhitelistRemove(url)
 
-		local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
-		local result, blockedByHook = StreamRadioLib.Whitelist.IsAllowedSync(url, context)
+			-- Trigger updating the cache in the background if needed
+			local context = StreamRadioLib.Whitelist.BuildContext(ent)
+			StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
+		end,
+	})
+end
 
-		if blockedByHook then return false end
-		if result then return false end
+function LIB.Load()
+	LIBLocale = StreamRadioLib.Locale
+	LIBNet = StreamRadioLib.Net
+	LIBError = StreamRadioLib.Error
+	LIBUtil = StreamRadioLib.Util
+	LIBUrl = StreamRadioLib.Url
+	LIBHook = StreamRadioLib.Hook
 
-		return true
-	end,
+	local function callBuildPropertyOptions()
+		LIB.BuildPropertyOptions()
+	end
 
-	Action = function( self, ent )
-		local url = ent:GetStreamURL()
-		StreamRadioLib.Whitelist.QuickWhitelistAdd(url)
+	LIBHook.AddCustom("OnLocaleChanged", "Properties.callBuildPropertyOptions", callBuildPropertyOptions)
+	LIBHook.AddCustom("OnLocaleGenerate", "Properties.callBuildPropertyOptions", callBuildPropertyOptions)
 
-		-- Trigger updating the cache in the background if needed
-		local context = StreamRadioLib.Whitelist.BuildContext(ent)
-		StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
-	end,
-})
-
-LIB.AddSubOption("admin_whitelist_remove", {
-	MenuLabel = "Remove from quick whitelist",
-	Order = 320,
-	MenuIcon = StreamRadioLib.GetPNGIconPath("shield_delete"),
-	PrependSpacer = true,
-
-	Filter = function( self, ent, ply )
-		if not LIBUtil.IsAdmin( ply ) then return false end
-		if not LIB.CanBeTargeted( ent, ply ) then return false end
-		if not StreamRadioLib.IsUrlWhitelistEnabled() then return false end
-
-		local url = ent:GetStreamURL()
-		if url == "" then return false end
-
-		if LIBUrl.IsOfflineURL(url) then
-			return false
-		end
-
-		local context = StreamRadioLib.Whitelist.BuildContext(ent, ply)
-		local result, blockedByHook = StreamRadioLib.Whitelist.IsAllowedSync(url, context)
-
-		if blockedByHook then return false end
-		if not result then return false end
-
-		return true
-	end,
-
-	Action = function( self, ent )
-		local url = ent:GetStreamURL()
-		StreamRadioLib.Whitelist.QuickWhitelistRemove(url)
-
-		-- Trigger updating the cache in the background if needed
-		local context = StreamRadioLib.Whitelist.BuildContext(ent)
-		StreamRadioLib.Whitelist.IsAllowedAsync(url, context)
-	end,
-})
+	LIB.BuildPropertyOptions()
+end
 
 return true
 

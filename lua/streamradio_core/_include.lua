@@ -23,15 +23,37 @@ do
     end
 end
 
+local function callLoaderFunc(name)
+    for _, sublib in pairs(LIB) do
+        if not istable(sublib) then
+            continue
+        end
+
+        if not sublib.__isLib then
+            continue
+        end
+
+        local func = sublib[name]
+        if not isfunction(func) then
+            continue
+        end
+
+        func()
+
+        sublib[name] = nil
+    end
+end
+
 loadSH("streamradio_core/api.lua")
 loadSH("streamradio_core/string.lua")
 loadSH("streamradio_core/string_accents.lua")
 loadSH("streamradio_core/util.lua")
+loadSH("streamradio_core/file.lua")
 loadSH("streamradio_core/url.lua")
 loadSH("streamradio_core/hook.lua")
+loadSH("streamradio_core/locale.lua")
 loadSH("streamradio_core/timedpairs.lua")
 loadSH("streamradio_core/convar.lua")
-loadSH("streamradio_core/language.lua")
 loadSH("streamradio_core/bass3.lua")
 loadSH("streamradio_core/lib.lua")
 loadSH("streamradio_core/enum.lua")
@@ -77,14 +99,8 @@ loadCL("streamradio_core/client/cl_vgui.lua")
 loadCL("streamradio_core/client/cl_vgui_editor.lua")
 loadCL("streamradio_core/client/cl_whitelist.lua")
 
-StreamRadioLib.Url.Load()
-StreamRadioLib.Interface.Load()
-StreamRadioLib.Filesystem.Load()
-
-StreamRadioLib.Whitelist.Load()
-
-StreamRadioLib.Cfchttp.Load()
-StreamRadioLib.Cache.Load()
+callLoaderFunc("Load")
+callLoaderFunc("PostLoad")
 
 return true
 

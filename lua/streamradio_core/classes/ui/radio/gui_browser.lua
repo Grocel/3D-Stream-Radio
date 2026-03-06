@@ -5,6 +5,10 @@ if not istable(CLASS) then
 	return
 end
 
+local LIBLocale = StreamRadioLib.Locale
+
+local T = LIBLocale.Translate
+
 local BASE = CLASS:GetBaseClass()
 
 local g_mat_upbutton = StreamRadioLib.GetPNGIcon("door_in")
@@ -22,7 +26,7 @@ function CLASS:Create()
 	self.HeaderPanel:SetSkinIdentifyer("header")
 
 	self.HeaderPanelTextPre = self.HeaderPanel:AddPanelByClassname("label", true)
-	self.HeaderPanelTextPre:SetText("Path: ")
+	self.HeaderPanelTextPre:SetText(T("?radiogui.gui_browser.path.label", "Path:"))
 	self.HeaderPanelTextPre:SetSize(1, 30)
 	self.HeaderPanelTextPre:SetAlign(TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 	self.HeaderPanelTextPre:SetName("pretext")
@@ -62,7 +66,7 @@ function CLASS:Create()
 	self.UpButton:SetName("backbutton")
 	self.UpButton:SetNWName("bk")
 	self.UpButton:SetSkinIdentifyer("sidebutton")
-	self.UpButton:SetTooltip("Go to parent directory")
+	self.UpButton:SetTooltip(T("?radiogui.gui_browser.back.tooltip", "Go to parent directory"))
 
 	self.RefreshButton = self:AddPanelByClassname("button", true)
 	self.RefreshButton:SetIcon(g_mat_refresh)
@@ -70,7 +74,7 @@ function CLASS:Create()
 	self.RefreshButton:SetName("refreshbutton")
 	self.RefreshButton:SetNWName("rfsh")
 	self.RefreshButton:SetSkinIdentifyer("sidebutton")
-	self.RefreshButton:SetTooltip("Refresh view")
+	self.RefreshButton:SetTooltip(T("?radiogui.gui_browser.refresh.tooltip", "Refresh view"))
 
 	self.ToolButton = self:AddPanelByClassname("button", true)
 	self.ToolButton:SetIcon(g_mat_toolbutton)
@@ -78,7 +82,7 @@ function CLASS:Create()
 	self.ToolButton:SetName("toolbutton")
 	self.ToolButton:SetNWName("tool")
 	self.ToolButton:SetSkinIdentifyer("sidebutton")
-	self.ToolButton:SetTooltip("Play URL from Toolgun")
+	self.ToolButton:SetTooltip(T("?radiogui.gui_browser.toolgun.tooltip", "Play URL from Toolgun"))
 
 	self.WireButton = self:AddPanelByClassname("button", true)
 	self.WireButton:SetIcon(g_mat_wirebutton)
@@ -87,7 +91,7 @@ function CLASS:Create()
 	self.WireButton:SetNWName("wire")
 	self.WireButton:SetSkinIdentifyer("sidebutton")
 	self.WireButton:SetVisible(StreamRadioLib.Wire.HasWiremod())
-	self.WireButton:SetTooltip("Play URL from Wiremod")
+	self.WireButton:SetTooltip(T("?radiogui.gui_browser.wiremod.tooltip", "Play URL from Wiremod"))
 
 	self.ListFiles = self:AddPanelByClassname("radio/list_playlists", true)
 	self.ListFiles:SetName("list-playlists")

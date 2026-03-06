@@ -5,6 +5,14 @@ if not LIB then
 	return
 end
 
+if not isfunction(LIB.ReloadAddon) then
+	return
+end
+
+if not isfunction(LIB.NewLib) then
+	return
+end
+
 LIB.Loaded = nil
 LIB.Errors = {}
 
@@ -24,8 +32,8 @@ end
 
 local g_version, g_versionTime = getVersion()
 
-local AddonTitle = ( "3D Stream Radio (ver. " .. g_version .. ")" )
-local AddonPrefix = ( AddonTitle .. ":\n" )
+local AddonTitle = "3D Stream Radio (ver. " .. g_version .. ")"
+local AddonPrefix = AddonTitle .. ":"
 
 LIB.AddonTitle = AddonTitle
 LIB.AddonPrefix = AddonPrefix
@@ -86,7 +94,7 @@ local function throwError(err)
 	g_loader_ok = false
 	LIB.Loaded = nil
 
-	ErrorNoHaltWithStack(addonPrefix .. err .. "\n")
+	ErrorNoHaltWithStack(addonPrefix .. "\n" .. err .. "\n")
 end
 
 local function registerErrorFeedbackHook()
@@ -152,7 +160,7 @@ local function luaExists(lua)
 	return true
 end
 
-local function saveCSLuaFile(lua, force)
+local function saveAddCSLuaFile(lua, force)
 	lua = tostring(lua or "")
 	lua = string.lower(lua or "")
 
@@ -236,18 +244,18 @@ local function saveInclude(lua, force)
 	return status, result
 end
 
-function LIB.SaveCSLuaFile(lua, force)
-	return saveCSLuaFile(lua, force)
+function LIB.SaveAddCSLuaFile(lua, force)
+	return saveAddCSLuaFile(lua, force)
 end
 
 function LIB.LoadSH(lua, force)
-	if not saveCSLuaFile(lua) then return end
+	if not saveAddCSLuaFile(lua) then return end
 	return saveInclude(lua, force)
 end
 
 function LIB.LoadCL(lua, force)
 	if SERVER then
-		return saveCSLuaFile(lua)
+		return saveAddCSLuaFile(lua)
 	end
 
 	return saveInclude(lua, force)
@@ -264,22 +272,33 @@ local function loadAddon()
 	local loadStartTime = SysTime()
 
 	local VERSION = VERSION or 0
+	local BRANCH = BRANCH or ""
 	local versionError = nil
 
-	if VERSION > 5 then
-		-- Sometimes the version is not known, yet.
+	if BRANCH == "network_test" then
+		-- The Branch contains upcomming network changes, but might might be at least a major patch behind on most other stuff.
 
 		if CLIENT then
-			local NEED_VERSION = 241029
-
-			if VERSION < NEED_VERSION then
-				versionError = string.format("Your GMod-Client (version: %s) is too old!\nPlease update the GMod-Client to version %s or newer!", VERSION, NEED_VERSION)
-			end
+			versionError = string.format("Your GMod-Client runs on an outdated branch (version: %s)\nPlease switch to an up-to-date branch! Recommended: Puplic or x86-64.", BRANCH)
 		else
-			local NEED_VERSION = 241029
+			versionError = string.format("The GMod-Server runs on an outdated branch (version: %s)\nPlease switch to an up-to-date branch! Recommended: Puplic or x86-64.", BRANCH)
+		end
+	else
+		if VERSION > 5 then
+			-- Sometimes the version is not known, yet.
 
-			if VERSION < NEED_VERSION then
-				versionError = string.format("The GMod-Server (version: %s) is too old!\nPlease update the GMod-Server to version %s or newer!\nTell an Admin!", VERSION, NEED_VERSION)
+			if CLIENT then
+				local NEED_VERSION = 251210
+
+				if VERSION < NEED_VERSION then
+					versionError = string.format("Your GMod-Client (version: %s) is too old!\nPlease update the GMod-Client to version %s or newer!", VERSION, NEED_VERSION)
+				end
+			else
+				local NEED_VERSION = 251210
+
+				if VERSION < NEED_VERSION then
+					versionError = string.format("The GMod-Server (version: %s) is too old!\nPlease update the GMod-Server to version %s or newer!\nTell an Admin!", VERSION, NEED_VERSION)
+				end
 			end
 		end
 	end
@@ -381,5 +400,15 @@ end
 loadAddon()
 printAddon()
 registerErrorFeedbackHook()
+
+table.Empty(g_loaded_cs)
+table.Empty(g_loaded_lua)
+table.Empty(g_exists_lua)
+
+if LIB.Loaded and LIB.Hook and LIB.Hook.RunCustom then
+	xpcall(function()
+		LIB.Hook.RunCustom("AddonLoaded")
+	end, throwError)
+end
 
 return LIB.Loaded

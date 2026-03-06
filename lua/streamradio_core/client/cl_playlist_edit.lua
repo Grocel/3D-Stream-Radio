@@ -1,11 +1,12 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Editor = StreamRadioLib.Editor or {}
-
-local LIB = StreamRadioLib.Editor
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Editor")
 
 local LIBNet = StreamRadioLib.Net
+local LIBLocale = StreamRadioLib.Locale
+local LIBHook = StreamRadioLib.Hook
+local LIBTimer = StreamRadioLib.Timer
+
+local T = LIBLocale.Translate
 
 local g_listenPath = ""
 
@@ -187,8 +188,8 @@ LIBNet.Receive("Editor_Error", function( length )
 	end
 end)
 
-local MainPanel
-local EditorPanel
+local MainPanel = nil
+local EditorPanel = nil
 
 local function CreateMainPanel( )
 	if IsValid(MainPanel) then
@@ -210,7 +211,7 @@ local function CreateMainPanel( )
 	MainPanel:SetMinHeight(400)
 	MainPanel:SetSizable(true)
 	MainPanel:SetDeleteOnClose(false)
-	MainPanel:SetTitle("Stream Radio Playlist Editor")
+	MainPanel:SetTitle(T("?vgui.playlist_editor.header", "Stream Radio Playlist Editor"))
 	MainPanel:SetVisible(false)
 	MainPanel:GetParent():SetWorldClicker(true)
 
@@ -247,6 +248,28 @@ do
 		-- Open via VR lib regardless so we have smoother transitions without possible leftovers
 		StreamRadioLib.VR.MenuOpen("StreamradioPlaylistEditor", MainPanel, true)
 	end
+
+	LIBTimer.Simple(0.5, function()
+		local function recreatePanel()
+			ClosePanel()
+
+			if IsValid(EditorPanel) then
+				EditorPanel:Remove()
+				EditorPanel = nil
+			end
+
+			if IsValid(MainPanel) then
+				MainPanel:Remove()
+				MainPanel = nil
+			end
+
+			OpenPanel(LocalPlayer())
+			ClosePanel()
+		end
+
+		LIBHook.AddCustom("OnLocaleChanged", "PlaylistEdit.recreatePanel", recreatePanel)
+		LIBHook.AddCustom("OnLocaleGenerate", "PlaylistEdit.recreatePanel", recreatePanel)
+	end)
 
 	concommand.Add("cl_streamradio_playlisteditor", OpenPanel)
 	concommand.Add("+cl_streamradio_playlisteditor", OpenPanel)

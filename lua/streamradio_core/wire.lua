@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Wire = StreamRadioLib.Wire or {}
-
-local LIB = StreamRadioLib.Wire
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Wire")
 
 local LIBUtil = StreamRadioLib.Util
 

@@ -27,9 +27,12 @@ local LIBUtil = StreamRadioLib.Util
 local LIBUrl = StreamRadioLib.Url
 local LIBStream = StreamRadioLib.Stream
 local LIBString = StreamRadioLib.String
+local LIBCache = StreamRadioLib.Cache
 
 local BASE = CLASS:GetBaseClass()
-local g_maxSongLenForCache = 60 * 60 * 1.5 -- 1.5 Hours
+
+-- Assume more than 1000 hours of playtime as endless
+local g_maxSongLenForNonEndless = 60 * 60 * 1000
 
 local function LoadBass()
 	local hasBass = LIBBass.LoadDLL()
@@ -41,22 +44,19 @@ local function LoadBass()
 	return hasBass
 end
 
-local function ChannelIsCacheAble( channel )
-	if not IsValid( channel ) then return false end
+local function ChannelIsCacheAble(channel)
+	if not IsValid(channel) then return false end
 
-	local len = channel:GetLength( )
-	if len <= 0 then
-		return false
-	end
+	local len = channel:GetLength()
 
-	if len > g_maxSongLenForCache then
+	if not LIBCache.CanDownloadByLength(len) then
 		return false
 	end
 
 	return true
 end
 
-local function ChannelStop( channel )
+local function ChannelStop(channel)
 	if not channel then
 		return
 	end
@@ -64,7 +64,7 @@ local function ChannelStop( channel )
 	channel:Stop()
 
 	if channel.Remove then
-		channel:Remove( )
+		channel:Remove()
 	end
 
 	LIBBass.ClearCache()
@@ -118,8 +118,8 @@ function CLASS:Create()
 	self._cache_downloads = {}
 
 	if CLIENT then
-		self.ConVarGlobalVolume = StreamRadioLib.Settings.GetConVar("volume")
-		if IsValid(self.ConVarGlobalVolume) then
+		self.ConVarGlobalVolume = StreamRadioLib.Settings.TryGetConVar("volume_global")
+		if self.ConVarGlobalVolume then
 			self.ConVarGlobalVolume:SetEvent("OnChange", self:GetID(), function()
 				self:UpdateChannelVolume()
 			end)
@@ -1066,7 +1066,7 @@ function CLASS:ToString()
 	local channelStr = tostring(channel or "no channel")
 
 	local err = self:GetError()
-	local errName = LIBError.GetStreamErrorName(err) or ""
+	local errName = LIBError.GetStreamErrorInfo(err).name
 
 	local str = g_string_format("%s <%s> [err: %i, %s]", r, channelStr, err, errName)
 	return str
@@ -1323,7 +1323,7 @@ function CLASS:RunConnectingProcessWithDownload(streamTaskUid, interface, intern
 		self:TimerOnce("download_timeout", downloadTimeout, afterConvertedDownload)
 	end
 
-	StreamRadioLib.Cache.Download(internalUrl, afterConvertedDownload, externalUrl)
+	LIBCache.Download(internalUrl, afterConvertedDownload, externalUrl)
 end
 
 function CLASS:RunConnectingProcessWithoutDownload(streamTaskUid, interface, internalUrl)
@@ -1543,11 +1543,11 @@ function CLASS:_SaveChannelToCache(streamTaskUid, channel, interface, internalUr
 		-- remove broken cache file
 
 		if isOnline then
-			StreamRadioLib.Cache.DeleteFileForUrl(externalUrl)
+			LIBCache.DeleteFileForUrl(externalUrl)
 		end
 
 		if isCache then
-			StreamRadioLib.Cache.DeleteFileRaw(internalUrl)
+			LIBCache.DeleteFileRaw(internalUrl)
 		end
 
 		return
@@ -1558,7 +1558,7 @@ function CLASS:_SaveChannelToCache(streamTaskUid, channel, interface, internalUr
 	end
 
 	if not allowCaching then
-		StreamRadioLib.Cache.DeleteFileForUrl(externalUrl)
+		LIBCache.DeleteFileForUrl(externalUrl)
 		return
 	end
 
@@ -1577,7 +1577,7 @@ function CLASS:_SaveChannelToCache(streamTaskUid, channel, interface, internalUr
 
 	self._cache_downloads[streamTaskUid] = true
 
-	StreamRadioLib.Cache.Download(internalUrl, afterCacheDownload, externalUrl)
+	LIBCache.Download(internalUrl, afterCacheDownload, externalUrl)
 end
 
 function CLASS:GetStreamName( )
@@ -1781,6 +1781,8 @@ function CLASS:GetLength()
 	local length = self.Channel:GetLength( )
 
 	if length <= 0 then
+		length = -1
+	elseif length >= g_maxSongLenForNonEndless then
 		length = -1
 	end
 
@@ -2501,12 +2503,6 @@ end
 
 function CLASS:IsEndless()
 	if not self.Valid then return false end
-
-	if self.State.HasBass then
-		if not IsValid( self.Channel ) then return false end
-		return self.Channel:IsEndless()
-	end
-
 	return self:GetLength() <= 0
 end
 

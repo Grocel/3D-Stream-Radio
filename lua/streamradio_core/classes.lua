@@ -190,6 +190,10 @@ local function AddClass(name, parentname)
 end
 
 function StreamRadioLib.ReloadClasses()
+	if StreamRadioLib.ReloadAddon() then
+		return
+	end
+
 	table.Empty(StreamRadioLib.Classes)
 
 	AddClass("base")

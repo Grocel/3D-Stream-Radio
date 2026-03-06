@@ -1,9 +1,5 @@
 local StreamRadioLib = StreamRadioLib
-
-StreamRadioLib.Cfchttp = StreamRadioLib.Cfchttp or {}
-
-local LIB = StreamRadioLib.Cfchttp
-table.Empty(LIB)
+local LIB = StreamRadioLib:NewLib("Cfchttp")
 
 local g_emptyFunction = function() end
 
