@@ -1232,7 +1232,7 @@ function LIB.ApplyLocale()
 		autoLocale.icon = ""
 
 		if isMarked(autoLocale.titleTranslated) then
-			autoLocale.titleTranslated = "Use game language if available (!locale._auto.title)"
+			autoLocale.titleTranslated = "Use game language if available (?locale._auto.title)"
 		end
 
 		if localeFromNative then
@@ -1245,7 +1245,7 @@ function LIB.ApplyLocale()
 		debugLocale.icon = "materials/icon16/cog.png"
 
 		if isMarked(debugLocale.titleTranslated) then
-			debugLocale.titleTranslated = "Show translation identifiers (!locale._debug.title)"
+			debugLocale.titleTranslated = "Show translation identifiers (?locale._debug.title)"
 		end
 	end
 

@@ -63,7 +63,7 @@ LOCALE.title = "English (US)"
 LOCALE.titleTranslated = "English (US)"
 
 -- Icon for this language, e.g. the flag of its country.
-LOCALE.icon = "resource/localization/en.png"
+LOCALE.icon = "materials/flags16/us.png"
 
 -- Set to true if you want to normalize the translation to unescaped strings upon template generation.
 -- Removes escape sequences for better readability.
