@@ -577,7 +577,7 @@ function ENT:Think()
 	BaseClass.Think(self)
 
 	if CLIENT and self:IsDormant() then
-		return
+	 	return
 	end
 
 	if g_isLoaded then
