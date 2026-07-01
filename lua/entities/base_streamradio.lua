@@ -576,15 +576,16 @@ end
 function ENT:Think()
 	BaseClass.Think(self)
 
-	local curtime = CurTime()
+	if CLIENT and self:IsDormant() then
+	 	return
+	end
 
 	if g_isLoaded then
 		self:InternalThink()
 	end
 
 	if SERVER then
-		self:NextThink(curtime + 0.1)
-		return true
+		self:NextThink(CurTime() + 0.1)
 	end
 
 	return true
