@@ -19,6 +19,8 @@ local g_GenericID = ":generic"
 
 local g_VirtualFolderIcon = StreamRadioLib.GetPNGIcon("folder_link")
 
+local g_nextThink = 0
+
 StreamRadioLib.TYPE_FOLDER = g_FolderID
 StreamRadioLib.TYPE_DEFAULT = nil
 StreamRadioLib.VALID_FORMATS_EXTENSIONS_LIST = ""
@@ -1017,42 +1019,57 @@ do
 	concommand.Add( "info_streamradio_playlist_filesystem_list", ListFS)
 end
 
-local function updateBlacklistFromString(backlist)
-	backlist = tostring(backlist or "")
-	backlist = string.Explode("[%,%;%|]", backlist, true)
+do
+	local function updateBlacklistFromString(backlist)
+		backlist = tostring(backlist or "")
+		backlist = string.Explode("[%,%;%|]", backlist, true)
 
-	g_FilesystemBlacklist = {}
+		g_FilesystemBlacklist = {}
 
-	for i, v in ipairs(backlist) do
-		v = string.Trim(v)
-		g_FilesystemBlacklist[v] = true
-	end
-end
-
-local flags = bit.bor(FCVAR_NOTIFY, FCVAR_REPLICATED, FCVAR_GAMEDLL, FCVAR_SERVER_CAN_EXECUTE)
-
-if SERVER then
-	flags = bit.bor(flags, FCVAR_ARCHIVE)
-end
-
-local CVBacklist = CreateConVar( "sv_streamradio_playlist_filesystem_blacklist", "", flags, "Set the list playlist filesystems to be disabled by type, name or id. Entries are seperated by pipe ('|') or comma (','). See info_streamradio_playlist_filesystem_list for details. Default: ''" )
-
-local oldCVValue = CVBacklist:GetString()
-updateBlacklistFromString(oldCVValue)
-
-StreamRadioLib.Hook.Add("Think", "Playlist_Filesystem", function()
-	if not StreamRadioLib then return end
-	if not StreamRadioLib.Loaded then return end
-	if not CVBacklist then return end
-
-	local CVvalue = CVBacklist:GetString()
-	if oldCVValue == CVvalue then
-		return
+		for i, v in ipairs(backlist) do
+			v = string.Trim(v)
+			g_FilesystemBlacklist[v] = true
+		end
 	end
 
-	oldCVValue = CVvalue
-	updateBlacklistFromString(CVvalue)
-end)
+	local flags = bit.bor(FCVAR_NOTIFY, FCVAR_REPLICATED, FCVAR_GAMEDLL, FCVAR_SERVER_CAN_EXECUTE)
+
+	if SERVER then
+		flags = bit.bor(flags, FCVAR_ARCHIVE)
+	end
+
+	local CVBacklist = CreateConVar(
+		"sv_streamradio_playlist_filesystem_blacklist",
+		"",
+		flags,
+		"Set the list playlist filesystems to be disabled by type, name or id. Entries are seperated by pipe ('|') or comma (','). See info_streamradio_playlist_filesystem_list for details. Default: ''"
+	)
+
+	local oldCVValue = CVBacklist:GetString()
+	updateBlacklistFromString(oldCVValue)
+
+	StreamRadioLib.Hook.Add("Think", "Playlist_Filesystem", function()
+		local now = RealTime()
+
+		if g_nextThink > now then
+			return
+		end
+
+		g_nextThink = now + 1 + math.random()
+
+		if not CVBacklist then
+			return
+		end
+
+		local CVvalue = CVBacklist:GetString()
+		if oldCVValue == CVvalue then
+			return
+		end
+
+		oldCVValue = CVvalue
+		updateBlacklistFromString(CVvalue)
+	end)
+end
 
 return true
 

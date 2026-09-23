@@ -31,8 +31,22 @@ local LIBCache = StreamRadioLib.Cache
 
 local BASE = CLASS:GetBaseClass()
 
+local g_tickInterval = engine.TickInterval()
+
+-- Margin before the end of a song
+local g_maxIsEndedTimeLeft = math.max(g_tickInterval * 3, 0.04)
+
+-- Max differnce to detect if seeking is active
+local g_maxIsSeekingDelta = math.min(g_tickInterval * 8, 0.12)
+
+-- Very short files must not be seekable
+local g_minSeekableLength = math.min(g_tickInterval * 4, 0.06)
+
 -- Assume more than 1000 hours of playtime as endless
-local g_maxSongLenForNonEndless = 60 * 60 * 1000
+local g_maxSeekableLength = 60 * 60 * 1000
+
+-- Used in synchronisation 
+local g_syncLengthMargin = math.max(g_tickInterval * 2, 0.03)
 
 local function LoadBass()
 	local hasBass = LIBBass.LoadDLL()
@@ -682,14 +696,13 @@ function CLASS:FastThink()
 		else
 			local timeB = self:GetNWFloat("MasterTime", 0)
 			local dt = math.abs(timeA - timeB)
-			local tickTime = engine.TickInterval()
 
 			-- add random noise to avoid uneven network load
 			local random = math.random() * 0.2
 			local maxDt = 0.4 + random
 
 			if masterLength > 0 then
-				maxDt = math.min(math.max(masterLength / 4, tickTime * 4), maxDt)
+				maxDt = math.min(math.max(masterLength / 4, g_minSeekableLength), maxDt)
 			end
 
 			if dt >= maxDt then
@@ -1782,7 +1795,7 @@ function CLASS:GetLength()
 
 	if length <= 0 then
 		length = -1
-	elseif length >= g_maxSongLenForNonEndless then
+	elseif length >= g_maxSeekableLength then
 		length = -1
 	end
 
@@ -2020,25 +2033,21 @@ function CLASS:SyncTime()
 	local loop = self:GetLoop()
 
 	if length > 0 then
-		local tickLen = engine.TickInterval()
-		local minDelta = tickLen * 2
-		local maxStartDelta = tickLen * 4
-
-		if length <= maxStartDelta then
+		if length <= g_minSeekableLength then
 			-- never time synchronize extremely short sounds
 			return
 		end
 
-		if length <= maxdelta and time > maxStartDelta then
+		if length <= maxdelta and time > g_minSeekableLength then
 			-- prevent permanent seeking loop for very short sounds (length less then 1.5s)
-			-- <maxStartDelta> makes sure all clients start at the same time
-			-- but ignore further synchronisations past <maxStartDelta>
+			-- <g_minSeekableLength> makes sure all clients start at the same time
+			-- but ignore further synchronisations past <g_minSeekableLength>
 
 			return
 		end
 
 		-- limit <maxdelta> to the length minus a small margin
-		maxdelta = math.min(maxdelta, math.max(length - minDelta, maxStartDelta))
+		maxdelta = math.min(maxdelta, math.max(length - g_syncLengthMargin, g_minSeekableLength))
 	end
 
 	local maxdelta_half = maxdelta / 2
@@ -2122,9 +2131,8 @@ function CLASS:HasEndedInternal()
 
 	-- Sometimes the time can actually lag a bit behind the actual playback position.
 	-- So we add a small tolerance to make sure it doesn't get stuck at like 99.999% of the track.
-	local minTimeLeft = engine.TickInterval() * 2
 
-	if timeleft > minTimeLeft then
+	if timeleft > g_maxIsEndedTimeLeft then
 		return false
 	end
 
@@ -2145,9 +2153,13 @@ function CLASS:_IsSeekingInternal()
 	if not targettime then return false end
 
 	local curtime = self:GetRealTime()
-	local maxDelta = engine.TickInterval() * 8
+	local delta = math.abs(targettime - curtime)
 
-	return math.abs(targettime - curtime) > maxDelta
+	if delta <= g_maxIsSeekingDelta then
+		return false
+	end
+
+	return true
 end
 
 function CLASS:IsSeeking()
@@ -2521,8 +2533,7 @@ function CLASS:CanSeek()
 	if self:IsBlockStreamed() then return false end
 	if self:IsStopped() then return false end
 
-	local minLen = engine.TickInterval() * 4
-	if self:GetMasterLength() <= minLen then return false end
+	if self:GetMasterLength() <= g_minSeekableLength then return false end
 
 	return true
 end

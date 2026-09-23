@@ -1,6 +1,12 @@
 [playlist]
-NumberOfEntries=1
-File1=https://playerservices.streamtheworld.com/api/livestream-redirect/WETAFM.mp3?nocache=WBlVUpoY
-Title1=Classical WETA
+NumberOfEntries=3
+File1=https://weta.streamguys1.com/wetaclassical-icy
+Title1=WETA Classical
 Length1=-1
+File2=https://weta.streamguys1.com/wetavivalavoce-icy
+Title2=WETA VivaLaVoce
+Length2=-1
+File3=https://weta.streamguys1.com/wetavirtuoso-icy
+Title3=WETA Virtuoso
+Length3=-1
 Version=2

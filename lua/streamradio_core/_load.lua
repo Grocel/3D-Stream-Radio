@@ -275,33 +275,23 @@ local function loadAddon()
 	local BRANCH = BRANCH or ""
 	local versionError = nil
 
-	-- if BRANCH == "network_test" then
-	-- 	-- The Branch contains upcomming network changes, but might might be at least a major patch behind on most other stuff.
+	if VERSION > 5 then
+		-- Sometimes the version is not known, yet.
 
-	-- 	if CLIENT then
-	-- 		versionError = string.format("Your GMod-Client runs on an outdated branch (version: %s)\nPlease switch to an up-to-date branch! Recommended: Puplic or x86-64.", BRANCH)
-	-- 	else
-	-- 		versionError = string.format("The GMod-Server runs on an outdated branch (version: %s)\nPlease switch to an up-to-date branch! Recommended: Puplic or x86-64.", BRANCH)
-	-- 	end
-	-- else
-		if VERSION > 5 then
-			-- Sometimes the version is not known, yet.
+		if CLIENT then
+			local NEED_VERSION = 260915
 
-			if CLIENT then
-				local NEED_VERSION = 251210
+			if VERSION < NEED_VERSION then
+				versionError = string.format("Your GMod-Client (version: %s) is too old!\nPlease update the GMod-Client to version %s or newer!", VERSION, NEED_VERSION)
+			end
+		else
+			local NEED_VERSION = 260915
 
-				if VERSION < NEED_VERSION then
-					versionError = string.format("Your GMod-Client (version: %s) is too old!\nPlease update the GMod-Client to version %s or newer!", VERSION, NEED_VERSION)
-				end
-			else
-				local NEED_VERSION = 251210
-
-				if VERSION < NEED_VERSION then
-					versionError = string.format("The GMod-Server (version: %s) is too old!\nPlease update the GMod-Server to version %s or newer!\nTell an Admin!", VERSION, NEED_VERSION)
-				end
+			if VERSION < NEED_VERSION then
+				versionError = string.format("The GMod-Server (version: %s) is too old!\nPlease update the GMod-Server to version %s or newer!\nTell an Admin!", VERSION, NEED_VERSION)
 			end
 		end
-	--end
+	end
 
 	if versionError then
 		throwError(versionError)
