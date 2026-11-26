@@ -296,7 +296,7 @@ function CLASS:CreateRendertarget()
 		return nil
 	end
 
-	-- No ENUMS for thise values are available in the game.
+	-- No ENUMS for these values are available in the game.
 	-- https://wiki.facepunch.com/gmod/Enums/TEXTUREFLAGS
 	local textureFlags = bit.bor(
 		4,    -- TEXTUREFLAGS_CLAMPS
@@ -304,8 +304,7 @@ function CLASS:CreateRendertarget()
 		16,   -- TEXTUREFLAGS_ANISOTROPIC
 		32,   -- TEXTUREFLAGS_HINT_DXT5
 		512,  -- TEXTUREFLAGS_NOLOD
-		8192, -- TEXTUREFLAGS_EIGHTBITALPHA
-		32768 -- TEXTUREFLAGS_RENDERTARGET
+		8192  -- TEXTUREFLAGS_EIGHTBITALPHA
 	)
 
 	local tex = GetRenderTargetEx(

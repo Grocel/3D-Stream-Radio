@@ -29,7 +29,7 @@ end
 
 local function g_decode(value)
 	value = value or ""
-	value = util.Decompress(value) or ""
+	value = util.Decompress(value, 4 * 1024 * 1024) or ""
 	value = StreamRadioLib.JSON.Decode(value) or {}
 	value = value[1] or {}
 

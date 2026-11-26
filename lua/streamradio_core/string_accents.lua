@@ -754,7 +754,7 @@ function LIB.StripAccents(str, alsoStripHighUnicode)
 
 		if not char then
 			if alsoStripHighUnicode and codepoint > 0x7F then
-				continue;
+				continue
 			end
 
 			char = utf8.char(codepoint)
